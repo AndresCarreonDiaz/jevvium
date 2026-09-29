@@ -1,0 +1,5 @@
+id: mydemo-cart-two-backpacks
+goal: From the Catalog, the shopper adds the Sauce Labs Backpack - Black and then the Sauce Labs Backpack - Green to the cart, going back to the Catalog with its tab in between, and opens the Cart.
+expect:
+  - text: 2 Items
+  - text: $59.98

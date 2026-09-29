@@ -1,5 +1,5 @@
 id: signup
-goal: A new user signs up with an email and a password, confirms the same password, and is told the sign up worked.
+goal: On the Login screen, a new user switches to the Sign up form, signs up with an email and a password, repeats the same password, and is told the sign up worked.
 inputs:
   email: qa.demo@example.com
   password: Str0ngPassw0rd

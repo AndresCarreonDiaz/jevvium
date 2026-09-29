@@ -1,0 +1,9 @@
+id: mydemo-shipping-zip-required
+goal: At checkout (add the Sauce Labs Backpack - Black to the cart from the Catalog, proceed to checkout from the Cart, log in by picking bob@example.com), a shopper who enters a shipping address without a zip code and continues to payment is asked for the zip code.
+inputs:
+  fullName: Jane Tester
+  addressLine1: 42 Example Street
+  city: Springfield
+  country: United States
+expect:
+  - text: Please provide your zip.

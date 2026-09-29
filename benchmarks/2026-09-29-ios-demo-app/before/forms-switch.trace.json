@@ -1,0 +1,123 @@
+{
+  "criterion": {
+    "id": "forms-switch",
+    "goal": "On the Forms screen, the user turns the switch on.",
+    "expect": [
+      {
+        "text": "Click to turn the switch OFF"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "jev",
+  "startedAt": "2026-09-29T21:47:41.369Z",
+  "durationMs": 4616,
+  "outcome": "passed",
+  "reason": "All 1 expectations hold, although the model was unsure the goal was reached.",
+  "steps": [
+    {
+      "index": 1,
+      "screenText": [
+        "WEBDRIVER",
+        "Demo app for the appium-boilerplate",
+        "Support"
+      ],
+      "actionCount": 7,
+      "decision": {
+        "action": "tap:e4",
+        "confidence": 0.98,
+        "probabilities": {
+          "tap:e4": 0.99,
+          "STUCK": 0.01,
+          "tap:e7": 0,
+          "tap:e6": 0,
+          "tap:e2": 0
+        },
+        "goalMet": 0.05,
+        "model": "jev-1.13.0",
+        "latencyMs": 190,
+        "usage": {
+          "inputTokens": 728,
+          "outputTokens": 109
+        }
+      },
+      "taken": {
+        "type": "tap",
+        "description": "Tap the button \"Forms\" (bottom of the screen)",
+        "selector": "~Forms"
+      }
+    },
+    {
+      "index": 2,
+      "screenText": [
+        "Form components",
+        "Input field:",
+        "You have typed:",
+        "Switch:",
+        "Click to turn the switch ON",
+        "Dropdown:",
+        "Buttons",
+        "Active",
+        "Inactive"
+      ],
+      "actionCount": 10,
+      "decision": {
+        "action": "tap:e2",
+        "confidence": 0.99,
+        "probabilities": {
+          "tap:e2": 1,
+          "tap:e4": 0,
+          "tap:e6": 0,
+          "tap:e11": 0,
+          "tap:e9": 0
+        },
+        "goalMet": 0.04,
+        "model": "jev-1.13.0",
+        "latencyMs": 112,
+        "usage": {
+          "inputTokens": 869,
+          "outputTokens": 138
+        }
+      },
+      "taken": {
+        "type": "tap",
+        "description": "Toggle the switch \"switch\" (currently off, middle of the screen)",
+        "selector": "~switch"
+      }
+    },
+    {
+      "index": 3,
+      "screenText": [
+        "Form components",
+        "Input field:",
+        "You have typed:",
+        "Switch:",
+        "Click to turn the switch OFF",
+        "Dropdown:",
+        "Buttons",
+        "Active",
+        "Inactive"
+      ],
+      "actionCount": 10,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.66,
+        "probabilities": {
+          "STUCK": 0.7,
+          "tap:e2": 0.25,
+          "tap:e8": 0.03,
+          "tap:e4": 0.01,
+          "tap:e3": 0.01
+        },
+        "goalMet": 0.77,
+        "model": "jev-1.13.0",
+        "latencyMs": 138,
+        "usage": {
+          "inputTokens": 887,
+          "outputTokens": 137
+        }
+      }
+    }
+  ],
+  "failedExpectations": []
+}

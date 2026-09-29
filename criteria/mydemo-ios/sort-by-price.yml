@@ -1,0 +1,4 @@
+id: mydemo-sort-by-price
+goal: On the Catalog screen, the shopper opens the sort options with the button at the top of the screen and sorts the products by price, from low to high.
+expect:
+  - text: Sauce Labs Onesie

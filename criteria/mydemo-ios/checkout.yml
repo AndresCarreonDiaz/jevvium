@@ -1,0 +1,15 @@
+id: mydemo-checkout
+goal: A shopper buys the Sauce Labs Backpack - Black. They add it to the cart from the Catalog, proceed to checkout from the Cart, log in by picking bob@example.com from the list of usernames, enter a shipping address, enter a card with the card holder's name, review the order and place it.
+inputs:
+  fullName: Jane Tester
+  addressLine1: 42 Example Street
+  city: Springfield
+  zipCode: '12345'
+  country: United States
+  nameOnCard: Jane Tester
+  cardNumber: '4111111111111111'
+  expirationDate: '1230'
+  securityCode: '737'
+expect:
+  - text: Checkout Complete
+  - id: ContinueShopping

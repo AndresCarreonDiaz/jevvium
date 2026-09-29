@@ -1,0 +1,191 @@
+{
+  "criterion": {
+    "id": "login-invalid-email",
+    "goal": "A user who tries to log in with a malformed email address is not logged in and is asked for a valid email address.",
+    "expect": [
+      {
+        "text": "Please enter a valid email address"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "jev",
+  "input": "simulator",
+  "startedAt": "2026-09-29T21:48:03.565Z",
+  "durationMs": 3569,
+  "outcome": "passed",
+  "reason": "All 1 expectations hold, although the model was unsure the goal was reached.",
+  "steps": [
+    {
+      "index": 1,
+      "screenText": [
+        "WEBDRIVER",
+        "Demo app for the appium-boilerplate",
+        "Support"
+      ],
+      "actionCount": 7,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.64,
+        "probabilities": {
+          "tap:e3": 0.7,
+          "tap:e2": 0.1,
+          "tap:e7": 0.06,
+          "tap:e1": 0.06,
+          "tap:e4": 0.05
+        },
+        "goalMet": 0.05,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 137,
+        "usage": {
+          "inputTokens": 748,
+          "outputTokens": 109
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Login",
+          "description": "Tap the button \"Login\" (bottom of the screen)",
+          "selector": "~Login"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "type:e3:email",
+        "confidence": 0.8,
+        "probabilities": {
+          "type:e3:email": 0.8200000000000001,
+          "type:e3:password": 0.09,
+          "tap:e1": 0.03,
+          "tap:e5": 0.02,
+          "STUCK": 0.01
+        },
+        "goalMet": 0.06,
+        "fills": {
+          "e3": {
+            "input": "email",
+            "confidence": 0.79
+          },
+          "e4": {
+            "input": "password",
+            "confidence": 0.93
+          }
+        },
+        "model": "jev-1.13.0",
+        "latencyMs": 114,
+        "usage": {
+          "inputTokens": 1261,
+          "outputTokens": 265
+        }
+      },
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Email",
+          "description": "Type the test data \"email\" into the field \"Email\" (id input-email, top of the screen)",
+          "selector": "~input-email",
+          "input": "email"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Password",
+          "description": "Type the test data \"password\" into the field \"Password\" (id input-password, middle of the screen)",
+          "selector": "~input-password",
+          "input": "password"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "tap:e5",
+        "confidence": 0.66,
+        "probabilities": {
+          "tap:e5": 0.6900000000000001,
+          "tap:e1": 0.15,
+          "tap:e8": 0.14,
+          "STUCK": 0.01,
+          "tap:e6": 0
+        },
+        "goalMet": 0.07,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 100,
+        "usage": {
+          "inputTokens": 1099,
+          "outputTokens": 187
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "LOGIN",
+          "description": "Tap the button \"LOGIN\" (id button-LOGIN, middle of the screen)",
+          "selector": "~button-LOGIN"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter a valid email address",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.42,
+        "probabilities": {
+          "STUCK": 0.47000000000000003,
+          "tap:e5": 0.29,
+          "type:e3:email": 0.06,
+          "type:e4:email": 0.05,
+          "tap:e2": 0.03
+        },
+        "goalMet": 0.72,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 118,
+        "usage": {
+          "inputTokens": 1147,
+          "outputTokens": 186
+        }
+      }
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 1,
+  "usage": {
+    "requests": 5,
+    "inputTokens": 5402,
+    "outputTokens": 933
+  }
+}

@@ -1,0 +1,5 @@
+id: mydemo-add-to-cart
+goal: From the Catalog, the shopper opens the Sauce Labs Backpack - Black, adds it to the cart and opens the Cart.
+expect:
+  - text: 1 Items
+  - id: ProceedToCheckout
