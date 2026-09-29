@@ -1,0 +1,7 @@
+id: login-invalid-email
+goal: A user who tries to log in with a malformed email address is not logged in and is asked for a valid email address.
+inputs:
+  email: not-an-email
+  password: Str0ngPassw0rd
+expect:
+  - text: Please enter a valid email address

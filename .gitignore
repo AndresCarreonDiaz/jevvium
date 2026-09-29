@@ -1,0 +1,11 @@
+node_modules/
+apps/
+runs/
+reports/
+screenshots/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+generated/

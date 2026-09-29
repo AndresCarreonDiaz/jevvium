@@ -1,0 +1,7 @@
+id: login
+goal: A registered user logs in with a valid email and password and is told they are logged in.
+inputs:
+  email: qa.demo@example.com
+  password: Str0ngPassw0rd
+expect:
+  - text: You are logged in!

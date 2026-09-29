@@ -1,0 +1,4 @@
+id: forms-switch
+goal: On the Forms screen, the user turns the switch on.
+expect:
+  - text: Click to turn the switch OFF
