@@ -6,8 +6,9 @@
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
     "skipLibCheck": true,
     "types": ["node", "@wdio/globals/types", "@wdio/mocha-framework", "@wdio/appium-service"]
   },
-  "include": ["config", "src", "test", "generated"]
+  "include": ["config", "src", "test", "scripts", "generated", "examples"]
 }

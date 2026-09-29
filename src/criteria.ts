@@ -21,6 +21,10 @@ export function parseCriterion(raw: unknown, fallbackId: string): Criterion {
   if (raw.inputs !== undefined) {
     if (!isRecord(raw.inputs)) throw new Error('`inputs` must map names to values')
     for (const [name, value] of Object.entries(raw.inputs)) {
+      // Names appear in placeholders such as `{email}`, so they are kept to plain words.
+      if (!/^[A-Za-z][\w-]*$/.test(name)) {
+        throw new Error(`Input name \`${name}\` must start with a letter and use only letters, digits, _ and -`)
+      }
       if (typeof value !== 'string' && typeof value !== 'number') {
         throw new Error(`Input \`${name}\` must be a string or a number`)
       }
@@ -39,6 +43,8 @@ export function parseCriterion(raw: unknown, fallbackId: string): Criterion {
   }
 
   const id = typeof raw.id === 'string' && raw.id !== '' ? raw.id : fallbackId
+  // The id heads the generated spec in a comment, which a line break would end.
+  if (/[\p{Cc}\u2028\u2029]/u.test(id)) throw new Error('A criterion `id` must be a single line of text')
   return { id, goal: goal.trim(), inputs, expect }
 }
 

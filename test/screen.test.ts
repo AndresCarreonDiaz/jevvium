@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
-import { redactScreen } from '../src/actions.ts'
+import { controlStates, redactScreen } from '../src/actions.ts'
 import { toSelector } from '../src/locator.ts'
-import { isBusy, parseScreen } from '../src/screen.ts'
+import { isBusy, needsFullRead, parseScreen } from '../src/screen.ts'
 import type { Screen } from '../src/types.ts'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}.xml`, import.meta.url), 'utf8')
@@ -51,6 +51,9 @@ describe('parseScreen on iOS', () => {
     const labels = screen.elements.map((e) => e.label)
     assert.ok(labels.includes('Email'))
     assert.ok(!JSON.stringify(screen).includes('qa.demo@example.com'))
+    const inputs = (name: string) => parseScreen(fixture(name), 'ios').elements.filter((e) => e.kind === 'input').map((e) => e.empty)
+    assert.deepEqual(inputs('ios-login'), [true, true], 'placeholders only')
+    assert.deepEqual(inputs('ios-login-filled'), [false, false], 'both typed into')
   })
 
   it('offers the keyboard return key but not the rest of the keyboard window', () => {
@@ -61,9 +64,68 @@ describe('parseScreen on iOS', () => {
     }
   })
 
+  it('names a field after the text just above it, but not after the error under the field before it', () => {
+    const login = fixture('ios-login')
+    const labels = (xml: string) => parseScreen(xml, 'ios').elements.filter((e) => e.kind === 'input').map((e) => `${e.label} (${e.placeholder ?? '-'})`)
+    // The demo app shows its email error in an empty text between the two fields.
+    const withError = login.replace(/(x="35" y="301" width="332" height="15" index="6")/, '$1 label="Please enter a valid email address"')
+    assert.notEqual(withError, login)
+    assert.deepEqual(labels(withError), ['Email (-)', 'Password (-)'])
+    const captioned = login.replace(/(x="35" y="301" width="332" height="15" index="6")/, 'label="Your password" x="69" y="320" width="200" height="15" index="6"')
+    assert.deepEqual(labels(captioned), ['Email (-)', 'Your password (Password)'])
+  })
+
+  it('reads whether a switch is on, since the text beside it is ambiguous', () => {
+    const switchIn = (name: string) => parseScreen(fixture(name), 'ios').elements.find((e) => e.kind === 'switch')
+    assert.equal(switchIn('ios-forms')?.checked, false)
+    assert.equal(switchIn('ios-forms-switch-on')?.checked, true)
+    assert.deepEqual(controlStates(parseScreen(fixture('ios-forms-switch-on'), 'ios')), ['The switch "switch" is on'])
+  })
+
   it('knows the screen is busy while a spinner shows', () => {
     assert.equal(isBusy(fixture('ios-login-submitting'), 'ios'), true)
     assert.equal(isBusy(fixture('ios-login-success'), 'ios'), false)
+  })
+})
+
+// A read without XCTest's `visible` is several times faster; these check that working
+// visibility out from positions agrees with XCTest on the real screens.
+describe('parseScreen from a read without visibility', () => {
+  const fast = (name: string) => fixture(name).replace(/ visible="(?:true|false)"/g, '')
+
+  it('sees the same screen as XCTest when nothing covers it', () => {
+    for (const name of ['ios-home', 'ios-login', 'ios-login-submitting']) {
+      const full = parseScreen(fixture(name), 'ios')
+      const geometric = parseScreen(fast(name), 'ios', { visibility: 'geometry' })
+      assert.deepEqual(summary(geometric), summary(full), name)
+      assert.deepEqual(geometric.texts, full.texts, name)
+    }
+  })
+
+  it('treats what is under the keyboard as covered, and still offers its return key', () => {
+    const labels = parseScreen(fast('ios-login-filled'), 'ios', { visibility: 'geometry' }).elements.map((e) => `${e.kind} ${e.label}`)
+    assert.ok(labels.includes('key done'))
+    assert.ok(labels.includes('button LOGIN'))
+    for (const covered of ['button Webview', 'button Forms', 'button Swipe', 'button Drag']) {
+      assert.ok(!labels.includes(covered), `${covered} is under the keyboard`)
+    }
+  })
+
+  it('asks for a full read when an alert sits in its own window', () => {
+    assert.equal(needsFullRead(fast('ios-login-success')), true)
+    assert.equal(needsFullRead(fast('ios-login')), false)
+    assert.equal(needsFullRead(fast('ios-login-filled')), false, 'the keyboard window does not count')
+  })
+
+  it('still knows when a spinner is showing', () => {
+    assert.equal(isBusy(fast('ios-login-submitting'), 'ios'), true)
+    assert.equal(isBusy(fast('ios-login'), 'ios'), false)
+  })
+
+  it('ignores a spinner below the fold', () => {
+    const offScreen = fast('ios-login-submitting').replace(/(<XCUIElementTypeActivityIndicator[^>]*?) y="\d+"/, '$1 y="1400"')
+    assert.notEqual(offScreen, fast('ios-login-submitting'))
+    assert.equal(isBusy(offScreen, 'ios'), false)
   })
 })
 

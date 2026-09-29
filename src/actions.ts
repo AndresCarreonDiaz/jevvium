@@ -1,3 +1,4 @@
+import { redactor } from './redact.ts'
 import type { Action, Screen, ScreenElement } from './types.ts'
 
 /**
@@ -27,28 +28,31 @@ export function describeAction(action: Action): string {
     : `${action.element.kind === 'switch' ? 'Toggle' : 'Tap'} ${target}`
 }
 
-function describeElement(element: ScreenElement): string {
+export function describeElement(element: ScreenElement): string {
   const noun = element.kind === 'input' ? 'field' : element.kind
   const details = [
+    element.placeholder ? `placeholder "${element.placeholder}"` : undefined,
+    element.checked !== undefined ? `currently ${element.checked ? 'on' : 'off'}` : undefined,
     element.id && element.id !== element.label ? `id ${element.id}` : undefined,
     element.region && `${element.region} of the screen`,
   ].filter(Boolean)
   return `the ${noun} "${element.label}"${details.length ? ` (${details.join(', ')})` : ''}`
 }
 
+/** The on/off state of every switch, which visible text alone often leaves ambiguous. */
+export function controlStates(screen: Screen): string[] {
+  return screen.elements
+    .filter((element) => element.checked !== undefined)
+    .map((element) => `The switch "${element.label}" is ${element.checked ? 'on' : 'off'}`)
+}
+
 /**
- * Replaces every test data value in a screen with `{name}`, so a field that
- * echoes what was typed (or a "Welcome, jane@example.com" banner) doesn't
- * send the value to the decision model.
+ * The screen with each test data value replaced by `{name}` (see `redactor`), so
+ * a field that echoes what was typed, or a "Welcome, jane@example.com" banner,
+ * doesn't send the value to the decision model.
  */
 export function redactScreen(screen: Screen, inputs: Record<string, string>): Screen {
-  // Longest first, so a value that contains another is replaced whole.
-  const values = Object.entries(inputs)
-    .filter(([, value]) => value.length >= 3)
-    .sort(([, a], [, b]) => b.length - a.length)
-  const redact = (text: string) =>
-    values.reduce((result, [name, value]) => result.split(value).join(`{${name}}`), text)
-
+  const redact = redactor(inputs)
   return {
     ...screen,
     texts: screen.texts.map(redact),
@@ -56,6 +60,7 @@ export function redactScreen(screen: Screen, inputs: Record<string, string>): Sc
       ...element,
       label: redact(element.label),
       id: element.id && redact(element.id),
+      placeholder: element.placeholder && redact(element.placeholder),
     })),
   }
 }

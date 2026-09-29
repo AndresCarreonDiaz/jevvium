@@ -7,12 +7,14 @@ const request: DecisionRequest = {
   platform: 'android',
   goal: 'Log in',
   screenText: ['Login / Sign up Form'],
+  controlStates: [],
   actions: [
     { key: 'type:e1:email', description: 'Type the test data "email" into the field "Email"' },
     { key: 'tap:e2', description: 'Tap the button "LOGIN"' },
   ],
   history: [],
   inputNames: ['email'],
+  fields: [{ key: 'e1', description: 'the field "Email"' }],
 }
 
 const answer = {
@@ -20,6 +22,7 @@ const answer = {
   answers: {
     next_action: { type: 'choice', choice: 'type:e1:email', probabilities: { 'type:e1:email': 0.82, 'tap:e2': 0.15, STUCK: 0.03 }, confidence: 0.82 },
     goal_met: { type: 'noul', noul: 0.02 },
+    fill_e1: { type: 'choice', choice: 'email', probabilities: { email: 0.97, leave_empty: 0.03 }, confidence: 0.95 },
   },
   usage: { input_tokens: 410, output_tokens: 12 },
 }
@@ -48,10 +51,13 @@ describe('JevProvider', () => {
     assert.deepEqual(Object.keys(body.questions.next_action.criteria), ['type:e1:email', 'tap:e2', STUCK])
     assert.equal(body.questions.goal_met.type, 'noul')
     assert.deepEqual(body.state.test_data_available, ['email'])
+    assert.equal(body.questions.fill_e1.type, 'choice')
+    assert.deepEqual(Object.keys(body.questions.fill_e1.criteria), ['email', 'leave_empty'])
 
     assert.equal(decision.action, 'type:e1:email')
     assert.equal(decision.confidence, 0.82)
     assert.equal(decision.goalMet, 0.02)
+    assert.deepEqual(decision.fills, { e1: { input: 'email', confidence: 0.95 } })
     assert.equal(decision.model, 'jev-1.13.0')
     assert.deepEqual(decision.usage, { inputTokens: 410, outputTokens: 12 })
   })

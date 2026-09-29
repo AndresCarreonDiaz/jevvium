@@ -13,22 +13,26 @@
   ],
   "author": "Andres Carreon",
   "license": "MIT",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AndresCarreonDiaz/jevvium.git"
   },
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": "^22.13.0 || >=24"
   },
   "scripts": {
     "jevvium": "tsx src/cli.ts",
+    "benchmark": "tsx scripts/benchmark.ts",
     "apps": "./scripts/download-apps.sh",
+    "apps:mydemo": "./scripts/download-mydemo.sh",
     "test": "node --import tsx --test \"test/**/*.test.ts\"",
     "test:generated:android": "wdio run config/wdio.android.conf.ts",
     "test:generated:ios": "wdio run config/wdio.ios.conf.ts",
     "typecheck": "tsc",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "build:helper": "xcrun clang -fobjc-arc -O2 -Wall -Werror -framework Foundation -framework CoreGraphics native/ios-hid/main.m -o /tmp/jevvium-hid"
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.2",

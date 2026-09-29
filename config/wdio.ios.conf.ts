@@ -11,8 +11,9 @@ export const config: WebdriverIO.Config = {
       platformName: 'iOS',
       'appium:automationName': 'XCUITest',
       'appium:deviceName': process.env.IOS_DEVICE_NAME ?? 'iPhone 17',
-      'appium:platformVersion': process.env.IOS_PLATFORM_VERSION ?? '26.5',
-      'appium:app': join(process.cwd(), 'apps', 'wdiodemoapp.app'),
+      // Without a version, Appium uses the newest simulator runtime Xcode has.
+      ...(process.env.IOS_PLATFORM_VERSION && { 'appium:platformVersion': process.env.IOS_PLATFORM_VERSION }),
+      'appium:app': process.env.IOS_APP ?? join(process.cwd(), 'apps', 'wdiodemoapp.app'),
       'appium:newCommandTimeout': 240,
       'appium:wdaLaunchTimeout': 240_000,
     },

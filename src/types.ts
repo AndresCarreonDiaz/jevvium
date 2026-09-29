@@ -24,6 +24,14 @@ export type ScreenElement = {
   id?: string
   /** Where it sits vertically, which tells apart elements with the same label. */
   region?: 'top' | 'middle' | 'bottom'
+  /** Whether a switch or checkbox is on. */
+  checked?: boolean
+  /** Whether an input has nothing typed in it yet. */
+  empty?: boolean
+  /** An input's placeholder, when its caption became its label. */
+  placeholder?: string
+  /** Its centre on screen, in points from the top left, for tapping it directly. */
+  centre?: { x: number; y: number }
   locator: Locator
 }
 
