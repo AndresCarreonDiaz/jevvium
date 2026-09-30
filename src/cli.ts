@@ -118,7 +118,8 @@ async function main(): Promise<number> {
   const baseCapabilities = capabilities(platform, app, values.device, values['platform-version'])
 
   const openSession = (address: ServerAddress, caps: WebdriverIO.Capabilities) => async (out: Out) => {
-    const browser = await remote({ ...address, logLevel: 'warn', connectionRetryTimeout: 600_000, capabilities: caps })
+    // WebdriverIO's own warnings are about requests it retried; jevvium reports what fails.
+    const browser = await remote({ ...address, logLevel: 'error', connectionRetryTimeout: 600_000, capabilities: caps })
     let device: Device | undefined
     try {
       device = values.input === 'appium' || !browser.isIOS ? webdriverDevice(browser) : await directInput(browser, out)
