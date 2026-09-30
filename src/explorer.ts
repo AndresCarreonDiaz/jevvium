@@ -56,6 +56,8 @@ export type TakenAction = {
 
 export type Step = {
   index: number
+  /** When the step ended, in ms since the run started: after its actions, or when its decision came. */
+  atMs: number
   screenText: string[]
   actionCount: number
   decision: Decision
@@ -272,7 +274,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     let next = await read()
     for (let index = 1; index <= maxSteps + 1; index++) {
       const { read: settled, screen, actions, request, decision } = await observe(next)
-      const step: Step = { index, screenText: screen.texts, actionCount: actions.length, decision: trim(decision) }
+      const step: Step = { index, atMs: Date.now() - started, screenText: screen.texts, actionCount: actions.length, decision: trim(decision) }
       steps.push(step)
 
       if (decision.goalMet >= goalThreshold) {
@@ -377,6 +379,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
         })
         history.push(description)
       }
+      step.atMs = Date.now() - started
       options.onStep?.(step)
 
       hidden.clear()

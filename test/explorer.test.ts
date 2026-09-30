@@ -76,6 +76,12 @@ const happyPath = (request: DecisionRequest) => {
 const options = { settleTimeoutMs: 0 }
 
 describe('explore', () => {
+  it('records when each step ended', async () => {
+    const trace = await explore(new FakeApp(), criterion, { ...options, provider: new ScriptedProvider(happyPath) })
+    const times = trace.steps.map((step) => step.atMs)
+    assert.ok(times.every((at, i) => at >= 0 && at <= trace.durationMs && (i === 0 || at >= times[i - 1])), JSON.stringify(times))
+  })
+
   it('reaches the goal, confirms it with the expectations and records every step', async () => {
     const app = new FakeApp()
     const trace = await explore(app, criterion, { ...options, provider: new ScriptedProvider(happyPath) })
