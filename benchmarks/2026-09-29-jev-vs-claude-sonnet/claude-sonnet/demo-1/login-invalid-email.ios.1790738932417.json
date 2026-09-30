@@ -1,0 +1,187 @@
+{
+  "criterion": {
+    "id": "login-invalid-email",
+    "goal": "A user who tries to log in with a malformed email address is not logged in and is asked for a valid email address.",
+    "expect": [
+      {
+        "text": "Please enter a valid email address"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "claude",
+  "input": "simulator",
+  "startedAt": "2026-09-30T03:28:41.373Z",
+  "durationMs": 11043,
+  "outcome": "passed",
+  "reason": "Goal reached and all 1 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 1821,
+      "screenText": [
+        "WEBDRIVER",
+        "Demo app for the appium-boilerplate",
+        "Support"
+      ],
+      "actionCount": 7,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.93,
+        "probabilities": {
+          "tap:e3": 0.93
+        },
+        "goalMet": 0.01,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1629,
+        "apiLatencyMs": 1411,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1226,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Login",
+          "description": "Tap the button \"Login\" (bottom of the screen)",
+          "selector": "~Login"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 4753,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "type:e3:email",
+        "confidence": 0.6,
+        "probabilities": {
+          "type:e3:email": 0.6
+        },
+        "goalMet": 0.02,
+        "fills": {
+          "e3": {
+            "input": "email",
+            "confidence": 0.5
+          },
+          "e4": {
+            "input": "password",
+            "confidence": 0.7
+          }
+        },
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1880,
+        "apiLatencyMs": 1668,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1794,
+          "outputTokens": 86
+        }
+      },
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Email",
+          "description": "Type the test data \"email\" into the field \"Email\" (id input-email, top of the screen)",
+          "selector": "~input-email",
+          "input": "email"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Password",
+          "description": "Type the test data \"password\" into the field \"Password\" (id input-password, middle of the screen)",
+          "selector": "~input-password",
+          "input": "password"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 7044,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "tap:e5",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e5": 0.9
+        },
+        "goalMet": 0.03,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1633,
+        "apiLatencyMs": 1429,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1626,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "LOGIN",
+          "description": "Tap the button \"LOGIN\" (id button-LOGIN, middle of the screen)",
+          "selector": "~button-LOGIN"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "atMs": 10892,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter a valid email address",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.3,
+        "probabilities": {
+          "STUCK": 0.3
+        },
+        "goalMet": 0.93,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1793,
+        "apiLatencyMs": 1586,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1668,
+          "outputTokens": 37
+        }
+      }
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 1,
+  "usage": {
+    "requests": 5,
+    "inputTokens": 7982,
+    "outputTokens": 244
+  }
+}

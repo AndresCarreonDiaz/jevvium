@@ -73,6 +73,7 @@ Each step is usually one request to [Jev](https://docs.typesafe.ai), TypeSafe's 
 - **It can only pick elements that exist.** The options are built from the page source, so there is no invented selector to debug.
 - **It says how sure it is.** When its confidence drops below `--min-confidence`, jevvium stops and reports the step as `escalated` instead of tapping something at random. TypeSafe trains Jev for calibrated probabilities; jevvium hasn't measured how well that holds for this step confidence yet.
 - **One request answers every question.** "What next?", "Is the goal reached?" and "Which test data goes in each empty field?" go out together and Jev answers them in parallel, so a whole form is filled from one decision.
+- **It is fast and cheap.** Asked the same questions as Claude Sonnet 5.5 on the same criteria, it passed 21 of 27 runs to Sonnet's 22, with a median decision of 125 ms against 1.8 s, at $0.071 per 1,000 requests against $5.53 at list prices ([comparison](#jev-against-claude-sonnet-55)).
 
 Pass or fail comes from the `expect` checks, not from the model: when the model thinks the goal is reached, jevvium checks them against the device, and the run only passes if all of them hold. A criterion without `expect` entries passes on the model's word, and its generated test says so.
 
@@ -191,7 +192,7 @@ npm run test:generated:ios     # set IOS_DEVICE_NAME, IOS_PLATFORM_VERSION or IO
 
 ### Getting a key
 
-Jev needs a TypeSafe account and an API key from [console.typesafe.ai](https://console.typesafe.ai). The runs in this README cost well under a cent: at TypeSafe's published price of $0.042 per million input tokens (output tokens are free), the four demo-app criteria used about 19,000 input tokens (under $0.001) and the five shop-app criteria about 104,000 (about $0.004). `TYPESAFE_API_URL` points jevvium at another endpoint that serves TypeSafe's API, and `JEVVIUM_MODEL` picks the model.
+Jev needs a TypeSafe account and an API key from [console.typesafe.ai](https://console.typesafe.ai). Exploring the nine criteria once costs about half a cent: at TypeSafe's published price of $0.042 per million input tokens (output tokens are free), the four demo-app criteria used about 19,000 input tokens (under $0.001) and the five shop-app criteria about 104,000 (about $0.004). `TYPESAFE_API_URL` points jevvium at another endpoint that serves TypeSafe's API, and `JEVVIUM_MODEL` picks the model.
 
 ### Trying it without a key
 
@@ -245,11 +246,51 @@ A different model can be plugged in by implementing `DecisionProvider`.
 
 `--provider openai` explores with OpenAI's Decisions API (GPT-6 Luna) instead of Jev. OpenAI announced it at DevDay on September 29, 2026, in limited preview, and hasn't published its API reference yet, so the request follows calls an early tester recorded against the live API; expect to adjust it once the reference is out. It needs an `OPENAI_API_KEY` from an organization with preview access, in `.env` next to the TypeSafe key. It is asked what Jev is asked, in the same words; the only difference is the API's own: its yes/no question takes no descriptions of the answers, so Jev's descriptions of "goal reached" are part of that question's wording.
 
-`npm run benchmark -- --providers jev,openai --repeat 3` runs both suites with each provider (skipping one whose key isn't set) and writes a table: runs passed (runs that broke, on the device or the network, are counted apart), decisions kept, requests and exploring time per passed run, decision latency (median and 90th percentile), input tokens and cost per request, and a Brier score for the "goal reached" probability in every run whose expectations were checked, a measure of how well that probability is calibrated. It doesn't score the step confidence that `--min-confidence` uses. A round that breaks or is interrupted runs again the next time.
+`--provider claude` explores with Claude through the Claude Code CLI, signed in with a Claude subscription instead of an API key, which makes it a way to compare models rather than a way to run jevvium. Each decision runs `claude -p` once (once more if the reply isn't a usable answer), with no tools and no prompt caching, asks what Jev is asked, in the same words, and reads the answers back as JSON. `CLAUDE_MODEL` picks the model (default: `sonnet`), and the effort is medium. The CLI adds about 0.2 s to each decision to start, and about 445 tokens of its own to each request. It turns thinking off where it can, but not for Sonnet 5.5, which decides for itself when to think, so the benchmark reports how often it did.
+
+`npm run benchmark -- --providers jev,openai,claude-sonnet --repeat 3` runs both suites with each provider and writes a table. It skips a provider whose key isn't set, or Claude when the CLI isn't installed. The table has:
+
+- runs passed. Runs that broke, on the device or the network, are counted apart; a run where the model never gave a usable answer counts as not passed.
+- decisions kept, requests and exploring time per passed run, over the criteria every provider passed.
+- decision latency, median and 90th percentile.
+- input tokens per request, and cost per 1,000 requests at list prices.
+- a Brier score for the "goal reached" probability in every run whose expectations were checked, a measure of how well that probability is calibrated.
+
+It doesn't score the step confidence that `--min-confidence` uses. A round that breaks or is interrupted runs again the next time.
+
+### Jev against Claude Sonnet 5.5
+
+Both suites, three rounds each, on one iOS 26.5 simulator, exploring only. Sonnet ran through the Claude Code CLI as described above, at medium effort. The [traces and the script's own table](benchmarks/2026-09-29-jev-vs-claude-sonnet) are in the repo.
+
+| | Jev (`jev-1.13.0`) | Claude Sonnet 5.5 |
+| --- | --- | --- |
+| Runs passed | 21 of 27 | 22 of 27 |
+| Decisions per passed run * | 6.1 | 6.2 |
+| Exploring time per passed run * | 5.9 s | 21.7 s |
+| Decision latency, median | 125 ms | 1,814 ms |
+| Decision latency, 90th percentile | 186 ms | 2,516 ms |
+| Cost per 1,000 requests, at list prices | $0.071 | $5.53 |
+| "Goal reached" Brier score (lower is better) | 0.009 | 0.016 |
+
+\* Over the 7 criteria both passed, averaged per criterion.
+
+- **Mostly the same paths.** On those 7 criteria both models passed every round, and Sonnet took Jev's steps in 18 of its 21 runs. In the other 3 it typed the password a second time (login), tapped a color before adding the first backpack (two backpacks), and typed the `password` test data into the Email field (invalid email), which passed because a password isn't a valid email address either. Almost all of the extra time is spent waiting for Sonnet's answers, CLI start-up included.
+- **One extra pass for Sonnet.** On signup (see Status), Sonnet once read the validation errors, typed the password again and signed up, thinking before each of those steps. In the other two rounds it stopped at the errors, as Jev did in all three. It had thought on its first look at the errors in those rounds too, but jevvium threw that answer away because the screen was still changing, and its answer once the screen settled, given without thinking, was to stop.
+- **Jev took the same steps every round.** Sonnet's steps varied on 5 of the 9 criteria, and on the sorting bug it ended `failed` once and `stuck` twice.
+- **Jev's better Brier score comes from the sorting bug.** On the sorted catalog, where neither model can see the prices, Sonnet put 0.6 to 0.8 on "goal reached" and Jev about 0.3. Without that criterion, Sonnet's goal probabilities score better than Jev's: 0.001 against 0.007.
+
+The CLI costs Sonnet some time and money:
+- Its API time alone had a median of 1,600 ms.
+- The tokens the CLI adds account for about $0.89 of its $5.53, so an API client would pay about $4.64 per 1,000 requests, still about 65 times Jev's $0.071.
+
+Also:
+- Sonnet thought before 25 of its 224 answers, counting those jevvium threw away.
+- Its confidence is its own estimate, while Jev computes its confidence from its probabilities.
+- List prices: Jev $0.042 per million input tokens, with output free; Sonnet 5.5 $2 per million input tokens and $10 per million output tokens.
 
 ## What gets sent to the decision model
 
-The same goes to TypeSafe or, with `--provider openai`, to OpenAI. For each step: the platform, the goal, the text on screen (see Reading under Speed for what a fast read can include), the on/off state of switches, a description of each available action (the element's label or caption, its placeholder, its accessibility id and rough position), the steps already taken, the names of the inputs, and one question per empty field asking which input belongs in it. Screenshots, selectors, input values and expectations are never sent.
+The same goes to TypeSafe, or with `--provider openai` to OpenAI, or with `--provider claude` to Anthropic, together with what Claude Code adds to every prompt. For each step: the platform, the goal, the text on screen (see Reading under Speed for what a fast read can include), the on/off state of switches, a description of each available action (the element's label or caption, its placeholder, its accessibility id and rough position), the steps already taken, the names of the inputs, and one question per empty field asking which input belongs in it. Screenshots, selectors, input values and expectations are never sent.
 
 Before anything is sent or stored, each test data value is replaced with `{name}`: matching ignores case, a value written as a number also matches when the app groups its digits with spaces, dots, slashes, dashes or parentheses (the way card numbers, phone numbers and dates are shown), and a value shorter than 3 characters is replaced only where it stands alone and in its exact case. Even so, a short value hides the same word anywhere it appears, goal included (a state `OK` hides an OK button), so prefer longer made-up values. The goal, the expectations and the reason a run stopped get the same treatment when stored in a trace. In selectors, values are replaced only inside quoted strings, with placeholders that code generation fills back in from the criteria file, the way the app showed them: `{email}`, `{email|upper}` for capitals, `{phone|mask:(###) ###-####}` for grouped digits. A value shown in some other form becomes `{name|?}`, and code generation refuses that selector rather than guess. Explore again after changing a value that appears in a selector. An app that transforms a value in other ways (masking or truncating it) can still show part of it in a form jevvium doesn't recognize, and selectors keep the app's own names and labels, so use made-up data, and don't point jevvium at screens that show real customer data.
 
@@ -264,7 +305,7 @@ Early, and built in the open. Latest runs, with `jev-1.13.0` on an iOS 26.5 simu
 | forms-switch | passed | 3 | 2.7 s | passed, 2.3 s |
 | signup | stuck | 5 | 5.7 s | |
 
-- **Why signup is stuck:** on this simulator, typing into a sign-up form with two password fields leaves 1 character in the first one, so the app shows validation errors. It happens with Appium's typing and with the native helper, and a hand-written Appium test for the same form fails the same way. jevvium read the errors on screen, stopped, and the trace records the failed expectation.
+- **Why signup is stuck:** on this simulator, typing into a sign-up form with two password fields leaves 1 character in the first one, so the app shows validation errors. It happens with Appium's typing and with the native helper, and a hand-written Appium test for the same form fails the same way. jevvium read the errors on screen, stopped, and the trace records the failed expectation. In the model comparison, Claude Sonnet 5.5 got past them once in three rounds by typing the password again.
 - **Cost:** the four demo-app criteria made 18 requests and used about 19,000 input tokens, including requests thrown away while screens were still changing. That is under $0.001.
 - **Confidence:** correct steps have scored as low as 0.24, so the default escalation threshold is a low 0.2. It catches very confused steps. How well that step confidence is calibrated isn't measured yet; the benchmark only scores the "goal reached" probability.
 

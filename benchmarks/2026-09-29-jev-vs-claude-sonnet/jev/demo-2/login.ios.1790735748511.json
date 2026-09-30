@@ -1,0 +1,188 @@
+{
+  "criterion": {
+    "id": "login",
+    "goal": "A registered user logs in with a valid email and password and is told they are logged in.",
+    "expect": [
+      {
+        "text": "You are logged in!"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "jev",
+  "input": "simulator",
+  "startedAt": "2026-09-30T02:35:43.352Z",
+  "durationMs": 5159,
+  "outcome": "passed",
+  "reason": "Goal reached and all 1 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 327,
+      "screenText": [
+        "WEBDRIVER",
+        "Demo app for the appium-boilerplate",
+        "Support"
+      ],
+      "actionCount": 7,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.87,
+        "probabilities": {
+          "tap:e3": 0.89,
+          "tap:e1": 0.04,
+          "tap:e7": 0.02,
+          "STUCK": 0.02,
+          "tap:e2": 0.02
+        },
+        "goalMet": 0.04,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 158,
+        "usage": {
+          "inputTokens": 742,
+          "outputTokens": 109
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Login",
+          "description": "Tap the button \"Login\" (bottom of the screen)",
+          "selector": "~Login"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 1850,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "type:e3:email",
+        "confidence": 0.91,
+        "probabilities": {
+          "type:e3:email": 0.92,
+          "tap:e5": 0.060000000000000005,
+          "STUCK": 0.01,
+          "tap:e1": 0.01,
+          "tap:e7": 0
+        },
+        "goalMet": 0.06,
+        "fills": {
+          "e3": {
+            "input": "email",
+            "confidence": 1
+          },
+          "e4": {
+            "input": "password",
+            "confidence": 1
+          }
+        },
+        "model": "jev-1.13.0",
+        "latencyMs": 180,
+        "usage": {
+          "inputTokens": 1255,
+          "outputTokens": 265
+        }
+      },
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Email",
+          "description": "Type the test data \"email\" into the field \"Email\" (id input-email, top of the screen)",
+          "selector": "~input-email",
+          "input": "email"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Password",
+          "description": "Type the test data \"password\" into the field \"Password\" (id input-password, middle of the screen)",
+          "selector": "~input-password",
+          "input": "password"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 2353,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "tap:e5",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e5": 0.91,
+          "tap:e1": 0.08,
+          "tap:e8": 0.01,
+          "tap:e2": 0,
+          "type:e3:email": 0
+        },
+        "goalMet": 0.05,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 124,
+        "usage": {
+          "inputTokens": 1093,
+          "outputTokens": 187
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "LOGIN",
+          "description": "Tap the button \"LOGIN\" (id button-LOGIN, middle of the screen)",
+          "selector": "~button-LOGIN"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "atMs": 5051,
+      "screenText": [
+        "Success",
+        "You are logged in!"
+      ],
+      "actionCount": 1,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.02,
+        "probabilities": {
+          "STUCK": 0.51,
+          "tap:e1": 0.49
+        },
+        "goalMet": 0.96,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 97,
+        "usage": {
+          "inputTokens": 667,
+          "outputTokens": 54
+        }
+      }
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 0,
+  "usage": {
+    "requests": 4,
+    "inputTokens": 3757,
+    "outputTokens": 615
+  }
+}

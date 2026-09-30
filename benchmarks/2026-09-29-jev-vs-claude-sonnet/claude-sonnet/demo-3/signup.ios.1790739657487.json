@@ -1,0 +1,248 @@
+{
+  "criterion": {
+    "id": "signup",
+    "goal": "On the Login screen, a new user switches to the Sign up form, signs up with an email and a password, repeats the same password, and is told the sign up worked.",
+    "expect": [
+      {
+        "text": "You successfully signed up!"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "claude",
+  "input": "simulator",
+  "startedAt": "2026-09-30T03:40:39.844Z",
+  "durationMs": 17643,
+  "outcome": "stuck",
+  "reason": "The model found no action on this screen that moves toward the goal. 1 of 1 expectations do not hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 2289,
+      "screenText": [
+        "WEBDRIVER",
+        "Demo app for the appium-boilerplate",
+        "Support"
+      ],
+      "actionCount": 7,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.93,
+        "probabilities": {
+          "tap:e3": 0.93
+        },
+        "goalMet": 0.01,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2093,
+        "apiLatencyMs": 1886,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1243,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Login",
+          "description": "Tap the button \"Login\" (bottom of the screen)",
+          "selector": "~Login"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 4379,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "tap:e2",
+        "confidence": 0.93,
+        "probabilities": {
+          "tap:e2": 0.93
+        },
+        "goalMet": 0.01,
+        "fills": {
+          "e3": {
+            "input": "email",
+            "confidence": 0.97
+          },
+          "e4": {
+            "input": "password",
+            "confidence": 0.97
+          }
+        },
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1852,
+        "apiLatencyMs": 1632,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1811,
+          "outputTokens": 85
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Sign up",
+          "description": "Tap the button \"Sign up\" (id button-sign-up-container, top of the screen)",
+          "selector": "~button-sign-up-container"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 7953,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "type:e3:email",
+        "confidence": 0.9,
+        "probabilities": {
+          "type:e3:email": 0.9
+        },
+        "goalMet": 0.02,
+        "fills": {
+          "e3": {
+            "input": "email",
+            "confidence": 0.97
+          },
+          "e4": {
+            "input": "password",
+            "confidence": 0.97
+          },
+          "e5": {
+            "input": "password",
+            "confidence": 0.97
+          }
+        },
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1911,
+        "apiLatencyMs": 1703,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2020,
+          "outputTokens": 109
+        }
+      },
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Email",
+          "description": "Type the test data \"email\" into the field \"Email\" (id input-email, top of the screen)",
+          "selector": "~input-email",
+          "input": "email"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Password",
+          "description": "Type the test data \"password\" into the field \"Password\" (id input-password, middle of the screen)",
+          "selector": "~input-password",
+          "input": "password"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Confirm password",
+          "description": "Type the test data \"password\" into the field \"Confirm password\" (id input-repeat-password, middle of the screen)",
+          "selector": "~input-repeat-password",
+          "input": "password"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "atMs": 10137,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.93,
+        "probabilities": {
+          "tap:e6": 0.93
+        },
+        "goalMet": 0.02,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1636,
+        "apiLatencyMs": 1426,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1768,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "SIGN UP",
+          "description": "Tap the button \"SIGN UP\" (id button-SIGN UP, middle of the screen)",
+          "selector": "~button-SIGN UP"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "atMs": 16571,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter at least 8 characters",
+        "Please enter the same password",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.3,
+        "probabilities": {
+          "STUCK": 0.3
+        },
+        "goalMet": 0.03,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1755,
+        "apiLatencyMs": 1553,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1822,
+          "outputTokens": 37
+        }
+      }
+    }
+  ],
+  "failedExpectations": [
+    {
+      "text": "You successfully signed up!"
+    }
+  ],
+  "discardedDecisions": 1,
+  "usage": {
+    "requests": 6,
+    "inputTokens": 10486,
+    "outputTokens": 659
+  }
+}

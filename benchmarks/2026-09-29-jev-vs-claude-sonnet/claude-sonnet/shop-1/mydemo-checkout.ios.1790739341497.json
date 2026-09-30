@@ -1,0 +1,701 @@
+{
+  "criterion": {
+    "id": "mydemo-checkout",
+    "goal": "A shopper buys the Sauce Labs Backpack - Black. They add it to the cart from the Catalog, proceed to checkout from the Cart, log in by picking bob@example.com from the list of usernames, enter a shipping address, enter a card with the card holder's name, review the order and place it.",
+    "expect": [
+      {
+        "text": "Checkout Complete"
+      },
+      {
+        "id": "ContinueShopping"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "claude",
+  "input": "simulator",
+  "startedAt": "2026-09-30T03:34:52.960Z",
+  "durationMs": 48537,
+  "outcome": "passed",
+  "reason": "Goal reached and all 2 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 2430,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 29,
+      "decision": {
+        "action": "tap:e2",
+        "confidence": 0.85,
+        "probabilities": {
+          "tap:e2": 0.85
+        },
+        "goalMet": 0.01,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2134,
+        "apiLatencyMs": 1922,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2216,
+          "outputTokens": 38
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Sauce Labs Backpack - Black",
+          "description": "Tap the button \"Sauce Labs Backpack - Black\" (middle of the screen)",
+          "selector": "(//XCUIElementTypeCell)[1]"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 7014,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 15,
+      "decision": {
+        "action": "tap:e12",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e12": 0.9
+        },
+        "goalMet": 0.01,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1623,
+        "apiLatencyMs": 1397,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1723,
+          "outputTokens": 38
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Add To Cart",
+          "description": "Tap the button \"Add To Cart\" (id AddToCart, bottom of the screen)",
+          "selector": "~AddToCart"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 8871,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 15,
+      "decision": {
+        "action": "tap:e14",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e14": 0.9
+        },
+        "goalMet": 0.01,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1636,
+        "apiLatencyMs": 1417,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1755,
+          "outputTokens": 38
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Cart-tab-item",
+          "description": "Tap the button \"Cart-tab-item\" (bottom of the screen)",
+          "selector": "~Cart-tab-item"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "atMs": 12978,
+      "screenText": [
+        "My Cart",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "Color:",
+        "Green",
+        "1",
+        "Remove Item",
+        "© 2023 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Total:",
+        "1 Items",
+        "$29.99",
+        "Proceed To Checkout",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 20,
+      "decision": {
+        "action": "tap:e17",
+        "confidence": 0.95,
+        "probabilities": {
+          "tap:e17": 0.95
+        },
+        "goalMet": 0.01,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1599,
+        "apiLatencyMs": 1379,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2033,
+          "outputTokens": 38
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Proceed To Checkout",
+          "description": "Tap the button \"Proceed To Checkout\" (id ProceedToCheckout, bottom of the screen)",
+          "selector": "~ProceedToCheckout"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "atMs": 16725,
+      "screenText": [
+        "My Cart",
+        "Login",
+        "Select a username from the list below",
+        "User Name",
+        "Password",
+        "Usernames",
+        "bob@example.com",
+        "10203040",
+        "alice@example.com",
+        "john@example.com",
+        "visual@example.com",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 8,
+      "decision": {
+        "action": "tap:e1",
+        "confidence": 0.93,
+        "probabilities": {
+          "tap:e1": 0.93
+        },
+        "goalMet": 0.01,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1584,
+        "apiLatencyMs": 1372,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1559,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "bob@example.com",
+          "description": "Tap the button \"bob@example.com\" (middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"bob@example.com\""
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "atMs": 19037,
+      "screenText": [
+        "My Cart",
+        "Login",
+        "Select a username from the list below",
+        "User Name",
+        "Password",
+        "Usernames",
+        "bob@example.com",
+        "10203040",
+        "alice@example.com",
+        "john@example.com",
+        "visual@example.com",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 8,
+      "decision": {
+        "action": "tap:e5",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e5": 0.9
+        },
+        "goalMet": 0.01,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2117,
+        "apiLatencyMs": 1895,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1583,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Login",
+          "description": "Tap the button \"Login\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Login\""
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "atMs": 26846,
+      "screenText": [
+        "Login",
+        "Checkout",
+        "Enter a shipping address",
+        "Full Name*",
+        "Address Line 1*",
+        "Address Line 2",
+        "City*",
+        "Zip Code*",
+        "State/Region",
+        "Country*",
+        "To Payment",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 67,
+      "decision": {
+        "action": "type:e1:fullName",
+        "confidence": 0.93,
+        "probabilities": {
+          "type:e1:fullName": 0.93
+        },
+        "goalMet": 0.01,
+        "fills": {
+          "e1": {
+            "input": "fullName",
+            "confidence": 0.98
+          },
+          "e2": {
+            "input": "addressLine1",
+            "confidence": 0.98
+          },
+          "e3": {
+            "input": "leave_empty",
+            "confidence": 0.85
+          },
+          "e4": {
+            "input": "city",
+            "confidence": 0.98
+          },
+          "e5": {
+            "input": "zipCode",
+            "confidence": 0.98
+          },
+          "e6": {
+            "input": "leave_empty",
+            "confidence": 0.8
+          },
+          "e7": {
+            "input": "country",
+            "confidence": 0.98
+          }
+        },
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2574,
+        "apiLatencyMs": 2364,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 6962,
+          "outputTokens": 220
+        }
+      },
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Full Name*",
+          "description": "Type the test data \"fullName\" into the field \"Full Name*\" (placeholder \"Rebecca Winter\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"Rebecca Winter\"",
+          "input": "fullName"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Address Line 1*",
+          "description": "Type the test data \"addressLine1\" into the field \"Address Line 1*\" (placeholder \"Mandorley 112\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"Mandorley 112\"",
+          "input": "addressLine1"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "City*",
+          "description": "Type the test data \"city\" into the field \"City*\" (placeholder \"Truro\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"Truro\"",
+          "input": "city"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Zip Code*",
+          "description": "Type the test data \"zipCode\" into the field \"Zip Code*\" (placeholder \"89750\", bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"89750\"",
+          "input": "zipCode"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Country*",
+          "description": "Type the test data \"country\" into the field \"Country*\" (placeholder \"United Kingdom\", bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"United Kingdom\"",
+          "input": "country"
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "atMs": 28882,
+      "screenText": [
+        "Login",
+        "Checkout",
+        "Enter a shipping address",
+        "Full Name*",
+        "Address Line 1*",
+        "Address Line 2",
+        "City*",
+        "Zip Code*",
+        "State/Region",
+        "Country*",
+        "To Payment",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 67,
+      "decision": {
+        "action": "tap:e8",
+        "confidence": 0.85,
+        "probabilities": {
+          "tap:e8": 0.85
+        },
+        "goalMet": 0.01,
+        "fills": {
+          "e3": {
+            "input": "leave_empty",
+            "confidence": 0.9
+          },
+          "e6": {
+            "input": "leave_empty",
+            "confidence": 0.9
+          }
+        },
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1742,
+        "apiLatencyMs": 1530,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 5881,
+          "outputTokens": 93
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "To Payment",
+          "description": "Tap the button \"To Payment\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"To Payment\""
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "atMs": 35194,
+      "screenText": [
+        "Shipping Address",
+        "Checkout",
+        "Enter a payment method",
+        "You will not be charged untill you review your purchase on the next page.",
+        "Card",
+        "Full Name*",
+        "Card Number*",
+        "Expiration Date*",
+        "Security Code*",
+        "My billing address is the same as my shipping address.",
+        "Review Order",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 39,
+      "decision": {
+        "action": "type:e1:nameOnCard",
+        "confidence": 0.9,
+        "probabilities": {
+          "type:e1:nameOnCard": 0.9
+        },
+        "goalMet": 0.01,
+        "fills": {
+          "e1": {
+            "input": "nameOnCard",
+            "confidence": 0.93
+          },
+          "e2": {
+            "input": "cardNumber",
+            "confidence": 0.97
+          },
+          "e3": {
+            "input": "expirationDate",
+            "confidence": 0.97
+          },
+          "e4": {
+            "input": "securityCode",
+            "confidence": 0.97
+          }
+        },
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2120,
+        "apiLatencyMs": 1920,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 4892,
+          "outputTokens": 153
+        }
+      },
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Full Name*",
+          "description": "Type the test data \"nameOnCard\" into the field \"Full Name*\" (placeholder \"Maxim Winter\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"Maxim Winter\"",
+          "input": "nameOnCard"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Card Number*",
+          "description": "Type the test data \"cardNumber\" into the field \"Card Number*\" (placeholder \"3258 1265 7568 7896\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"3258 1265 7568 7896\"",
+          "input": "cardNumber"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Expiration Date*",
+          "description": "Type the test data \"expirationDate\" into the field \"Expiration Date*\" (placeholder \"03/25\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"03/25\"",
+          "input": "expirationDate"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Security Code*",
+          "description": "Type the test data \"securityCode\" into the field \"Security Code*\" (placeholder \"123\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"123\"",
+          "input": "securityCode"
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "atMs": 40161,
+      "screenText": [
+        "Shipping Address",
+        "Checkout",
+        "Enter a payment method",
+        "You will not be charged untill you review your purchase on the next page.",
+        "Card",
+        "Full Name*",
+        "Card Number*",
+        "Expiration Date*",
+        "Security Code*",
+        "My billing address is the same as my shipping address.",
+        "Review Order",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 39,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.55,
+        "probabilities": {
+          "tap:e6": 0.55
+        },
+        "goalMet": 0.01,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 4712,
+        "apiLatencyMs": 4500,
+        "thinkingTokens": 421,
+        "usage": {
+          "inputTokens": 4036,
+          "outputTokens": 459
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Review Order",
+          "description": "Tap the button \"Review Order\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Review Order\""
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "atMs": 44302,
+      "screenText": [
+        "Payment Method",
+        "Checkout",
+        "Review your order",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "Color:",
+        "Green",
+        "Delivery Address",
+        "{fullName}",
+        "{cardNumber}",
+        "{expirationDate}",
+        "Billing address is the same as shipping address.",
+        "Billing Address",
+        ",",
+        "{addressLine1}",
+        "{city},",
+        "{country},{zipCode}",
+        "Total:",
+        "1item",
+        "$35.98",
+        "Place Order",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 10,
+      "decision": {
+        "action": "tap:e7",
+        "confidence": 0.96,
+        "probabilities": {
+          "tap:e7": 0.96
+        },
+        "goalMet": 0.03,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1628,
+        "apiLatencyMs": 1433,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2241,
+          "outputTokens": 38
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Place Order",
+          "description": "Tap the button \"Place Order\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Place Order\""
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "atMs": 48385,
+      "screenText": [
+        "Your new swag is on its way",
+        "Continue Shopping",
+        "Thank you for your order. Your order has been dispatched and will arrive as soon as possible!",
+        "Checkout Complete",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 4,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.5,
+        "probabilities": {
+          "STUCK": 0.5
+        },
+        "goalMet": 0.96,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1611,
+        "apiLatencyMs": 1397,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1981,
+          "outputTokens": 37
+        }
+      }
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 7,
+  "usage": {
+    "requests": 19,
+    "inputTokens": 65266,
+    "outputTokens": 1864
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "criterion": {
+    "id": "forms-switch",
+    "goal": "On the Forms screen, the user turns the switch on.",
+    "expect": [
+      {
+        "text": "Click to turn the switch OFF"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "claude",
+  "input": "simulator",
+  "startedAt": "2026-09-30T03:29:15.585Z",
+  "durationMs": 9485,
+  "outcome": "passed",
+  "reason": "Goal reached and all 1 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 1826,
+      "screenText": [
+        "WEBDRIVER",
+        "Demo app for the appium-boilerplate",
+        "Support"
+      ],
+      "actionCount": 7,
+      "decision": {
+        "action": "tap:e4",
+        "confidence": 0.95,
+        "probabilities": {
+          "tap:e4": 0.95
+        },
+        "goalMet": 0.02,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1633,
+        "apiLatencyMs": 1430,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1208,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Forms",
+          "description": "Tap the button \"Forms\" (bottom of the screen)",
+          "selector": "~Forms"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 5526,
+      "screenText": [
+        "Form components",
+        "Input field:",
+        "You have typed:",
+        "Switch:",
+        "Click to turn the switch ON",
+        "Dropdown:",
+        "Buttons",
+        "Active",
+        "Inactive"
+      ],
+      "actionCount": 11,
+      "decision": {
+        "action": "tap:e2",
+        "confidence": 0.96,
+        "probabilities": {
+          "tap:e2": 0.96
+        },
+        "goalMet": 0.02,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1485,
+        "apiLatencyMs": 1283,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1400,
+          "outputTokens": 38
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "switch",
+          "target": "switch",
+          "description": "Toggle the switch \"switch\" (currently off, middle of the screen)",
+          "selector": "~switch"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 9363,
+      "screenText": [
+        "Form components",
+        "Input field:",
+        "You have typed:",
+        "Switch:",
+        "Click to turn the switch OFF",
+        "Dropdown:",
+        "Buttons",
+        "Active",
+        "Inactive"
+      ],
+      "actionCount": 11,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.3,
+        "probabilities": {
+          "STUCK": 0.3
+        },
+        "goalMet": 0.96,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2250,
+        "apiLatencyMs": 2029,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1427,
+          "outputTokens": 41
+        }
+      }
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 1,
+  "usage": {
+    "requests": 4,
+    "inputTokens": 5238,
+    "outputTokens": 162
+  }
+}

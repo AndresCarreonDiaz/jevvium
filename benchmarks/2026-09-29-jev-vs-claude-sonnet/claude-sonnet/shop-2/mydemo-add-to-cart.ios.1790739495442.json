@@ -1,0 +1,201 @@
+{
+  "criterion": {
+    "id": "mydemo-add-to-cart",
+    "goal": "From the Catalog, the shopper opens the Sauce Labs Backpack - Black, adds it to the cart and opens the Cart.",
+    "expect": [
+      {
+        "text": "1 Items"
+      },
+      {
+        "id": "ProceedToCheckout"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "claude",
+  "input": "simulator",
+  "startedAt": "2026-09-30T03:38:02.595Z",
+  "durationMs": 12846,
+  "outcome": "passed",
+  "reason": "Goal reached and all 2 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 2002,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 29,
+      "decision": {
+        "action": "tap:e2",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e2": 0.9
+        },
+        "goalMet": 0.02,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1749,
+        "apiLatencyMs": 1525,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2120,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Sauce Labs Backpack - Black",
+          "description": "Tap the button \"Sauce Labs Backpack - Black\" (middle of the screen)",
+          "selector": "(//XCUIElementTypeCell)[1]"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 6894,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 15,
+      "decision": {
+        "action": "tap:e12",
+        "confidence": 0.93,
+        "probabilities": {
+          "tap:e12": 0.93
+        },
+        "goalMet": 0.02,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2108,
+        "apiLatencyMs": 1896,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1627,
+          "outputTokens": 38
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Add To Cart",
+          "description": "Tap the button \"Add To Cart\" (id AddToCart, bottom of the screen)",
+          "selector": "~AddToCart"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 8630,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 15,
+      "decision": {
+        "action": "tap:e14",
+        "confidence": 0.93,
+        "probabilities": {
+          "tap:e14": 0.93
+        },
+        "goalMet": 0.03,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1542,
+        "apiLatencyMs": 1326,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1659,
+          "outputTokens": 38
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Cart-tab-item",
+          "description": "Tap the button \"Cart-tab-item\" (bottom of the screen)",
+          "selector": "~Cart-tab-item"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "atMs": 12657,
+      "screenText": [
+        "My Cart",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "Color:",
+        "Green",
+        "1",
+        "Remove Item",
+        "© 2023 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Total:",
+        "1 Items",
+        "$29.99",
+        "Proceed To Checkout",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 20,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.2,
+        "probabilities": {
+          "STUCK": 0.2
+        },
+        "goalMet": 0.93,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1634,
+        "apiLatencyMs": 1420,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1937,
+          "outputTokens": 37
+        }
+      }
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 2,
+  "usage": {
+    "requests": 6,
+    "inputTokens": 11929,
+    "outputTokens": 235
+  }
+}

@@ -1,0 +1,334 @@
+{
+  "criterion": {
+    "id": "mydemo-cart-two-backpacks",
+    "goal": "From the Catalog, the shopper adds the Sauce Labs Backpack - Black and then the Sauce Labs Backpack - Green to the cart, going back to the Catalog with its tab in between, and opens the Cart.",
+    "expect": [
+      {
+        "text": "2 Items"
+      },
+      {
+        "text": "$59.98"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "claude",
+  "input": "simulator",
+  "startedAt": "2026-09-30T03:41:27.515Z",
+  "durationMs": 24127,
+  "outcome": "passed",
+  "reason": "Goal reached and all 2 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 2548,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 29,
+      "decision": {
+        "action": "tap:e2",
+        "confidence": 0.8,
+        "probabilities": {
+          "tap:e2": 0.8
+        },
+        "goalMet": 0.02,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2221,
+        "apiLatencyMs": 2019,
+        "thinkingTokens": 81,
+        "usage": {
+          "inputTokens": 2149,
+          "outputTokens": 119
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Sauce Labs Backpack - Black",
+          "description": "Tap the button \"Sauce Labs Backpack - Black\" (middle of the screen)",
+          "selector": "(//XCUIElementTypeCell)[1]"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 6888,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 15,
+      "decision": {
+        "action": "tap:e12",
+        "confidence": 0.85,
+        "probabilities": {
+          "tap:e12": 0.85
+        },
+        "goalMet": 0.01,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1774,
+        "apiLatencyMs": 1576,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1656,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Add To Cart",
+          "description": "Tap the button \"Add To Cart\" (id AddToCart, bottom of the screen)",
+          "selector": "~AddToCart"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 9320,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 15,
+      "decision": {
+        "action": "tap:e13",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e13": 0.9
+        },
+        "goalMet": 0.02,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2217,
+        "apiLatencyMs": 1994,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1688,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Catalog-tab-item",
+          "description": "Tap the button \"Catalog-tab-item\" (bottom of the screen)",
+          "selector": "~Catalog-tab-item"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "atMs": 14251,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 29,
+      "decision": {
+        "action": "tap:e8",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e8": 0.9
+        },
+        "goalMet": 0.02,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1727,
+        "apiLatencyMs": 1519,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2243,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Sauce Labs Backpack - Green",
+          "description": "Tap the button \"Sauce Labs Backpack - Green\" (middle of the screen)",
+          "selector": "(//XCUIElementTypeCell)[2]"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "atMs": 18322,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Green",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 15,
+      "decision": {
+        "action": "tap:e12",
+        "confidence": 0.93,
+        "probabilities": {
+          "tap:e12": 0.93
+        },
+        "goalMet": 0.02,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1889,
+        "apiLatencyMs": 1690,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1748,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Add To Cart",
+          "description": "Tap the button \"Add To Cart\" (id AddToCart, bottom of the screen)",
+          "selector": "~AddToCart"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "atMs": 20191,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Green",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "2",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 15,
+      "decision": {
+        "action": "tap:e14",
+        "confidence": 0.93,
+        "probabilities": {
+          "tap:e14": 0.93
+        },
+        "goalMet": 0.04,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1656,
+        "apiLatencyMs": 1432,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1782,
+          "outputTokens": 38
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Cart-tab-item",
+          "description": "Tap the button \"Cart-tab-item\" (bottom of the screen)",
+          "selector": "~Cart-tab-item"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "atMs": 23934,
+      "screenText": [
+        "My Cart",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "Color:",
+        "Green",
+        "1",
+        "Remove Item",
+        "Sauce Labs Backpack - Green",
+        "© 2023 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Total:",
+        "2 Items",
+        "$59.98",
+        "Proceed To Checkout",
+        "Catalog",
+        "2",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 29,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.2,
+        "probabilities": {
+          "STUCK": 0.2
+        },
+        "goalMet": 0.93,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1804,
+        "apiLatencyMs": 1600,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2397,
+          "outputTokens": 37
+        }
+      }
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 4,
+  "usage": {
+    "requests": 11,
+    "inputTokens": 23736,
+    "outputTokens": 638
+  }
+}

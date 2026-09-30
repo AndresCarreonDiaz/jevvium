@@ -1,0 +1,194 @@
+{
+  "criterion": {
+    "id": "mydemo-sort-by-price",
+    "goal": "On the Catalog screen, the shopper opens the sort options with the button at the top of the screen and sorts the products by price, from low to high.",
+    "expect": [
+      {
+        "text": "Sauce Labs Onesie"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "claude",
+  "input": "simulator",
+  "startedAt": "2026-09-30T03:36:15.196Z",
+  "durationMs": 18320,
+  "outcome": "failed",
+  "reason": "The model judged the goal reached, but 1 expectations do not hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 1896,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 29,
+      "decision": {
+        "action": "tap:e1",
+        "confidence": 0.85,
+        "probabilities": {
+          "tap:e1": 0.85
+        },
+        "goalMet": 0.03,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1590,
+        "apiLatencyMs": 1379,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2121,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Button",
+          "description": "Tap the button \"Button\" (top of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Button\""
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 4378,
+      "screenText": [
+        "Sort by:",
+        "Name - Ascending",
+        "Name - Descending",
+        "Price - Ascending",
+        "Price - Descending",
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 33,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.96,
+        "probabilities": {
+          "tap:e3": 0.96
+        },
+        "goalMet": 0.03,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2199,
+        "apiLatencyMs": 1985,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2306,
+          "outputTokens": 42
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Price - Ascending",
+          "description": "Tap the button \"Price - Ascending\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Price - Ascending\""
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 6122,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Bolt T-Shirt - Black",
+        "Product Price",
+        "Sauce Labs Bolt T-Shirt - Blue",
+        "Sauce Labs Bolt T-Shirt - Green",
+        "Sauce Labs Bolt T-Shirt - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 29,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.3,
+        "probabilities": {
+          "STUCK": 0.3
+        },
+        "goalMet": 0.8,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1631,
+        "apiLatencyMs": 1420,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2217,
+          "outputTokens": 37
+        }
+      }
+    },
+    {
+      "index": 4,
+      "atMs": 13280,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Bolt T-Shirt - Black",
+        "Product Price",
+        "Sauce Labs Bolt T-Shirt - Blue",
+        "Sauce Labs Bolt T-Shirt - Green",
+        "Sauce Labs Bolt T-Shirt - Red"
+      ],
+      "actionCount": 30,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.3,
+        "probabilities": {
+          "STUCK": 0.3
+        },
+        "goalMet": 0.8,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1765,
+        "apiLatencyMs": 1526,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2227,
+          "outputTokens": 37
+        }
+      }
+    }
+  ],
+  "failedExpectations": [
+    {
+      "text": "Sauce Labs Onesie"
+    }
+  ],
+  "discardedDecisions": 0,
+  "usage": {
+    "requests": 4,
+    "inputTokens": 8871,
+    "outputTokens": 158
+  }
+}
