@@ -7,6 +7,7 @@ import { generateSpec, safeId, specFileName } from './codegen.ts'
 import { loadCriterion } from './criteria.ts'
 import { simulatorDevice, webdriverDevice, type Device } from './device.ts'
 import { explore, type Outcome, type Replay, type Step, type TakenAction, type Trace } from './explorer.ts'
+import { ClaudeProvider } from './providers/claude.ts'
 import { JevProvider } from './providers/jev.ts'
 import { OpenAIDecisionsProvider } from './providers/openai.ts'
 import { redactor } from './redact.ts'
@@ -35,8 +36,9 @@ Explore options:
   --goal-threshold <p>       "goal reached" probability that triggers the checks (default: 0.8)
   --input <auto|appium>      auto taps and types straight into an iOS Simulator, skipping XCTest,
                              and falls back to Appium elsewhere (default: auto)
-  --provider <jev|openai>    the decision model: TypeSafe's Jev, or OpenAI's Decisions API
-                             (in limited preview) (default: jev)
+  --provider <name>          the decision model: jev (TypeSafe's Jev), openai (OpenAI's
+                             Decisions API, in limited preview) or claude (Claude through the
+                             Claude Code CLI and its login, for comparisons) (default: jev)
   --fresh-session            start a new Appium session for every criterion instead of
                              restarting the app (slower, fully isolated)
   --parallel <n>             explore up to n criteria at once, each on its own iOS Simulator
@@ -51,6 +53,7 @@ Environment (read from .env if present):
   JEVVIUM_MODEL              Jev model name (default: jev-latest)
   OPENAI_API_KEY             key for --provider openai
   OPENAI_DECISIONS_MODEL     OpenAI model name (default: gpt-6-luna)
+  CLAUDE_MODEL               Claude Code model for --provider claude (default: sonnet)
 `
 
 async function main(): Promise<number> {
@@ -104,7 +107,7 @@ async function main(): Promise<number> {
   if (platform !== 'android' && platform !== 'ios') throw new Error('--platform must be android or ios')
   if (!values.app) throw new Error('--app is required')
   if (values.input !== 'auto' && values.input !== 'appium') throw new Error('--input must be auto or appium')
-  if (values.provider !== 'jev' && values.provider !== 'openai') throw new Error('--provider must be jev or openai')
+  if (!['jev', 'openai', 'claude'].includes(values.provider)) throw new Error('--provider must be jev, openai or claude')
   const maxSteps = count('--max-steps', values['max-steps'])
   const minConfidence = probability('--min-confidence', values['min-confidence'])
   const goalThreshold = probability('--goal-threshold', values['goal-threshold'])
@@ -114,7 +117,8 @@ async function main(): Promise<number> {
   const criteria: [string, Criterion][] = files.map((file) => [file, loadCriterion(file)])
   const app = resolve(values.app)
   if (!existsSync(app)) throw new Error(`--app: nothing at ${app}`)
-  const provider = values.provider === 'openai' ? new OpenAIDecisionsProvider() : new JevProvider()
+  const provider =
+    values.provider === 'openai' ? new OpenAIDecisionsProvider() : values.provider === 'claude' ? new ClaudeProvider() : new JevProvider()
   const baseCapabilities = capabilities(platform, app, values.device, values['platform-version'])
 
   const openSession = (address: ServerAddress, caps: WebdriverIO.Capabilities) => async (out: Out) => {

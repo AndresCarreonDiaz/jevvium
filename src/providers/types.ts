@@ -39,7 +39,10 @@ export type Decision = {
    * (docs.typesafe.ai/confidence); other providers may report the probability.
    */
   confidence: number
-  /** Probability of every option, when the provider reports it. */
+  /**
+   * Probability of every option, when the provider reports it. Claude reports none, so
+   * the Claude provider puts only its own confidence in its choice here.
+   */
   probabilities: Record<string, number>
   /** Probability that the current screen already shows the goal reached. */
   goalMet: number
@@ -48,6 +51,10 @@ export type Decision = {
   /** Model version that answered. */
   model: string
   latencyMs: number
+  /** Of `latencyMs`, the time the model's API took, when the provider reports it apart from its own overhead. */
+  apiLatencyMs?: number
+  /** Tokens the model spent thinking before it answered, when the provider reports them. */
+  thinkingTokens?: number
   usage?: { inputTokens: number; outputTokens: number }
 }
 
