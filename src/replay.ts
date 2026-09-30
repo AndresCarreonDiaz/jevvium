@@ -39,15 +39,24 @@ export async function replay(browser: Browser, trace: Trace, criterion: Criterio
         .waitForDisplayed({ timeout: waitMs })
         .then(
           () => true,
-          () => false,
+          (error: unknown) => {
+            if (lostSession(error)) throw error
+            return false
+          },
         )
       if (!shown) return result('failed', `${describe(expectation)} is not on screen at the end.`)
     }
     return result('passed', 'The generated steps pass with plain Appium.')
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    return result('failed', message.split('\n')[0])
+    return result(lostSession(error) ? 'error' : 'failed', message.split('\n')[0])
   }
+}
+
+/** Whether a command failed because the session or WebDriverAgent went away, rather than the app. */
+function lostSession(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /invalid session id|session is either terminated or not started|could not proxy command|ECONNREFUSED|socket hang up|unable to connect/i.test(message)
 }
 
 function describe(expectation: Expectation): string {

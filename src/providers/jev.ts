@@ -1,15 +1,15 @@
-import { actionOptions, fillKey, fillQuestion, GOAL_MET, inputOptions, NEXT_ACTION, stateOf } from './questions.ts'
+import { apiKey, postJson } from './http.ts'
+import { actionOptions, fillKey, fillQuestion, GOAL_MET, GOAL_MET_ANSWERS, inputOptions, NEXT_ACTION, stateOf } from './questions.ts'
 import type { Decision, DecisionProvider, DecisionRequest } from './types.ts'
 
 const DEFAULT_URL = 'https://api.typesafe.ai/v1/systemone'
 const MAX_OPTIONS = 255
-const RETRYABLE = new Set([429, 529])
 
 export type JevOptions = {
   apiKey?: string
   model?: string
   url?: string
-  /** Retries for rate limits and overload, with exponential backoff. */
+  /** Retries for rate limits, overload and temporary server errors, with exponential backoff. */
   retries?: number
   timeoutMs?: number
   /** Injected in tests. */
@@ -43,9 +43,7 @@ export class JevProvider implements DecisionProvider {
   private readonly sleep: (ms: number) => Promise<void>
 
   constructor(options: JevOptions = {}) {
-    const apiKey = options.apiKey ?? process.env.TYPESAFE_API_KEY
-    if (!apiKey) throw new Error('Set TYPESAFE_API_KEY to use the Jev provider')
-    this.apiKey = apiKey
+    this.apiKey = apiKey(options.apiKey ?? process.env.TYPESAFE_API_KEY, 'TYPESAFE_API_KEY', 'Jev')
     this.model = options.model ?? process.env.JEVVIUM_MODEL ?? 'jev-latest'
     this.url = options.url ?? process.env.TYPESAFE_API_URL ?? DEFAULT_URL
     this.retries = options.retries ?? 3
@@ -64,6 +62,9 @@ export class JevProvider implements DecisionProvider {
     const response = await this.post(buildBody(request, this.model))
     const latencyMs = Math.round(performance.now() - started)
 
+    if (typeof response?.answers !== 'object' || response.answers === null) {
+      throw new Error(`Jev answered without answers (got ${Object.keys(response ?? {}).join(', ') || 'nothing'})`)
+    }
     const next = response.answers.next_action
     const goal = response.answers.goal_met
     if (next?.type !== 'choice' || goal?.type !== 'noul') {
@@ -94,22 +95,15 @@ export class JevProvider implements DecisionProvider {
     }
   }
 
-  private async post(body: unknown): Promise<SystemOneResponse> {
-    for (let attempt = 0; ; attempt++) {
-      const res = await this.fetch(this.url, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(this.timeoutMs),
-      })
-      if (res.ok) return (await res.json()) as SystemOneResponse
-      if (RETRYABLE.has(res.status) && attempt < this.retries) {
-        await this.sleep(500 * 2 ** attempt)
-        continue
-      }
-      // The body explains validation errors; it never contains the key.
-      throw new Error(`Jev request failed with ${res.status}: ${await res.text()}`)
-    }
+  private post(body: unknown): Promise<SystemOneResponse> {
+    return postJson<SystemOneResponse>(this.url, body, {
+      apiKey: this.apiKey,
+      service: 'Jev',
+      retries: this.retries,
+      timeoutMs: this.timeoutMs,
+      fetch: this.fetch,
+      sleep: this.sleep,
+    })
   }
 }
 
@@ -127,14 +121,7 @@ export function buildBody(request: DecisionRequest, model: string) {
     state: stateOf(request),
     questions: {
       next_action: { type: 'choice', instructions: NEXT_ACTION, criteria: actionOptions(request) },
-      goal_met: {
-        type: 'noul',
-        instructions: GOAL_MET,
-        criteria: {
-          true: 'The visible text or control states confirm the goal is complete.',
-          false: 'The goal is not complete yet, or the screen does not show it.',
-        },
-      },
+      goal_met: { type: 'noul', instructions: GOAL_MET, criteria: GOAL_MET_ANSWERS },
       ...fillQuestions,
     },
   }

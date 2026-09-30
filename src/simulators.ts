@@ -54,16 +54,16 @@ export function pickSimulator(available: Simulator[], name: string, version?: st
 }
 
 /**
- * Simulators to run criteria side by side: `base`, then ones named "jevvium 2",
- * "jevvium 3" and so on, created like `base` the first time and kept for later
- * runs. Each is booted, which takes a while only the first time.
+ * Simulators to run criteria side by side: `base`, then ones named like
+ * "jevvium 2 (iPhone 17)", of the same model and iOS version, created the first
+ * time and kept for later runs. Each is booted, which takes a while only the first time.
  */
 export async function simulatorSet(base: Simulator, count: number): Promise<Simulator[]> {
   const available = await simulators()
   const set = [base]
   for (let lane = 2; lane <= count; lane++) {
-    const name = `jevvium ${lane}`
-    const existing = available.find((sim) => sim.name === name && sim.runtime === base.runtime)
+    const name = laneName(base, lane)
+    const existing = laneSimulator(available, base, lane)
     if (existing) {
       set.push(existing)
       continue
@@ -73,6 +73,19 @@ export async function simulatorSet(base: Simulator, count: number): Promise<Simu
   }
   await Promise.all(set.map((sim) => run('xcrun', ['simctl', 'bootstatus', sim.udid, '-b'], { timeout: 180_000 })))
   return set
+}
+
+/** "jevvium 2 (iPhone 17)": the name of lane `lane`'s simulator for runs on `base`. */
+export function laneName(base: Simulator, lane: number): string {
+  return `jevvium ${lane} (${base.deviceType.replace(/^.*SimDeviceType\./, '').replace(/-/g, ' ')})`
+}
+
+/** The simulator kept from an earlier run for this lane: same name, model and iOS version, and not `base` itself. */
+export function laneSimulator(available: Simulator[], base: Simulator, lane: number): Simulator | undefined {
+  const name = laneName(base, lane)
+  return available.find(
+    (sim) => sim.name === name && sim.runtime === base.runtime && sim.deviceType === base.deviceType && sim.udid !== base.udid,
+  )
 }
 
 /** Whether Appium's WebDriverAgent runner is already installed on the simulator. */
@@ -99,9 +112,10 @@ export type AppiumServer = { port: number; stop(): void }
 /**
  * Starts an Appium server from this project's dependencies on a free local port
  * and waits until it accepts sessions. One server creates one session at a time,
- * so sessions that should start together each need their own.
+ * so sessions that should start together each need their own. `onSpawn` gets the
+ * server as soon as its process exists, so a caller that stops early can stop it too.
  */
-export async function startAppium(logFile: string): Promise<AppiumServer> {
+export async function startAppium(logFile: string, onSpawn?: (server: AppiumServer) => void): Promise<AppiumServer> {
   const port = await freePort()
   const require = createRequire(import.meta.url)
   const manifest = require.resolve('appium/package.json')
@@ -112,12 +126,13 @@ export async function startAppium(logFile: string): Promise<AppiumServer> {
     { stdio: 'ignore' },
   )
   const server = { port, stop: () => void child.kill() }
+  onSpawn?.(server)
   let exited = false
   child.once('exit', () => (exited = true))
 
   const deadline = Date.now() + 60_000
   while (Date.now() < deadline && !exited) {
-    const ready = await fetch(`http://127.0.0.1:${port}/status`)
+    const ready = await fetch(`http://127.0.0.1:${port}/status`, { signal: AbortSignal.timeout(1_000) })
       .then(async (response) => ((await response.json()) as { value?: { ready?: boolean } }).value?.ready === true)
       .catch(() => false)
     if (ready) return server

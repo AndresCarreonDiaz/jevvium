@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { parseSimulators, pickSimulator } from '../src/simulators.ts'
+import { laneName, laneSimulator, parseSimulators, pickSimulator, type Simulator } from '../src/simulators.ts'
 
 const listing = JSON.stringify({
   devices: {
@@ -24,6 +24,16 @@ describe('simulators', () => {
       parseSimulators(listing).map((sim) => `${sim.udid} ${sim.name} ${sim.version}`),
       ['A iPhone 17 26.5', 'B jevvium 2 26.5', 'C iPhone 17 27.0'],
     )
+  })
+
+  it('reuses a lane simulator only when it is the same model on the same iOS version', () => {
+    const phone: Simulator = { udid: 'A', name: 'iPhone 17', runtime: 'iOS-26-5', version: '26.5', deviceType: 'x.SimDeviceType.iPhone-17' }
+    const tablet: Simulator = { ...phone, udid: 'P', name: 'iPad Air', deviceType: 'x.SimDeviceType.iPad-Air-13-inch-M4' }
+    const kept: Simulator = { ...phone, udid: 'B', name: 'jevvium 2 (iPhone 17)' }
+    assert.equal(laneName(phone, 2), 'jevvium 2 (iPhone 17)')
+    assert.equal(laneSimulator([phone, kept], phone, 2)?.udid, 'B')
+    assert.equal(laneSimulator([phone, kept, tablet], tablet, 2), undefined, 'an iPhone is not reused for an iPad run')
+    assert.equal(laneSimulator([{ ...kept, runtime: 'iOS-27-0' }], phone, 2), undefined, 'nor one on another iOS version')
   })
 
   it('picks the requested version, or else the newest one with that name', () => {

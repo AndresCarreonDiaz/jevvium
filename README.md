@@ -19,13 +19,13 @@ $ npm run jevvium -- explore criteria/login.yml --platform ios --app apps/wdiode
 
 login: A registered user logs in with a valid email and password and is told they are logged in.
 (input: direct to the simulator)
-   1  tap "Login"                             0.87 · 216 ms
-   2  type email → "Email"                    0.90 · 190 ms
+   1  tap "Login"                             0.90 · 183 ms
+   2  type email → "Email"                    0.89 · 190 ms
       type password → "Password"
-   3  tap "LOGIN"                             0.95 · 121 ms
-   4  goal reached                            goal 0.95 · 169 ms
-  PASSED in 5.2s: Goal reached and all 1 expectations hold.
-  replayed with plain Appium in 5.2s: passed
+   3  tap "LOGIN"                             0.90 · 101 ms
+   4  goal reached                            goal 0.96 · 114 ms
+  PASSED in 5.5s: Goal reached and all 1 expectations hold.
+  replayed with plain Appium in 5.3s: passed
 ```
 
 Each line is one decision: what it did, how sure the model was, and how long the model took to answer. The second decision filled both fields. The test it wrote:
@@ -67,7 +67,7 @@ criteria.yml ──► explore loop ──────────────�
 Each step is usually one request to [Jev](https://docs.typesafe.ai), TypeSafe's decision model. Jev doesn't write text: it picks one option from a list you give it and says how sure it is. That fits this problem well:
 
 - **It can only pick elements that exist.** The options are built from the page source, so there is no invented selector to debug.
-- **It says how sure it is.** When its confidence drops below `--min-confidence`, jevvium stops and reports the step as `escalated` instead of tapping something at random. TypeSafe trains Jev for calibrated probabilities; jevvium hasn't measured how well that holds here yet (see Next).
+- **It says how sure it is.** When its confidence drops below `--min-confidence`, jevvium stops and reports the step as `escalated` instead of tapping something at random. TypeSafe trains Jev for calibrated probabilities; jevvium hasn't measured how well that holds for this step confidence yet.
 - **One request answers every question.** "What next?", "Is the goal reached?" and "Which test data goes in each empty field?" go out together and Jev answers them in parallel, so a whole form is filled from one decision.
 
 Pass or fail comes from the `expect` checks, not from the model: when the model thinks the goal is reached, jevvium checks them against the device, and the run only passes if all of them hold. A criterion without `expect` entries passes on the model's word, and its generated test says so.
@@ -78,11 +78,11 @@ Sauce Labs publishes [My Demo App](https://github.com/saucelabs/my-demo-app-ios)
 
 | Criterion | Outcome | Decisions | Exploring | Replay with plain Appium |
 | --- | --- | --- | --- | --- |
-| Add a backpack to the cart | passed | 4 | 2.9 s | passed, 2.4 s |
-| Add two backpacks, check the total | passed | 7 | 5.5 s | passed, 4.6 s |
-| Shipping without a zip code is refused | passed | 9 | 7.7 s | failed (see below) |
-| Buy a backpack: login, shipping and card forms, place the order | passed | 12 | 12.0 s | failed (see below) |
-| Sort the catalog by price, low to high | stuck | 4 | 3.4 s | |
+| Add a backpack to the cart | passed | 4 | 2.8 s | passed, 2.4 s |
+| Add two backpacks, check the total | passed | 7 | 5.4 s | passed, 4.6 s |
+| Shipping without a zip code is refused | passed | 9 | 8.2 s | failed (see below) |
+| Buy a backpack: login, shipping and card forms, place the order | passed | 12 | 12.5 s | failed (see below) |
+| Sort the catalog by price, low to high | stuck | 4 | 3.3 s | |
 
 Two of these found real problems in the app:
 
@@ -98,7 +98,7 @@ Every step costs a screen read, a decision and an action. On an iOS Simulator je
 | Part | How | Cost |
 | --- | --- | --- |
 | Acting | A native helper sends touches and key presses straight into the simulator, skipping XCTest | about 25 ms per tap, instead of about 400 ms |
-| Reading | A page source without XCTest's `visible` attribute is about 3x faster. Visibility is worked out from positions, and XCTest confirms each element right before it is used. Sheets, popovers and screens spread over several windows get the full read | 80 to 140 ms, instead of 250 to 450 ms |
+| Reading | A page source without XCTest's `visible` attribute is about 3x faster. Visibility is worked out from positions, and XCTest confirms each element right before it is used. Sheets, popovers and screens spread over several windows get the full read. Positions can't show a view the app keeps on screen but hidden, so its text can reach the model; a goal claimed on such a read is judged again on a full read before the run is called a failure | 80 to 140 ms, instead of 250 to 450 ms |
 | Deciding | Jev usually answers in 100 to 250 ms. The first request of a step goes out while jevvium checks that the screen has settled, which hides most of that time | |
 | Forms | One decision fills every field the model is sure about | one step instead of one per field |
 | Between criteria | One Appium session for the whole run, with the app restarted through `simctl` | about 2 s, instead of a new session |
@@ -118,14 +118,14 @@ Both runs explored only. The replay check is extra: for these criteria it added 
 
 ### Several simulators at once
 
-`--parallel <n>` explores up to n criteria at the same time, each on its own simulator with its own Appium server, since one server starts one session at a time. The first time, it creates simulators named "jevvium 2", "jevvium 3" and so on, of the same model and iOS version as `--device`, and boots them; they stay for later runs. Sessions launch the WebDriverAgent that Appium already built instead of running xcodebuild again, so all of them are ready in about 6 s.
+`--parallel <n>` explores up to n criteria at the same time, each on its own simulator with its own Appium server, since one server starts one session at a time. The first time, it creates simulators named like "jevvium 2 (iPhone 17)", of the same model and iOS version as `--device`, and boots them; they stay for later runs. A lane that can't start a session hands its criteria to the others. Sessions launch the WebDriverAgent that Appium already built instead of running xcodebuild again, so all of them are ready in about 6 s.
 
-The five shop-app criteria, exploring only (`--no-verify`), wall clock including the sessions starting:
+The five shop-app criteria, exploring only (`--no-verify`), wall clock including the sessions starting ([traces](benchmarks/2026-09-29-parallel)):
 
 | | One simulator | Four simulators |
 | --- | --- | --- |
-| First run | 41.0 s | 20.4 s |
-| Second run | 46.5 s | 20.4 s |
+| First run | 42.1 s | 21.7 s |
+| Second run | 49.8 s | 21.1 s |
 
 All four runs passed the same four criteria and stopped on the sorting bug. With four at once, the longest criterion (the full checkout, 12 decisions) sets the time.
 
@@ -138,7 +138,7 @@ What to know about it:
 - It relies on Apple's private SimulatorKit, CoreSimulator and libxpc interfaces, which can change with any Xcode or macOS release. It has been tested with Xcode 27.0 and the iOS 26.5 runtime. Its fallback for older Xcodes, where key presses go over the HID port, is untested.
 - It types US keyboard key codes. On a simulator whose hardware keyboard layout isn't US, other characters come out; use `--input appium` there.
 - It tells the simulator a hardware keyboard is connected, like the Simulator app's Connect Hardware Keyboard option, and types like one, so the on-screen keyboard stays out of the way while exploring, on every simulator alike. The generated tests type through XCTest, which does raise it. The replay check catches an app where that difference matters (see the shop app above).
-- Its input reaches the app a moment after it is sent, later on a busy machine, so after each action jevvium waits up to 1 s for the screen to change before reading it again. An action that changes nothing costs that second.
+- Its touches and key presses reach the app a moment after they are sent, later on a busy machine, and on separate channels. So before typing into a field, jevvium waits until XCTest reports that field has keyboard focus (about 50 ms), and after each action it waits up to 1 s for the screen to change before reading it again, not counting numbers that tick on their own, such as a countdown. An action that changes nothing costs that second.
 - Twice, after a long day of experiments, a simulator stopped reacting to the helper's touches while still accepting them; rebooting it fixed that (`xcrun simctl shutdown <udid>`, then boot it again).
 - Appium still does the input where the helper can't do it safely: an element that has moved off screen or under the keyboard (XCTest scrolls it into view), text that isn't plain ASCII, and typing when the simulator's keyboard service didn't answer.
 - On a real device, or when the helper can't be built or can't connect, jevvium uses Appium for all input and says so. `--input appium` turns the helper off.
@@ -154,7 +154,8 @@ What to know about it:
 | State the text doesn't show | Switch states (on or off) are sent along with the visible text, and fields are named after the caption above them, not only their placeholder |
 | It goes round in circles | Stops when the same action is chosen 3 times on an unchanged screen, and after `--max-steps` decisions |
 | The screen is still loading | Waits until the page source stops changing and no spinner is on screen, and after direct input, until the screen has changed |
-| A fast read misses what covers an element | XCTest confirms each element right before it is used. A covered one is left out until the screen changes, and the model decides again |
+| A fast read misses what covers an element | XCTest confirms each element right before it is used. A covered one is left out until the screen changes, and the model decides again. The run stops after 6 covered choices in a row |
+| Keys land in the wrong field | Direct typing starts only once XCTest reports the tapped field has keyboard focus; otherwise XCTest types it |
 | Test data leaks | Test data values are replaced with `{name}` in what is sent to the model and what traces store (details under "What gets sent to the decision model") |
 
 ## Quick start
@@ -220,7 +221,7 @@ Write the goal the way a good acceptance criterion reads: say where the feature 
 | `gave-up` | `--max-steps` reached | no |
 | `error` | Something broke mid-run (the device, the helper, the provider); the reason says what | no |
 
-Every run writes a trace with, for each step, the visible text, how many actions were offered, the decision (choice, confidence, the five most likely options, the goal probability, the field answers, the model and its latency), and what was done. It also records the replay result, and how many requests were made and the tokens they used, counting those whose answers were thrown away because the screen was still changing or the chosen element was covered.
+Every run that gets as far as exploring writes a trace (one whose session or app restart fails first writes none) with, for each step, the visible text, how many actions were offered, the decision (choice, confidence, the five most likely options, the goal probability, the field answers, the model and its latency), and what was done. It also records the replay result, and how many requests were made and the tokens they used, counting those whose answers were thrown away because the screen was still changing or the chosen element was covered.
 
 ## Using it as a library
 
@@ -238,15 +239,15 @@ A different model can be plugged in by implementing `DecisionProvider`.
 
 ## Comparing decision models
 
-`--provider openai` explores with OpenAI's Decisions API (GPT-6 Luna) instead of Jev. OpenAI announced it at DevDay on September 29, 2026, in limited preview, and hasn't published its API reference yet, so the request follows calls an early tester recorded against the live API; expect to adjust it once the reference is out. It needs an `OPENAI_API_KEY` from an organization with preview access. It is asked exactly what Jev is asked, in the same words.
+`--provider openai` explores with OpenAI's Decisions API (GPT-6 Luna) instead of Jev. OpenAI announced it at DevDay on September 29, 2026, in limited preview, and hasn't published its API reference yet, so the request follows calls an early tester recorded against the live API; expect to adjust it once the reference is out. It needs an `OPENAI_API_KEY` from an organization with preview access, in `.env` next to the TypeSafe key. It is asked what Jev is asked, in the same words; the only difference is the API's own: its yes/no question takes no descriptions of the answers, so Jev's descriptions of "goal reached" are part of that question's wording.
 
-`npm run benchmark -- --providers jev,openai --repeat 3` runs both suites with each provider (skipping one whose key isn't set) and writes a table: runs passed, decisions and exploring time per passed run, decision latency (median and 90th percentile), input tokens and cost per request, and a Brier score for the "goal reached" answers in passing runs, a measure of how well that probability was calibrated.
+`npm run benchmark -- --providers jev,openai --repeat 3` runs both suites with each provider (skipping one whose key isn't set) and writes a table: runs passed (runs that broke, on the device or the network, are counted apart), decisions kept, requests and exploring time per passed run, decision latency (median and 90th percentile), input tokens and cost per request, and a Brier score for the "goal reached" probability in every run whose expectations were checked, a measure of how well that probability is calibrated. It doesn't score the step confidence that `--min-confidence` uses. A round that breaks or is interrupted runs again the next time.
 
 ## What gets sent to the decision model
 
-The same goes to TypeSafe or, with `--provider openai`, to OpenAI. For each step: the platform, the goal, the visible text on screen, the on/off state of switches, a description of each available action (the element's label or caption, its placeholder, its accessibility id and rough position), the steps already taken, the names of the inputs, and one question per empty field asking which input belongs in it. Screenshots, selectors, input values and expectations are never sent.
+The same goes to TypeSafe or, with `--provider openai`, to OpenAI. For each step: the platform, the goal, the text on screen (see Reading under Speed for what a fast read can include), the on/off state of switches, a description of each available action (the element's label or caption, its placeholder, its accessibility id and rough position), the steps already taken, the names of the inputs, and one question per empty field asking which input belongs in it. Screenshots, selectors, input values and expectations are never sent.
 
-Before anything is sent or stored, each test data value is replaced with `{name}`: matching ignores case, a value made of digits also matches when the app groups them with spaces, dashes or slashes (the way card numbers and dates are shown), and a value shorter than 3 characters is replaced only where it stands alone and in its exact case. Even so, a short value hides the same word anywhere it appears, goal included (a state `OK` hides an OK button), so prefer longer made-up values. The goal, the expectations and the reason a run stopped get the same treatment when stored in a trace. In selectors, values are replaced only inside quoted strings, with `{name}` placeholders that code generation fills back in from the criteria file, so explore again after changing a value that appears in a selector. An app that transforms a value in other ways (masking or truncating it) can still show part of it in a form jevvium doesn't recognize, and selectors keep the app's own names and labels, so use made-up data, and don't point jevvium at screens that show real customer data.
+Before anything is sent or stored, each test data value is replaced with `{name}`: matching ignores case, a value written as a number also matches when the app groups its digits with spaces, dots, slashes, dashes or parentheses (the way card numbers, phone numbers and dates are shown), and a value shorter than 3 characters is replaced only where it stands alone and in its exact case. Even so, a short value hides the same word anywhere it appears, goal included (a state `OK` hides an OK button), so prefer longer made-up values. The goal, the expectations and the reason a run stopped get the same treatment when stored in a trace. In selectors, values are replaced only inside quoted strings, with placeholders that code generation fills back in from the criteria file, the way the app showed them: `{email}`, `{email|upper}` for capitals, `{phone|mask:(###) ###-####}` for grouped digits. A value shown in some other form becomes `{name|?}`, and code generation refuses that selector rather than guess. Explore again after changing a value that appears in a selector. An app that transforms a value in other ways (masking or truncating it) can still show part of it in a form jevvium doesn't recognize, and selectors keep the app's own names and labels, so use made-up data, and don't point jevvium at screens that show real customer data.
 
 ## Status
 
@@ -254,20 +255,20 @@ Early, and built in the open. Latest runs, with `jev-1.13.0` on an iOS 26.5 simu
 
 | Criterion (WebdriverIO demo app) | Outcome | Decisions | Exploring | Replay |
 | --- | --- | --- | --- | --- |
-| login | passed | 4 | 5.2 s | passed, 5.2 s |
-| login-invalid-email | passed | 4 | 3.4 s | passed, 3.8 s |
-| forms-switch | passed | 3 | 2.6 s | passed, 2.4 s |
-| signup | stuck | 5 | 5.2 s | |
+| login | passed | 4 | 5.5 s | passed, 5.3 s |
+| login-invalid-email | passed | 4 | 3.3 s | passed, 3.7 s |
+| forms-switch | passed | 3 | 2.7 s | passed, 2.3 s |
+| signup | stuck | 5 | 5.7 s | |
 
 - **Why signup is stuck:** on this simulator, typing into a sign-up form with two password fields leaves 1 character in the first one, so the app shows validation errors. It happens with Appium's typing and with the native helper, and a hand-written Appium test for the same form fails the same way. jevvium read the errors on screen, stopped, and the trace records the failed expectation.
 - **Cost:** the four demo-app criteria made 18 requests and used about 19,000 input tokens, including requests thrown away while screens were still changing. That is under $0.001.
-- **Confidence:** correct steps have scored as low as 0.24, so the default escalation threshold is a low 0.2. It catches very confused steps; how well Jev's confidence is calibrated is part of the benchmark below.
+- **Confidence:** correct steps have scored as low as 0.24, so the default escalation threshold is a low 0.2. It catches very confused steps. How well that step confidence is calibrated isn't measured yet; the benchmark only scores the "goal reached" probability.
 
 ### Next
 
 - **Appium plugin**, so any Appium client (Java, Python, WebdriverIO) can call `driver.execute('jevvium: explore', ...)` in its own flows
 - **Maestro export**, to write the found path as a Maestro YAML flow
-- **Benchmark results**: Jev against OpenAI's Decisions API with `npm run benchmark`, once preview access comes through
+- **Benchmark results**: Jev against OpenAI's Decisions API with `npm run benchmark`, once preview access comes through, and a score for the step confidence so `--min-confidence` can be set from data
 - **Scrolling** to elements below the fold, and **backtracking** to try the runner-up action when a path dead-ends
 - **Android** on a real emulator, including a fast input path through UiAutomator2
 - A fallback provider for escalated steps

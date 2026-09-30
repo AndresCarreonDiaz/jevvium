@@ -11,8 +11,8 @@
   "platform": "ios",
   "provider": "jev",
   "input": "simulator",
-  "startedAt": "2026-09-30T01:39:55.778Z",
-  "durationMs": 3277,
+  "startedAt": "2026-09-30T01:40:54.218Z",
+  "durationMs": 3344,
   "outcome": "stuck",
   "reason": "The model found no action on this screen that moves toward the goal. 1 of 1 expectations do not hold.",
   "steps": [
@@ -35,18 +35,18 @@
       "actionCount": 29,
       "decision": {
         "action": "tap:e27",
-        "confidence": 0.53,
+        "confidence": 0.42,
         "probabilities": {
-          "tap:e27": 0.56,
-          "tap:e26": 0.25,
-          "tap:e1": 0.16,
-          "STUCK": 0.01,
+          "tap:e27": 0.45,
+          "tap:e1": 0.28,
+          "tap:e26": 0.23,
+          "STUCK": 0.02,
           "tap:e16": 0.01
         },
-        "goalMet": 0.08,
+        "goalMet": 0.09,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 178,
+        "latencyMs": 101,
         "usage": {
           "inputTokens": 1494,
           "outputTokens": 328
@@ -81,18 +81,18 @@
       "actionCount": 29,
       "decision": {
         "action": "tap:e1",
-        "confidence": 0.82,
+        "confidence": 0.79,
         "probabilities": {
-          "tap:e1": 0.83,
-          "tap:e26": 0.09999999999999999,
-          "STUCK": 0.05,
-          "tap:e27": 0.02,
-          "tap:e9": 0
+          "tap:e1": 0.81,
+          "tap:e26": 0.13,
+          "STUCK": 0.04,
+          "tap:e27": 0.01,
+          "tap:e10": 0
         },
-        "goalMet": 0.06,
+        "goalMet": 0.07,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 102,
+        "latencyMs": 103,
         "usage": {
           "inputTokens": 1510,
           "outputTokens": 327
@@ -132,18 +132,18 @@
       "actionCount": 33,
       "decision": {
         "action": "tap:e3",
-        "confidence": 1,
+        "confidence": 0.99,
         "probabilities": {
           "tap:e3": 1,
-          "tap:e10": 0,
-          "tap:e18": 0,
-          "tap:e9": 0,
+          "tap:e30": 0,
+          "tap:e28": 0,
+          "tap:e26": 0,
           "tap:e25": 0
         },
-        "goalMet": 0.12,
+        "goalMet": 0.13,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 113,
+        "latencyMs": 93,
         "usage": {
           "inputTokens": 1683,
           "outputTokens": 367
@@ -179,18 +179,18 @@
       "actionCount": 29,
       "decision": {
         "action": "STUCK",
-        "confidence": 0.41,
+        "confidence": 0.42,
         "probabilities": {
-          "STUCK": 0.44,
-          "tap:e26": 0.25,
-          "tap:e27": 0.19,
-          "tap:e2": 0.05,
-          "tap:e1": 0.04
+          "STUCK": 0.45,
+          "tap:e27": 0.22,
+          "tap:e26": 0.18000000000000002,
+          "tap:e2": 0.060000000000000005,
+          "tap:e1": 0.05
         },
-        "goalMet": 0.33,
+        "goalMet": 0.34,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 138,
+        "latencyMs": 124,
         "usage": {
           "inputTokens": 1564,
           "outputTokens": 326

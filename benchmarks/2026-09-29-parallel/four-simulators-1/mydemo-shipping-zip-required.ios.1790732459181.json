@@ -11,8 +11,8 @@
   "platform": "ios",
   "provider": "jev",
   "input": "simulator",
-  "startedAt": "2026-09-30T01:38:38.649Z",
-  "durationMs": 8193,
+  "startedAt": "2026-09-30T01:40:50.903Z",
+  "durationMs": 8278,
   "outcome": "passed",
   "reason": "Goal reached and all 1 expectations hold.",
   "steps": [
@@ -35,18 +35,18 @@
       "actionCount": 29,
       "decision": {
         "action": "tap:e2",
-        "confidence": 0.59,
+        "confidence": 0.61,
         "probabilities": {
-          "tap:e2": 0.61,
-          "tap:e27": 0.2,
-          "tap:e26": 0.17,
-          "tap:e1": 0.01,
-          "STUCK": 0.01
+          "tap:e2": 0.63,
+          "tap:e27": 0.21000000000000002,
+          "tap:e26": 0.15000000000000002,
+          "STUCK": 0.01,
+          "tap:e4": 0
         },
         "goalMet": 0.03,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 199,
+        "latencyMs": 147,
         "usage": {
           "inputTokens": 1535,
           "outputTokens": 327
@@ -78,18 +78,18 @@
       "actionCount": 15,
       "decision": {
         "action": "tap:e12",
-        "confidence": 0.96,
+        "confidence": 0.93,
         "probabilities": {
-          "tap:e12": 0.97,
-          "tap:e14": 0.02,
-          "tap:e8": 0.01,
-          "tap:e5": 0,
-          "tap:e4": 0
+          "tap:e12": 0.95,
+          "tap:e14": 0.03,
+          "tap:e8": 0.02,
+          "tap:e1": 0,
+          "STUCK": 0
         },
         "goalMet": 0.03,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 124,
+        "latencyMs": 122,
         "usage": {
           "inputTokens": 1112,
           "outputTokens": 188
@@ -124,15 +124,15 @@
         "confidence": 0.99,
         "probabilities": {
           "tap:e14": 1,
-          "tap:e10": 0,
-          "tap:e15": 0,
-          "tap:e2": 0,
-          "tap:e6": 0
+          "tap:e4": 0,
+          "tap:e12": 0,
+          "STUCK": 0,
+          "tap:e11": 0
         },
         "goalMet": 0.03,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 149,
+        "latencyMs": 113,
         "usage": {
           "inputTokens": 1134,
           "outputTokens": 188
@@ -173,18 +173,18 @@
       "actionCount": 20,
       "decision": {
         "action": "tap:e17",
-        "confidence": 0.91,
+        "confidence": 0.94,
         "probabilities": {
-          "tap:e17": 0.92,
-          "tap:e16": 0.04,
+          "tap:e17": 0.95,
           "tap:e18": 0.03,
-          "STUCK": 0.01,
-          "tap:e19": 0
+          "tap:e16": 0.02,
+          "tap:e13": 0,
+          "STUCK": 0
         },
         "goalMet": 0.04,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 146,
+        "latencyMs": 116,
         "usage": {
           "inputTokens": 1362,
           "outputTokens": 238
@@ -222,18 +222,18 @@
       "actionCount": 8,
       "decision": {
         "action": "tap:e1",
-        "confidence": 0.97,
+        "confidence": 0.96,
         "probabilities": {
           "tap:e1": 0.97,
           "tap:e5": 0.03,
-          "tap:e4": 0,
-          "tap:e7": 0,
-          "tap:e6": 0
+          "tap:e2": 0,
+          "tap:e3": 0,
+          "tap:e4": 0
         },
         "goalMet": 0.07,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 112,
+        "latencyMs": 171,
         "usage": {
           "inputTokens": 971,
           "outputTokens": 118
@@ -271,18 +271,18 @@
       "actionCount": 8,
       "decision": {
         "action": "tap:e5",
-        "confidence": 0.83,
+        "confidence": 0.82,
         "probabilities": {
-          "tap:e5": 0.86,
+          "tap:e5": 0.85,
           "STUCK": 0.08,
-          "tap:e1": 0.05,
+          "tap:e1": 0.06,
           "tap:e6": 0.01,
-          "tap:e4": 0
+          "tap:e3": 0
         },
         "goalMet": 0.05,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 116,
+        "latencyMs": 137,
         "usage": {
           "inputTokens": 988,
           "outputTokens": 118
@@ -320,19 +320,19 @@
       "actionCount": 32,
       "decision": {
         "action": "type:e1:fullName",
-        "confidence": 0.73,
+        "confidence": 0.74,
         "probabilities": {
-          "type:e1:fullName": 0.74,
+          "type:e1:fullName": 0.76,
           "tap:e8": 0.14,
           "type:e2:addressLine1": 0.05,
-          "type:e2:fullName": 0.02,
-          "type:e1:addressLine1": 0.02
+          "type:e1:addressLine1": 0.02,
+          "type:e2:fullName": 0.02
         },
-        "goalMet": 0.22,
+        "goalMet": 0.17,
         "fills": {
           "e1": {
             "input": "fullName",
-            "confidence": 0.98
+            "confidence": 0.96
           },
           "e2": {
             "input": "addressLine1",
@@ -356,11 +356,11 @@
           },
           "e7": {
             "input": "country",
-            "confidence": 0.93
+            "confidence": 0.92
           }
         },
         "model": "jev-1.13.0",
-        "latencyMs": 117,
+        "latencyMs": 125,
         "usage": {
           "inputTokens": 3214,
           "outputTokens": 828
@@ -427,11 +427,11 @@
         "probabilities": {
           "tap:e8": 0.99,
           "type:e7:fullName": 0.01,
-          "type:e6:country": 0,
-          "type:e7:country": 0,
-          "type:e7:city": 0
+          "type:e7:city": 0,
+          "type:e3:fullName": 0,
+          "type:e6:addressLine1": 0
         },
-        "goalMet": 0.13,
+        "goalMet": 0.11,
         "fills": {
           "e3": {
             "input": "leave_empty",
@@ -447,7 +447,7 @@
           }
         },
         "model": "jev-1.13.0",
-        "latencyMs": 156,
+        "latencyMs": 129,
         "usage": {
           "inputTokens": 2726,
           "outputTokens": 597
@@ -472,15 +472,15 @@
       "actionCount": 1,
       "decision": {
         "action": "tap:e1",
-        "confidence": 0.52,
+        "confidence": 0.43,
         "probabilities": {
-          "tap:e1": 0.76,
-          "STUCK": 0.24
+          "tap:e1": 0.72,
+          "STUCK": 0.28
         },
-        "goalMet": 0.86,
+        "goalMet": 0.85,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 116,
+        "latencyMs": 103,
         "usage": {
           "inputTokens": 883,
           "outputTokens": 55
@@ -494,10 +494,5 @@
     "requests": 13,
     "inputTokens": 22078,
     "outputTokens": 4467
-  },
-  "replay": {
-    "outcome": "failed",
-    "reason": "The text \"Please provide your zip.\" is not on screen at the end.",
-    "durationMs": 25223
   }
 }

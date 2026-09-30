@@ -1,6 +1,6 @@
 import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
@@ -119,21 +119,36 @@ export function canTypeDirectly(text: string): boolean {
   return /^[\x20-\x7e]*$/.test(text)
 }
 
-/** Compiles the helper for this Xcode unless a build of the same source already exists. */
-async function build(developerDir: string): Promise<string> {
+const builds = new Map<string, Promise<string>>()
+
+/**
+ * Compiles the helper for this Xcode unless a build of the same source already
+ * exists. Simulators started side by side share one build, and the binary is
+ * written under a temporary name first, so no one runs a half-written file.
+ */
+function build(developerDir: string): Promise<string> {
   const source = readFileSync(SOURCE)
   const key = createHash('sha256').update(source).update(developerDir).digest('hex').slice(0, 12)
   const dir = join(homedir(), 'Library', 'Caches', 'jevvium')
   const binary = join(dir, `jevvium-hid-${key}`)
-  if (existsSync(binary)) return binary
-
-  mkdirSync(dir, { recursive: true })
-  try {
-    await run('xcrun', ['clang', '-fobjc-arc', '-O2', '-framework', 'Foundation', '-framework', 'CoreGraphics', SOURCE, '-o', binary])
-  } catch (error) {
-    throw new Error(`Could not build the iOS input helper with Xcode: ${(error as { stderr?: string }).stderr ?? error}`, {
-      cause: error,
-    })
+  if (existsSync(binary)) return Promise.resolve(binary)
+  if (!builds.has(binary)) {
+    const building = (async () => {
+      mkdirSync(dir, { recursive: true })
+      const partial = `${binary}.${process.pid}.partial`
+      try {
+        await run('xcrun', ['clang', '-fobjc-arc', '-O2', '-framework', 'Foundation', '-framework', 'CoreGraphics', SOURCE, '-o', partial])
+        renameSync(partial, binary)
+        return binary
+      } catch (error) {
+        rmSync(partial, { force: true })
+        throw new Error(`Could not build the iOS input helper with Xcode: ${(error as { stderr?: string }).stderr ?? error}`, {
+          cause: error,
+        })
+      }
+    })()
+    builds.set(binary, building)
+    building.catch(() => builds.delete(binary))
   }
-  return binary
+  return builds.get(binary)!
 }

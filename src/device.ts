@@ -66,8 +66,8 @@ export function webdriverDevice(browser: Browser): Device {
   }
 }
 
-/** Time for a tapped field to take focus before keys arrive; they travel on a separate channel. */
-const FOCUS_MS = 80
+/** How long a tapped field may take to get keyboard focus before XCTest types into it instead. */
+const FOCUS_TIMEOUT_MS = 1_500
 
 /**
  * Reads the screen through Appium, but taps and types straight into the iOS
@@ -86,7 +86,11 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
     throw new Error('Direct input only works on an iOS Simulator')
   }
   const hid = await IosHid.start(udid)
-  const { width, height } = await browser.getWindowSize()
+  const size = await browser.getWindowSize().catch((error: unknown) => {
+    hid.close()
+    throw error
+  })
+  const { width, height } = size
   const directTyping = hid.keyboard !== 'none'
 
   // Taps and typing move things (an opening keyboard scrolls a form), so after any
@@ -106,16 +110,34 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
     )
     return now?.centre
   }
-  /** Taps directly, or hands the tap to Appium. Returns whether the tap was direct. */
-  const tap = async (element: ScreenElement): Promise<boolean> => {
+  /** Taps directly, or hands the tap to Appium. Returns where it tapped, or undefined when Appium did. */
+  const tap = async (element: ScreenElement): Promise<{ x: number; y: number } | undefined> => {
     const centre = await centreOf(element)
     movedSinceRead = true
     if (!centre) {
       await appium.tap(element)
-      return false
+      return undefined
     }
     await hid.tap(centre.x / width, centre.y / height)
-    return true
+    return centre
+  }
+  /**
+   * Waits until the element has keyboard focus. Keys reach the app on a different
+   * channel from touches, so without this a tap that lands late would send them to
+   * the field before. The element is compared by identity, not position, since
+   * focusing a field often scrolls the form.
+   */
+  const focused = async (element: ScreenElement): Promise<boolean> => {
+    const deadline = Date.now() + FOCUS_TIMEOUT_MS
+    const target = await browser.findElement(element.locator.using, element.locator.value).catch(() => undefined)
+    const targetId = target && elementId(target)
+    if (!targetId) return false
+    do {
+      const active = await browser.getActiveElement().catch(() => undefined)
+      if (active && elementId(active) === targetId) return true
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    } while (Date.now() < deadline)
+    return false
   }
 
   return {
@@ -133,12 +155,20 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
       }
       // Appium focused and typed it when the field had to be scrolled into view.
       if (!(await tap(element))) return appium.type(element, value)
-      await new Promise((resolve) => setTimeout(resolve, FOCUS_MS))
+      // A field that never reports focus (a custom input) is typed into through XCTest.
+      if (!(await focused(element))) return appium.type({ ...element, empty: false }, value)
       if (!element.empty) await hid.clear()
       await hid.type(value)
     },
     close: () => hid.close(),
   }
+}
+
+/** The id in a WebDriver element reference, in its W3C or older form. */
+function elementId(reference: object): string | undefined {
+  const fields = reference as Record<string, unknown>
+  const id = fields['element-6066-11e4-a52e-4f735466cecf'] ?? fields.ELEMENT
+  return typeof id === 'string' ? id : undefined
 }
 
 async function isSimulator(udid: string): Promise<boolean> {

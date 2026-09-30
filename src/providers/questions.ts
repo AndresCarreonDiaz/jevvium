@@ -14,6 +14,13 @@ export const NEXT_ACTION =
 
 export const GOAL_MET = 'Does the current screen show that the goal has been reached?'
 
+/** What a yes and a no to `GOAL_MET` mean. */
+export const GOAL_MET_ANSWERS = {
+  true: 'The visible text or control states confirm the goal is complete.',
+  false: 'The goal is not complete yet, or the screen does not show it.',
+}
+
+
 /** What the provider sees of the screen and the run so far. */
 export function stateOf(request: DecisionRequest) {
   return {

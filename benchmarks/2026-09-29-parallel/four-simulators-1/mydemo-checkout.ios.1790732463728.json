@@ -1,20 +1,23 @@
 {
   "criterion": {
-    "id": "mydemo-shipping-zip-required",
-    "goal": "At checkout (add the Sauce Labs Backpack - Black to the cart from the Catalog, proceed to checkout from the Cart, log in by picking bob@example.com), a shopper who enters a shipping address without a zip code and continues to payment is asked for the zip code.",
+    "id": "mydemo-checkout",
+    "goal": "A shopper buys the Sauce Labs Backpack - Black. They add it to the cart from the Catalog, proceed to checkout from the Cart, log in by picking bob@example.com from the list of usernames, enter a shipping address, enter a card with the card holder's name, review the order and place it.",
     "expect": [
       {
-        "text": "Please provide your zip."
+        "text": "Checkout Complete"
+      },
+      {
+        "id": "ContinueShopping"
       }
     ]
   },
   "platform": "ios",
   "provider": "jev",
   "input": "simulator",
-  "startedAt": "2026-09-30T01:38:38.649Z",
-  "durationMs": 8193,
+  "startedAt": "2026-09-30T01:40:51.115Z",
+  "durationMs": 12613,
   "outcome": "passed",
-  "reason": "Goal reached and all 1 expectations hold.",
+  "reason": "Goal reached and all 2 expectations hold.",
   "steps": [
     {
       "index": 1,
@@ -39,16 +42,16 @@
         "probabilities": {
           "tap:e2": 0.61,
           "tap:e27": 0.2,
-          "tap:e26": 0.17,
-          "tap:e1": 0.01,
-          "STUCK": 0.01
+          "tap:e26": 0.19,
+          "tap:e15": 0,
+          "tap:e6": 0
         },
-        "goalMet": 0.03,
+        "goalMet": 0.02,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 199,
+        "latencyMs": 124,
         "usage": {
-          "inputTokens": 1535,
+          "inputTokens": 1574,
           "outputTokens": 327
         }
       },
@@ -81,17 +84,17 @@
         "confidence": 0.96,
         "probabilities": {
           "tap:e12": 0.97,
-          "tap:e14": 0.02,
-          "tap:e8": 0.01,
-          "tap:e5": 0,
-          "tap:e4": 0
+          "tap:e14": 0.03,
+          "tap:e7": 0,
+          "tap:e13": 0,
+          "STUCK": 0
         },
-        "goalMet": 0.03,
+        "goalMet": 0.02,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 124,
+        "latencyMs": 145,
         "usage": {
-          "inputTokens": 1112,
+          "inputTokens": 1151,
           "outputTokens": 188
         }
       },
@@ -124,17 +127,17 @@
         "confidence": 0.99,
         "probabilities": {
           "tap:e14": 1,
-          "tap:e10": 0,
-          "tap:e15": 0,
-          "tap:e2": 0,
-          "tap:e6": 0
+          "tap:e4": 0,
+          "tap:e12": 0,
+          "STUCK": 0,
+          "tap:e11": 0
         },
-        "goalMet": 0.03,
+        "goalMet": 0.02,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 149,
+        "latencyMs": 135,
         "usage": {
-          "inputTokens": 1134,
+          "inputTokens": 1173,
           "outputTokens": 188
         }
       },
@@ -173,20 +176,20 @@
       "actionCount": 20,
       "decision": {
         "action": "tap:e17",
-        "confidence": 0.91,
+        "confidence": 0.92,
         "probabilities": {
-          "tap:e17": 0.92,
-          "tap:e16": 0.04,
-          "tap:e18": 0.03,
-          "STUCK": 0.01,
-          "tap:e19": 0
+          "tap:e17": 0.93,
+          "tap:e16": 0.03,
+          "tap:e18": 0.02,
+          "tap:e9": 0.01,
+          "tap:e5": 0
         },
         "goalMet": 0.04,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 146,
+        "latencyMs": 87,
         "usage": {
-          "inputTokens": 1362,
+          "inputTokens": 1401,
           "outputTokens": 238
         }
       },
@@ -222,20 +225,20 @@
       "actionCount": 8,
       "decision": {
         "action": "tap:e1",
-        "confidence": 0.97,
+        "confidence": 0.95,
         "probabilities": {
-          "tap:e1": 0.97,
-          "tap:e5": 0.03,
-          "tap:e4": 0,
+          "tap:e1": 0.96,
+          "tap:e5": 0.04,
           "tap:e7": 0,
-          "tap:e6": 0
+          "tap:e8": 0,
+          "tap:e3": 0
         },
-        "goalMet": 0.07,
+        "goalMet": 0.03,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 112,
+        "latencyMs": 119,
         "usage": {
-          "inputTokens": 971,
+          "inputTokens": 1010,
           "outputTokens": 118
         }
       },
@@ -271,20 +274,20 @@
       "actionCount": 8,
       "decision": {
         "action": "tap:e5",
-        "confidence": 0.83,
+        "confidence": 0.95,
         "probabilities": {
-          "tap:e5": 0.86,
-          "STUCK": 0.08,
-          "tap:e1": 0.05,
-          "tap:e6": 0.01,
-          "tap:e4": 0
+          "tap:e5": 0.96,
+          "tap:e1": 0.02,
+          "STUCK": 0.02,
+          "tap:e6": 0,
+          "tap:e3": 0
         },
-        "goalMet": 0.05,
+        "goalMet": 0.03,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 116,
+        "latencyMs": 119,
         "usage": {
-          "inputTokens": 988,
+          "inputTokens": 1027,
           "outputTokens": 118
         }
       },
@@ -317,26 +320,26 @@
         "Cart",
         "More"
       ],
-      "actionCount": 32,
+      "actionCount": 67,
       "decision": {
         "action": "type:e1:fullName",
-        "confidence": 0.73,
+        "confidence": 0.92,
         "probabilities": {
-          "type:e1:fullName": 0.74,
-          "tap:e8": 0.14,
-          "type:e2:addressLine1": 0.05,
-          "type:e2:fullName": 0.02,
-          "type:e1:addressLine1": 0.02
+          "type:e1:fullName": 0.93,
+          "tap:e8": 0.03,
+          "STUCK": 0.01,
+          "type:e2:addressLine1": 0.01,
+          "type:e1:addressLine1": 0.01
         },
-        "goalMet": 0.22,
+        "goalMet": 0.03,
         "fills": {
           "e1": {
             "input": "fullName",
-            "confidence": 0.98
+            "confidence": 0.94
           },
           "e2": {
             "input": "addressLine1",
-            "confidence": 0.99
+            "confidence": 1
           },
           "e3": {
             "input": "leave_empty",
@@ -344,26 +347,26 @@
           },
           "e4": {
             "input": "city",
-            "confidence": 0.97
+            "confidence": 0.99
           },
           "e5": {
-            "input": "leave_empty",
+            "input": "zipCode",
             "confidence": 1
           },
           "e6": {
             "input": "leave_empty",
-            "confidence": 0.99
+            "confidence": 0.97
           },
           "e7": {
             "input": "country",
-            "confidence": 0.93
+            "confidence": 0.99
           }
         },
         "model": "jev-1.13.0",
-        "latencyMs": 117,
+        "latencyMs": 145,
         "usage": {
-          "inputTokens": 3214,
-          "outputTokens": 828
+          "inputTokens": 5636,
+          "outputTokens": 1612
         }
       },
       "taken": [
@@ -394,6 +397,14 @@
         {
           "type": "type",
           "kind": "input",
+          "target": "Zip Code*",
+          "description": "Type the test data \"zipCode\" into the field \"Zip Code*\" (placeholder \"89750\", bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"89750\"",
+          "input": "zipCode"
+        },
+        {
+          "type": "type",
+          "kind": "input",
           "target": "Country*",
           "description": "Type the test data \"country\" into the field \"Country*\" (placeholder \"United Kingdom\", bottom of the screen)",
           "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"United Kingdom\"",
@@ -420,37 +431,33 @@
         "Cart",
         "More"
       ],
-      "actionCount": 32,
+      "actionCount": 67,
       "decision": {
         "action": "tap:e8",
-        "confidence": 0.98,
+        "confidence": 0.93,
         "probabilities": {
-          "tap:e8": 0.99,
-          "type:e7:fullName": 0.01,
-          "type:e6:country": 0,
-          "type:e7:country": 0,
-          "type:e7:city": 0
+          "tap:e8": 0.9400000000000001,
+          "type:e6:fullName": 0.02,
+          "type:e7:country": 0.02,
+          "type:e3:fullName": 0.01,
+          "type:e2:nameOnCard": 0
         },
-        "goalMet": 0.13,
+        "goalMet": 0.03,
         "fills": {
           "e3": {
             "input": "leave_empty",
-            "confidence": 1
-          },
-          "e5": {
-            "input": "leave_empty",
-            "confidence": 1
+            "confidence": 0.99
           },
           "e6": {
             "input": "leave_empty",
-            "confidence": 0.99
+            "confidence": 0.98
           }
         },
         "model": "jev-1.13.0",
-        "latencyMs": 156,
+        "latencyMs": 148,
         "usage": {
-          "inputTokens": 2726,
-          "outputTokens": 597
+          "inputTokens": 4491,
+          "outputTokens": 1094
         }
       },
       "taken": [
@@ -466,38 +473,241 @@
     {
       "index": 9,
       "screenText": [
-        "Validation Error!",
-        "Please provide your zip."
+        "Shipping Address",
+        "Checkout",
+        "Enter a payment method",
+        "You will not be charged untill you review your purchase on the next page.",
+        "Card",
+        "Full Name*",
+        "Card Number*",
+        "Expiration Date*",
+        "Security Code*",
+        "My billing address is the same as my shipping address.",
+        "Review Order",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
       ],
-      "actionCount": 1,
+      "actionCount": 39,
       "decision": {
-        "action": "tap:e1",
-        "confidence": 0.52,
+        "action": "type:e1:nameOnCard",
+        "confidence": 0.69,
         "probabilities": {
-          "tap:e1": 0.76,
-          "STUCK": 0.24
+          "type:e1:nameOnCard": 0.71,
+          "type:e2:cardNumber": 0.09999999999999999,
+          "type:e2:nameOnCard": 0.09,
+          "tap:e6": 0.04,
+          "type:e3:nameOnCard": 0.01
         },
-        "goalMet": 0.86,
+        "goalMet": 0.04,
+        "fills": {
+          "e1": {
+            "input": "fullName",
+            "confidence": 0.45
+          },
+          "e2": {
+            "input": "cardNumber",
+            "confidence": 1
+          },
+          "e3": {
+            "input": "expirationDate",
+            "confidence": 1
+          },
+          "e4": {
+            "input": "securityCode",
+            "confidence": 1
+          }
+        },
+        "model": "jev-1.13.0",
+        "latencyMs": 114,
+        "usage": {
+          "inputTokens": 3914,
+          "outputTokens": 953
+        }
+      },
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Full Name*",
+          "description": "Type the test data \"nameOnCard\" into the field \"Full Name*\" (placeholder \"Maxim Winter\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"Maxim Winter\"",
+          "input": "nameOnCard"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Card Number*",
+          "description": "Type the test data \"cardNumber\" into the field \"Card Number*\" (placeholder \"3258 1265 7568 7896\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"3258 1265 7568 7896\"",
+          "input": "cardNumber"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Expiration Date*",
+          "description": "Type the test data \"expirationDate\" into the field \"Expiration Date*\" (placeholder \"03/25\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"03/25\"",
+          "input": "expirationDate"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Security Code*",
+          "description": "Type the test data \"securityCode\" into the field \"Security Code*\" (placeholder \"123\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"123\"",
+          "input": "securityCode"
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "screenText": [
+        "Shipping Address",
+        "Checkout",
+        "Enter a payment method",
+        "You will not be charged untill you review your purchase on the next page.",
+        "Card",
+        "Full Name*",
+        "Card Number*",
+        "Expiration Date*",
+        "Security Code*",
+        "My billing address is the same as my shipping address.",
+        "Review Order",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 39,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.8,
+        "probabilities": {
+          "tap:e6": 0.8200000000000001,
+          "type:e4:securityCode": 0.08,
+          "tap:e5": 0.04,
+          "type:e1:securityCode": 0.03,
+          "type:e3:securityCode": 0.01
+        },
+        "goalMet": 0.04,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 116,
+        "latencyMs": 151,
         "usage": {
-          "inputTokens": 883,
-          "outputTokens": 55
+          "inputTokens": 3004,
+          "outputTokens": 533
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Review Order",
+          "description": "Tap the button \"Review Order\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Review Order\""
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "screenText": [
+        "Payment Method",
+        "Checkout",
+        "Review your order",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "Color:",
+        "Green",
+        "Delivery Address",
+        "{fullName}",
+        "{cardNumber}",
+        "{expirationDate}",
+        "Billing address is the same as shipping address.",
+        "Billing Address",
+        ",",
+        "{addressLine1}",
+        "{city},",
+        "{country},{zipCode}",
+        "Total:",
+        "1item",
+        "$35.98",
+        "Place Order",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 10,
+      "decision": {
+        "action": "tap:e7",
+        "confidence": 0.97,
+        "probabilities": {
+          "tap:e7": 0.98,
+          "STUCK": 0.02,
+          "tap:e2": 0,
+          "tap:e10": 0,
+          "tap:e1": 0
+        },
+        "goalMet": 0.06,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 150,
+        "usage": {
+          "inputTokens": 1522,
+          "outputTokens": 137
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Place Order",
+          "description": "Tap the button \"Place Order\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Place Order\""
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "screenText": [
+        "Your new swag is on its way",
+        "Continue Shopping",
+        "Thank you for your order. Your order has been dispatched and will arrive as soon as possible!",
+        "Checkout Complete",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 4,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.74,
+        "probabilities": {
+          "STUCK": 0.79,
+          "tap:e1": 0.13,
+          "tap:e2": 0.05,
+          "tap:e3": 0.02,
+          "tap:e4": 0.01
+        },
+        "goalMet": 0.95,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 125,
+        "usage": {
+          "inputTokens": 1264,
+          "outputTokens": 81
         }
       }
     }
   ],
   "failedExpectations": [],
-  "discardedDecisions": 4,
+  "discardedDecisions": 5,
   "usage": {
-    "requests": 13,
-    "inputTokens": 22078,
-    "outputTokens": 4467
-  },
-  "replay": {
-    "outcome": "failed",
-    "reason": "The text \"Please provide your zip.\" is not on screen at the end.",
-    "durationMs": 25223
+    "requests": 17,
+    "inputTokens": 45734,
+    "outputTokens": 10147
   }
 }

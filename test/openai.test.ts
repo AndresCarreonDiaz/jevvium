@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { OpenAIDecisionsProvider } from '../src/providers/openai.ts'
+import { buildBody } from '../src/providers/jev.ts'
+import { buildDecisionsBody, OpenAIDecisionsProvider } from '../src/providers/openai.ts'
 import { STUCK, type DecisionRequest } from '../src/providers/types.ts'
 
 const request: DecisionRequest = {
@@ -65,6 +66,28 @@ describe('OpenAIDecisionsProvider', () => {
     assert.equal(decision.goalMet, 0.03)
     assert.deepEqual(decision.fills, { e1: { input: 'email', confidence: 0.97 } })
     assert.deepEqual(decision.usage, { inputTokens: 520, outputTokens: 3 })
+  })
+
+  it('is asked everything Jev is asked, in the same words', () => {
+    const strings = (value: unknown): string[] =>
+      typeof value === 'string' ? [value] : value && typeof value === 'object' ? Object.values(value).flatMap(strings) : []
+    const jev = buildBody(request, 'jev-latest')
+    const openai = JSON.stringify(buildDecisionsBody(request, 'gpt-6-luna'))
+    const wording = [...strings(jev.questions), ...strings(jev.state)].filter((text) => !['choice', 'noul'].includes(text))
+    for (const text of wording) assert.ok(openai.includes(JSON.stringify(text).slice(1, -1)), `missing: ${text}`)
+  })
+
+  it('refuses a key with a line break, without repeating it', () => {
+    assert.throws(() => new OpenAIDecisionsProvider({ apiKey: 'sk-secret\nOPENAI_API_KEY=' }), (error: Error) => {
+      assert.match(error.message, /line break/)
+      assert.ok(!error.message.includes('sk-secret'))
+      return true
+    })
+  })
+
+  it('says what came back when the answer has an unexpected shape', async () => {
+    const provider = new OpenAIDecisionsProvider({ apiKey: 'test-key', fetch: async () => new Response(JSON.stringify({ model: 'x', output: [] })) })
+    await assert.rejects(provider.decide(request), /without an answers list \(got model, output\)/)
   })
 
   it('retries when rate limited and reports other failures', async () => {

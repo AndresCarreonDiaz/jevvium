@@ -14,8 +14,8 @@
   "platform": "ios",
   "provider": "jev",
   "input": "simulator",
-  "startedAt": "2026-09-30T01:38:18.826Z",
-  "durationMs": 2777,
+  "startedAt": "2026-09-30T01:40:03.829Z",
+  "durationMs": 3464,
   "outcome": "passed",
   "reason": "Goal reached and all 2 expectations hold.",
   "steps": [
@@ -38,18 +38,18 @@
       "actionCount": 29,
       "decision": {
         "action": "tap:e2",
-        "confidence": 0.47,
+        "confidence": 0.48,
         "probabilities": {
-          "tap:e2": 0.5,
+          "tap:e2": 0.51,
           "tap:e27": 0.3,
-          "tap:e26": 0.19,
+          "tap:e26": 0.18,
           "STUCK": 0.01,
-          "tap:e5": 0
+          "tap:e19": 0
         },
-        "goalMet": 0.04,
+        "goalMet": 0.05,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 173,
+        "latencyMs": 317,
         "usage": {
           "inputTokens": 1486,
           "outputTokens": 327
@@ -85,14 +85,14 @@
         "probabilities": {
           "tap:e12": 0.99,
           "tap:e14": 0.01,
-          "tap:e13": 0,
-          "tap:e6": 0,
-          "tap:e3": 0
+          "tap:e7": 0,
+          "tap:e1": 0,
+          "tap:e2": 0
         },
         "goalMet": 0.07,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 118,
+        "latencyMs": 455,
         "usage": {
           "inputTokens": 1063,
           "outputTokens": 188
@@ -128,14 +128,14 @@
         "probabilities": {
           "tap:e14": 0.99,
           "tap:e13": 0.01,
-          "tap:e7": 0,
-          "tap:e1": 0,
-          "tap:e9": 0
+          "tap:e10": 0,
+          "tap:e6": 0,
+          "tap:e2": 0
         },
-        "goalMet": 0.1,
+        "goalMet": 0.09,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 99,
+        "latencyMs": 131,
         "usage": {
           "inputTokens": 1085,
           "outputTokens": 188
@@ -176,18 +176,18 @@
       "actionCount": 20,
       "decision": {
         "action": "STUCK",
-        "confidence": 0.69,
+        "confidence": 0.64,
         "probabilities": {
-          "STUCK": 0.72,
-          "tap:e17": 0.2,
-          "tap:e9": 0.02,
-          "tap:e18": 0.02,
-          "tap:e19": 0.01
+          "STUCK": 0.67,
+          "tap:e17": 0.25,
+          "tap:e19": 0.03,
+          "tap:e3": 0.01,
+          "tap:e18": 0.01
         },
         "goalMet": 0.82,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 98,
+        "latencyMs": 193,
         "usage": {
           "inputTokens": 1313,
           "outputTokens": 236
@@ -201,10 +201,5 @@
     "requests": 6,
     "inputTokens": 8202,
     "outputTokens": 1633
-  },
-  "replay": {
-    "outcome": "passed",
-    "reason": "The generated steps pass with plain Appium.",
-    "durationMs": 2425
   }
 }

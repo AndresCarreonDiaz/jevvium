@@ -11,8 +11,8 @@
   "platform": "ios",
   "provider": "jev",
   "input": "simulator",
-  "startedAt": "2026-09-29T23:36:01.829Z",
-  "durationMs": 5238,
+  "startedAt": "2026-09-30T01:37:59.846Z",
+  "durationMs": 5738,
   "outcome": "stuck",
   "reason": "The model found no action on this screen that moves toward the goal. 1 of 1 expectations do not hold.",
   "steps": [
@@ -26,18 +26,18 @@
       "actionCount": 7,
       "decision": {
         "action": "tap:e3",
-        "confidence": 0.55,
+        "confidence": 0.66,
         "probabilities": {
-          "tap:e3": 0.61,
-          "tap:e4": 0.19,
-          "STUCK": 0.09,
+          "tap:e3": 0.7,
+          "tap:e4": 0.1,
+          "STUCK": 0.07,
           "tap:e7": 0.05,
-          "tap:e1": 0.04
+          "tap:e1": 0.05
         },
-        "goalMet": 0.08,
+        "goalMet": 0.05,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 172,
+        "latencyMs": 175,
         "usage": {
           "inputTokens": 760,
           "outputTokens": 109
@@ -65,13 +65,13 @@
       "actionCount": 14,
       "decision": {
         "action": "tap:e2",
-        "confidence": 0.99,
+        "confidence": 0.98,
         "probabilities": {
-          "tap:e2": 1,
-          "tap:e8": 0,
-          "tap:e1": 0,
-          "type:e3:password": 0,
-          "STUCK": 0
+          "tap:e2": 0.99,
+          "tap:e9": 0.01,
+          "tap:e7": 0,
+          "tap:e12": 0,
+          "tap:e1": 0
         },
         "goalMet": 0.04,
         "fills": {
@@ -85,7 +85,7 @@
           }
         },
         "model": "jev-1.13.0",
-        "latencyMs": 246,
+        "latencyMs": 190,
         "usage": {
           "inputTokens": 1273,
           "outputTokens": 262
@@ -114,13 +114,13 @@
         "action": "type:e3:email",
         "confidence": 0.98,
         "probabilities": {
-          "type:e3:email": 0.99,
+          "type:e3:email": 0.98,
+          "tap:e6": 0.01,
           "STUCK": 0.01,
-          "type:e5:password": 0,
-          "tap:e10": 0,
-          "tap:e2": 0
+          "tap:e7": 0,
+          "tap:e8": 0
         },
-        "goalMet": 0.07,
+        "goalMet": 0.06,
         "fills": {
           "e3": {
             "input": "email",
@@ -136,7 +136,7 @@
           }
         },
         "model": "jev-1.13.0",
-        "latencyMs": 114,
+        "latencyMs": 173,
         "usage": {
           "inputTokens": 1454,
           "outputTokens": 328
@@ -183,15 +183,15 @@
         "confidence": 0.99,
         "probabilities": {
           "tap:e6": 1,
-          "type:e4:password": 0,
           "STUCK": 0,
           "tap:e13": 0,
-          "type:e4:email": 0
+          "tap:e10": 0,
+          "type:e4:password": 0
         },
-        "goalMet": 0.08,
+        "goalMet": 0.11,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 100,
+        "latencyMs": 121,
         "usage": {
           "inputTokens": 1211,
           "outputTokens": 212
@@ -220,18 +220,18 @@
       "actionCount": 16,
       "decision": {
         "action": "STUCK",
-        "confidence": 0.41,
+        "confidence": 0.5,
         "probabilities": {
-          "STUCK": 0.45,
-          "tap:e6": 0.28,
-          "tap:e7": 0.2,
-          "tap:e9": 0.06,
+          "STUCK": 0.54,
+          "tap:e6": 0.26,
+          "tap:e7": 0.16,
+          "tap:e9": 0.03,
           "tap:e1": 0.01
         },
-        "goalMet": 0.17,
+        "goalMet": 0.22,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 195,
+        "latencyMs": 154,
         "usage": {
           "inputTokens": 1251,
           "outputTokens": 211

@@ -1,10 +1,10 @@
-import { actionOptions, fillKey, fillQuestion, GOAL_MET, inputOptions, NEXT_ACTION, stateOf } from './questions.ts'
+import { apiKey, postJson } from './http.ts'
+import { actionOptions, fillKey, fillQuestion, GOAL_MET, GOAL_MET_ANSWERS, inputOptions, NEXT_ACTION, stateOf } from './questions.ts'
 import type { Decision, DecisionProvider, DecisionRequest } from './types.ts'
 
 const DEFAULT_URL = 'https://api.openai.com/v1/decisions'
 /** The most questions one request may hold, as observed in the preview. */
 const MAX_QUESTIONS = 64
-const RETRYABLE = new Set([429, 500, 502, 503])
 
 export type OpenAIDecisionsOptions = {
   apiKey?: string
@@ -25,7 +25,8 @@ type DecisionsResponse = { model: string; answers: Answer[]; usage?: { input_tok
 /**
  * Asks OpenAI's Decisions API (GPT-6 Luna) for the next action, with the same
  * questions and wording as `JevProvider`, so the two can be compared on equal
- * terms. The API was in limited preview when this was written, without public
+ * terms. The one difference is the API's: the goal question is a predicate,
+ * which takes no descriptions of its answers, so they are part of its wording. The API was in limited preview when this was written, without public
  * documentation: the request follows calls recorded against it by an early
  * tester (choice questions with described choices, a predicate question, answers
  * in question order). Check it against OpenAI's reference once one exists.
@@ -41,9 +42,7 @@ export class OpenAIDecisionsProvider implements DecisionProvider {
   private readonly sleep: (ms: number) => Promise<void>
 
   constructor(options: OpenAIDecisionsOptions = {}) {
-    const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY
-    if (!apiKey) throw new Error('Set OPENAI_API_KEY to use the OpenAI Decisions provider')
-    this.apiKey = apiKey
+    this.apiKey = apiKey(options.apiKey ?? process.env.OPENAI_API_KEY, 'OPENAI_API_KEY', 'OpenAI Decisions')
     this.model = options.model ?? process.env.OPENAI_DECISIONS_MODEL ?? 'gpt-6-luna'
     this.url = options.url ?? process.env.OPENAI_DECISIONS_URL ?? DEFAULT_URL
     this.retries = options.retries ?? 3
@@ -61,6 +60,9 @@ export class OpenAIDecisionsProvider implements DecisionProvider {
     const started = performance.now()
     const response = await this.post(body)
     const latencyMs = Math.round(performance.now() - started)
+    if (!Array.isArray(response?.answers)) {
+      throw new Error(`OpenAI Decisions answered without an answers list (got ${Object.keys(response ?? {}).join(', ') || 'nothing'})`)
+    }
 
     // Answers come back in question order; a name, when present, is checked against it.
     const answerTo = (index: number): Answer | undefined => {
@@ -83,7 +85,7 @@ export class OpenAIDecisionsProvider implements DecisionProvider {
       }
     })
 
-    const probabilities = Object.fromEntries((next.probabilities ?? []).map((p) => [p.value, p.probability]))
+    const probabilities = Object.fromEntries(listed(next.probabilities).map((p) => [p.value, p.probability]))
     return {
       action: next.choice,
       confidence: next.confidence ?? probabilityOf(next, next.choice),
@@ -96,23 +98,17 @@ export class OpenAIDecisionsProvider implements DecisionProvider {
     }
   }
 
-  private async post(body: unknown): Promise<DecisionsResponse> {
-    for (let attempt = 0; ; attempt++) {
-      const res = await this.fetch(this.url, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(this.timeoutMs),
-      })
-      if (res.ok) return (await res.json()) as DecisionsResponse
-      if (RETRYABLE.has(res.status) && attempt < this.retries) {
-        await this.sleep(500 * 2 ** attempt)
-        continue
-      }
-      // The body explains validation errors; it never contains the key.
-      throw new Error(`OpenAI Decisions request failed with ${res.status}: ${await res.text()}`)
-    }
+  private post(body: unknown): Promise<DecisionsResponse> {
+    return postJson<DecisionsResponse>(this.url, body, {
+      apiKey: this.apiKey,
+      service: 'OpenAI Decisions',
+      retries: this.retries,
+      timeoutMs: this.timeoutMs,
+      fetch: this.fetch,
+      sleep: this.sleep,
+    })
   }
+
 }
 
 type Question =
@@ -124,8 +120,9 @@ export function buildDecisionsBody(request: DecisionRequest, model: string) {
   const inputs = choices(inputOptions(request))
   const questions: Question[] = [
     { type: 'choice', name: 'next_action', instructions: NEXT_ACTION, choices: choices(actionOptions(request)) },
-    { type: 'predicate', name: 'goal_met', instructions: GOAL_MET },
-    // Fields past the question limit are left for a later decision, one at a time.
+    // A predicate takes no descriptions of its answers, so Jev's go in its instructions.
+    { type: 'predicate', name: 'goal_met', instructions: `${GOAL_MET} Yes: ${GOAL_MET_ANSWERS.true} No: ${GOAL_MET_ANSWERS.false}` },
+    // Fields past the question limit (more than 62 empty fields on one screen) wait for a later decision.
     ...request.fields.slice(0, MAX_QUESTIONS - 2).map((field) => ({
       type: 'choice' as const,
       name: fillKey(field.key),
@@ -137,5 +134,9 @@ export function buildDecisionsBody(request: DecisionRequest, model: string) {
 }
 
 function probabilityOf(answer: Answer, value: string): number {
-  return answer.probabilities?.find((p) => p.value === value)?.probability ?? 0
+  return listed(answer.probabilities).find((p) => p.value === value)?.probability ?? 0
+}
+
+function listed(probabilities: Answer['probabilities']): Probability[] {
+  return Array.isArray(probabilities) ? probabilities : []
 }

@@ -1,12 +1,12 @@
 import { execFile } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseArgs, promisify } from 'node:util'
 import { remote } from 'webdriverio'
 import { generateSpec, safeId, specFileName } from './codegen.ts'
 import { loadCriterion } from './criteria.ts'
 import { simulatorDevice, webdriverDevice, type Device } from './device.ts'
-import { explore, type Outcome, type Step, type TakenAction, type Trace } from './explorer.ts'
+import { explore, type Outcome, type Replay, type Step, type TakenAction, type Trace } from './explorer.ts'
 import { JevProvider } from './providers/jev.ts'
 import { OpenAIDecisionsProvider } from './providers/openai.ts'
 import { redactor } from './redact.ts'
@@ -113,16 +113,19 @@ async function main(): Promise<number> {
   const server = serverAddress(values.server)
   const criteria: [string, Criterion][] = files.map((file) => [file, loadCriterion(file)])
   const app = resolve(values.app)
+  if (!existsSync(app)) throw new Error(`--app: nothing at ${app}`)
   const provider = values.provider === 'openai' ? new OpenAIDecisionsProvider() : new JevProvider()
   const baseCapabilities = capabilities(platform, app, values.device, values['platform-version'])
 
   const openSession = (address: ServerAddress, caps: WebdriverIO.Capabilities) => async (out: Out) => {
     const browser = await remote({ ...address, logLevel: 'warn', connectionRetryTimeout: 600_000, capabilities: caps })
+    let device: Device | undefined
     try {
-      const device = values.input === 'appium' || !browser.isIOS ? webdriverDevice(browser) : await directInput(browser, out)
+      device = values.input === 'appium' || !browser.isIOS ? webdriverDevice(browser) : await directInput(browser, out)
       out(`(input: ${device.input === 'simulator' ? 'direct to the simulator' : 'through Appium'})`)
       return { browser, device, appId: await currentApp(browser) }
     } catch (error) {
+      device?.close?.()
       await browser.deleteSession().catch(() => {})
       throw error
     }
@@ -131,7 +134,7 @@ async function main(): Promise<number> {
   const lanes: Lane[] = []
   const servers: AppiumServer[] = []
   const shutDown = async () => {
-    await Promise.all(lanes.map((lane) => lane.drop()))
+    await Promise.all(lanes.map((lane) => lane.close()))
     for (const started of servers) started.stop()
   }
 
@@ -158,24 +161,23 @@ async function main(): Promise<number> {
    */
   const parallelLanes = async (size: number): Promise<Lane[]> => {
     const base = await findSimulator(values.device ?? 'iPhone 17', values['platform-version'])
+    // The lanes launch the WebDriverAgent Appium already built: several xcodebuild runs building
+    // it at once get in each other's way.
+    const builtAgent = builtWebDriverAgent()
+    if (!builtAgent) {
+      throw new Error('Run jevvium once without --parallel first, so Appium builds WebDriverAgent for the simulators to share')
+    }
     mkdirSync(values.runs, { recursive: true })
     console.log(`Getting ${size} simulators ready (new ones are created and booted the first time)`)
     const [simulators, extra] = await Promise.all([
       simulatorSet(base, size),
       Promise.all(
-        Array.from({ length: size - 1 }, (_, i) =>
-          startAppium(join(values.runs, `appium-${i + 2}.log`)).then((started) => (servers.push(started), started)),
-        ),
+        Array.from({ length: size - 1 }, (_, i) => startAppium(join(values.runs, `appium-${i + 2}.log`), (spawned) => servers.push(spawned))),
       ),
     ])
-    const builtAgent = builtWebDriverAgent()
     return Promise.all(
       simulators.map(async (simulator, i) => {
         const installed = await hasWebDriverAgent(simulator.udid)
-        // Several xcodebuild runs building WebDriverAgent at once get in each other's way.
-        if (!installed && !builtAgent) {
-          throw new Error('Run jevvium once without --parallel first, so Appium builds WebDriverAgent for the simulators to share')
-        }
         const caps = {
           ...baseCapabilities,
           'appium:udid': simulator.udid,
@@ -192,21 +194,26 @@ async function main(): Promise<number> {
   }
 
   /** Explores one criterion on a lane, replays a pass and writes the results. */
-  const runOne = async (lane: Lane, file: string, criterion: Criterion, out: Out): Promise<Result> => {
-    out(`\n${parallel > 1 ? `[${lane.name}] ` : ''}${criterion.id}: ${criterion.goal}`)
+  const runOne = async (lane: Lane, criterion: Criterion, out: Out): Promise<Result> => {
+    out(`\n${lanes.length > 1 ? `[${lane.name}] ` : ''}${criterion.id}: ${criterion.goal}`)
+    let session: Session
     try {
-      const session = await lane.ready(values['fresh-session'], out)
+      session = await lane.ready(values['fresh-session'], out)
+    } catch (error) {
+      if (stopping) return { outcome: 'interrupted' }
+      await lane.drop()
+      return { outcome: 'error', startFailed: firstLine(error) }
+    }
+    try {
       if (stopping) return { outcome: 'interrupted' }
       const trace = await explore(session.device, criterion, {
         provider,
         maxSteps,
         minConfidence,
         goalThreshold,
-        onStep: (step) => printStep(step, out),
+        onStep: (step) => printStep(step, out, goalThreshold),
       })
       if (stopping) return { outcome: 'interrupted' }
-      // Whatever broke may have taken the session with it; the next criterion starts a new one.
-      let broken = trace.outcome === 'error'
       if (trace.outcome === 'passed' && values.verify) {
         // Prove the test the way it will run: from a fresh start, with plain Appium commands.
         const started = Date.now()
@@ -216,17 +223,18 @@ async function main(): Promise<number> {
         } catch (error) {
           // Only the restart throws here. The run it follows is still written down.
           const reason = redactor(criterion.inputs)(`Could not restart the app for the replay: ${firstLine(error)}`)
-          trace.replay = { outcome: 'failed', reason, durationMs: Date.now() - started }
-          broken = true
+          trace.replay = { outcome: 'error', reason, durationMs: Date.now() - started }
         }
         if (stopping) return { outcome: 'interrupted' }
       }
+      // Whatever broke may have taken the session with it; the next criterion starts a new one.
+      const broken = trace.outcome === 'error' || trace.replay?.outcome === 'error'
       report(trace, criterion, out)
       if (broken) await lane.drop()
       return { outcome: trace.outcome, replay: trace.replay?.outcome }
     } catch (error) {
       if (stopping) return { outcome: 'interrupted' }
-      out(`  ERROR: ${firstLine(error)} (${file})`)
+      out(`  ERROR: ${firstLine(error)}`)
       await lane.drop()
       return { outcome: 'error' }
     }
@@ -246,9 +254,21 @@ async function main(): Promise<number> {
           // Side by side, each criterion's lines are printed together when it finishes.
           const lines: string[] = []
           const out: Out = lanes.length > 1 ? (line) => lines.push(line) : (line) => console.log(line)
-          results.push(await runOne(lane, ...next, out))
+          const [file, criterion] = next
+          const result = await runOne(lane, criterion, out)
+          if (result.startFailed !== undefined) {
+            // A lane that can't start a session hands its criteria to the lanes that can.
+            if (lanes.some((other) => other !== lane && other.working)) {
+              queue.unshift(next)
+              console.log(`\n[${lane.name}] could not start a session, so the other simulators take its criteria: ${result.startFailed}`)
+              break
+            }
+            out(`  ERROR: ${result.startFailed} (${file})`)
+          }
+          results.push(result)
           if (lines.length > 0 && !stopping) console.log(lines.join('\n'))
         }
+        lane.working = false
       }),
     )
   } finally {
@@ -268,29 +288,40 @@ async function main(): Promise<number> {
     writeFileSync(tracePath, `${JSON.stringify(trace, null, 2)}\n`)
 
     out(`  ${trace.outcome.toUpperCase()} in ${(trace.durationMs / 1000).toFixed(1)}s: ${trace.reason}`)
-    if (trace.replay) {
-      const { outcome, durationMs, reason } = trace.replay
-      const verdict = outcome === 'passed' ? 'passed' : `FAILED: ${reason}`
-      out(`  replayed with plain Appium in ${(durationMs / 1000).toFixed(1)}s: ${verdict}`)
+    const replayed = trace.replay
+    if (replayed?.outcome === 'error') out(`  the replay with plain Appium could not run: ${replayed.reason}`)
+    else if (replayed) {
+      const verdict = replayed.outcome === 'passed' ? 'passed' : `FAILED: ${replayed.reason}`
+      out(`  replayed with plain Appium in ${(replayed.durationMs / 1000).toFixed(1)}s: ${verdict}`)
     }
     out(`  trace: ${tracePath}`)
-    if (trace.outcome === 'passed') out(`  test:  ${writeSpec(trace, criterion, values.out)}`)
+    if (trace.outcome !== 'passed') return
+    try {
+      out(`  test:  ${writeSpec(trace, criterion, values.out)}`)
+    } catch (error) {
+      out(`  test:  not written: ${firstLine(error)}`)
+    }
   }
 }
 
 type Out = (line: string) => void
 type ServerAddress = ReturnType<typeof serverAddress>
-type Result = { outcome: Outcome | 'interrupted'; replay?: 'passed' | 'failed' }
+type Result = { outcome: Outcome | 'interrupted'; replay?: Replay['outcome']; startFailed?: string }
 
 function succeeded({ outcome, replay }: Result): boolean {
-  return outcome === 'passed' && replay !== 'failed'
+  return outcome === 'passed' && (replay === undefined || replay === 'passed')
 }
 
 /** "5 criteria in 21.4 s on 3 simulators: 3 passed, 1 failed its replay, 1 stuck" */
 function summary(results: Result[], durationMs: number, simulators: number): string {
   const counts = new Map<string, number>()
   for (const result of results) {
-    const label = result.outcome === 'passed' && result.replay === 'failed' ? 'failed its replay' : result.outcome
+    const label =
+      result.outcome !== 'passed' || result.replay === undefined || result.replay === 'passed'
+        ? result.outcome
+        : result.replay === 'failed'
+          ? 'failed its replay'
+          : 'could not be replayed'
     counts.set(label, (counts.get(label) ?? 0) + 1)
   }
   const where = simulators > 1 ? ` on ${simulators} simulators` : ''
@@ -301,22 +332,31 @@ function summary(results: Result[], durationMs: number, simulators: number): str
 /** One device and the Appium server that drives it. Its criteria run one after another. */
 class Lane {
   readonly name: string
+  /** False once it has taken its last criterion or can't start a session. */
+  working = true
   private readonly open: (out: Out) => Promise<Session>
   private session?: Session
   private opening?: Promise<Session>
+  private closed = false
 
   constructor(name: string, open: (out: Out) => Promise<Session>) {
     this.name = name
     this.open = open
   }
 
-  /** The session, with the app on its first screen: started, or restarted. */
+  /** The session, with the app on its first screen: restarted, or started when there is none. */
   async ready(fresh: boolean, out: Out): Promise<Session> {
     if (this.session && fresh) await this.drop()
     if (this.session) {
-      await restartApp(this.session)
-      return this.session
+      try {
+        await restartApp(this.session)
+        return this.session
+      } catch {
+        // The session may have died with its WebDriverAgent; a new one is started instead.
+        await this.drop()
+      }
     }
+    if (this.closed) throw new Error('The run is stopping')
     this.opening = this.open(out)
     try {
       this.session = await this.opening
@@ -324,6 +364,13 @@ class Lane {
       this.opening = undefined
     }
     return this.session
+  }
+
+  /** Ends the session for good: nothing new starts on this lane afterwards. */
+  async close(): Promise<void> {
+    this.closed = true
+    this.working = false
+    await this.drop()
   }
 
   /** Ends the session, or the one being started. */
@@ -431,6 +478,9 @@ function serverAddress(value: string) {
     throw new Error(`--server must be a URL like http://127.0.0.1:4723, not "${value}"`)
   }
   const protocol = url.protocol.replace(':', '')
+  if ((protocol !== 'http' && protocol !== 'https') || url.hostname === '') {
+    throw new Error(`--server must be a URL like http://127.0.0.1:4723, not "${value}"`)
+  }
   return {
     protocol,
     hostname: url.hostname,
@@ -454,9 +504,9 @@ function probability(flag: string, value: string): number {
 }
 
 /** One line per step: what it did, then the model's confidence and how long it took to answer. */
-function printStep(step: Step, out: Out): void {
+function printStep(step: Step, out: Out, goalThreshold: number): void {
   const { decision } = step
-  const reached = !step.taken?.length && decision.goalMet >= 0.5
+  const reached = !step.taken?.length && decision.goalMet >= goalThreshold
   const stats = `${reached ? `goal ${decision.goalMet.toFixed(2)}` : decision.confidence.toFixed(2)} · ${decision.latencyMs} ms`
   const lines = step.taken?.length
     ? step.taken.map(describeTaken)

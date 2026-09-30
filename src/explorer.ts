@@ -30,8 +30,12 @@ export type ExploreOptions = {
   onStep?: (step: Step) => void
 }
 
-/** How the generated steps did when replayed with plain Appium (see `replay`). */
-export type Replay = { outcome: 'passed' | 'failed'; reason: string; durationMs: number }
+/**
+ * How the generated steps did when replayed with plain Appium (see `replay`):
+ * `failed` when a step or expectation didn't hold, `error` when the replay couldn't
+ * run at all (the session or WebDriverAgent went away), which says nothing about the test.
+ */
+export type Replay = { outcome: 'passed' | 'failed' | 'error'; reason: string; durationMs: number }
 
 /** `error` means the run broke off (a device, helper or provider failure); `reason` says why. */
 export type Outcome = 'passed' | 'failed' | 'stuck' | 'escalated' | 'gave-up' | 'error'
@@ -91,6 +95,8 @@ const TOP_PROBABILITIES = 5
 /** When a run stops, the screen has already settled, so its checks don't need a long wait. */
 const STOP_CHECK_MS = 1_000
 const REPEAT_LIMIT = 3
+/** Covered elements the model may choose in a row, whichever they are, before the run stops. */
+const COVERED_LIMIT = 6
 const POLL_MS = 50
 /**
  * How long to wait for direct input to show on screen. It reaches the app a moment
@@ -154,6 +160,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
   const hidden = new Map<string, string>()
   // How often each element was chosen and found covered since the last action.
   const covered = new Map<string, number>()
+  let coveredSinceAction = 0
 
   /**
    * On iOS, a read without XCTest's `visible` is several times faster, so it is
@@ -210,12 +217,15 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     return now === (device.fingerprint ? fingerprintOf(source, platform) : source)
   }
 
-  /** Reads until the screen differs from `before`, or the effect wait passes. */
+  /**
+   * Reads until the screen differs from `before`, or the effect wait passes. What ticks
+   * on its own (a countdown, a clock, a progress value) isn't taken for the effect.
+   */
   const changedFrom = async (before: Read): Promise<Read> => {
     const deadline = Date.now() + EFFECT_WAIT_MS
-    const old = fingerprintOf(before.source, platform)
+    const old = withoutTicking(fingerprintOf(before.source, platform))
     let current = await read()
-    while (fingerprintOf(current.source, platform) === old && Date.now() < deadline) {
+    while (withoutTicking(fingerprintOf(current.source, platform)) === old && Date.now() < deadline) {
       await sleep(POLL_MS)
       current = await read()
     }
@@ -256,7 +266,9 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
 
   try {
     // Idle connections close after a few seconds, so open one now, while the first screen is read.
-    void options.provider.warmUp?.()
+    void Promise.resolve()
+      .then(() => options.provider.warmUp?.())
+      .catch(() => {})
     let next = await read()
     for (let index = 1; index <= maxSteps + 1; index++) {
       const { read: settled, screen, actions, request, decision } = await observe(next)
@@ -269,9 +281,18 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
           return finish('passed', 'The model judged the goal reached. There are no expectations to confirm it.')
         }
         failedExpectations = await failing(device, criterion.expect, expectTimeoutMs)
-        return failedExpectations.length === 0
-          ? finish('passed', `Goal reached and all ${criterion.expect.length} expectations hold.`)
-          : finish('failed', `The model judged the goal reached, but ${failedExpectations.length} expectations do not hold.`)
+        if (failedExpectations.length === 0) {
+          return finish('passed', `Goal reached and all ${criterion.expect.length} expectations hold.`)
+        }
+        // A fast read can include text XCTest considers hidden (a view kept on screen but not
+        // shown), which can look like success. Before calling it a failure, the model judges a
+        // full read, with XCTest's own visibility, and carries on from there if it disagrees.
+        if (settled.geometric) {
+          failedExpectations = []
+          next = { source: await device.pageSource(), geometric: false }
+          continue
+        }
+        return finish('failed', `The model judged the goal reached, but ${failedExpectations.length} expectations do not hold.`)
       }
 
       /**
@@ -308,29 +329,34 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
       const action = actions.find((a) => a.key === decision.action)
       if (!action) throw new Error(`The provider picked "${decision.action}", which is not an option on this screen`)
 
+      // Positions can't show what covers an element, so XCTest confirms the one about to be
+      // used. If it's covered, it is left out and the model decides again on a fresh read.
+      if (settled.geometric && !(await visible(device, action))) {
+        const selector = toSelector(action.element.locator)
+        const times = (covered.get(selector) ?? 0) + 1
+        covered.set(selector, times)
+        coveredSinceAction++
+        // It came back as visible and was covered again: whatever covers it keeps coming back.
+        if (times >= REPEAT_LIMIT) {
+          return stop('stuck', `"${describeAction(action)}" was chosen ${times} times, but the element stays covered.`)
+        }
+        // Different covered elements, one after another (their names can change as they tick).
+        if (coveredSinceAction >= COVERED_LIMIT) {
+          return stop('stuck', `The model chose ${coveredSinceAction} covered elements in a row.`)
+        }
+        hidden.set(selector, fingerprintOf(settled.source, platform))
+        steps.pop()
+        discardedDecisions++
+        next = await read()
+        index--
+        continue
+      }
+
       // The same action on the same screen, again and again, means the app isn't responding to it.
       const loopKey = `${screen.texts.join('|')}#${action.key}`
       const seen = (repeats.get(loopKey) ?? 0) + 1
       repeats.set(loopKey, seen)
       if (seen >= REPEAT_LIMIT) return stop('stuck', `"${describeAction(action)}" was chosen ${seen} times on the same screen.`)
-
-      // Positions can't show what covers an element, so XCTest confirms the one about to be
-      // used. If it's covered, it is left out and the model decides again on the same screen.
-      if (settled.geometric && !(await visible(device, action))) {
-        const selector = toSelector(action.element.locator)
-        const times = (covered.get(selector) ?? 0) + 1
-        covered.set(selector, times)
-        // It came back as visible and was covered again: whatever covers it keeps coming back.
-        if (times >= REPEAT_LIMIT) {
-          return stop('stuck', `"${describeAction(action)}" was chosen ${times} times, but the element stays covered.`)
-        }
-        hidden.set(selector, fingerprintOf(settled.source, platform))
-        steps.pop()
-        discardedDecisions++
-        next = settled
-        index--
-        continue
-      }
 
       const batch = action.type === 'type' ? formFill(action, screen, actions, decision, fillConfidence) : [action]
       step.taken = []
@@ -355,6 +381,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
 
       hidden.clear()
       covered.clear()
+      coveredSinceAction = 0
       next = device.input === 'simulator' && step.taken.length > 0 ? await changedFrom(settled) : await read()
     }
     return finish('gave-up', `The goal was not reached within ${maxSteps} steps.`)
@@ -363,6 +390,15 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     const message = error instanceof Error ? error.message : String(error)
     return finish('error', redact(message.split('\n')[0]))
   }
+}
+
+/** The page source without the numbers that change on their own: in names, labels, text and progress values. */
+function withoutTicking(source: string): string {
+  return source
+    .replace(/ (?:name|label|text|content-desc)="[^"]*"/g, (attribute) => attribute.replace(/\d/g, '#'))
+    .replace(/<XCUIElementType(?:StaticText|ProgressIndicator)\b[^>]*/g, (tag) =>
+      tag.replace(/ value="[^"]*"/, (attribute) => attribute.replace(/\d/g, '#')),
+    )
 }
 
 /** XCTest's own verdict on whether an element is on screen and uncovered. Keyboard keys always are. */

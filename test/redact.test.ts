@@ -10,10 +10,16 @@ describe('redactor', () => {
   })
 
   it('matches a number the app shows in groups', () => {
-    const redact = redactor({ card: '4111111111111111', expiry: '1230' })
+    const redact = redactor({ card: '4111111111111111', expiry: '1230', phone: '555-123-4567' })
     assert.equal(redact('Card 4111 1111 1111 1111'), 'Card {card}')
     assert.equal(redact('Card 4111-1111-1111-1111'), 'Card {card}')
     assert.equal(redact('Expires 12/30'), 'Expires {expiry}')
+    assert.equal(redact('Code sent to (555) 123-4567'), 'Code sent to {phone}')
+    assert.equal(redact('Code sent to 5551234567'), 'Code sent to {phone}')
+  })
+
+  it('matches letters whose capitals are longer, such as ß', () => {
+    assert.equal(redactor({ street: 'Hauptstraße 5' })('Ship to HAUPTSTRASSE 5'), 'Ship to {street}')
   })
 
   it('replaces a short value only where it stands alone, and only in its exact case', () => {
@@ -58,6 +64,26 @@ describe('selector placeholders', () => {
     for (const [selector, inputs] of cases) assert.equal(placeholderSelector(selector, inputs), selector)
     const xpath = '//android.widget.TextView[@text="Signed in as qa.demo@example.com"]'
     assert.equal(placeholderSelector(xpath, { email: 'qa.demo@example.com' }), '//android.widget.TextView[@text="Signed in as {email}"]')
+  })
+
+  it('rebuild a value the app shows in capitals or with its digits grouped', () => {
+    const inputs = { email: 'qa.demo@example.com', phone: '5551234567' }
+    const cases: [string, string][] = [
+      ['~CONTINUE AS QA.DEMO@EXAMPLE.COM', '~CONTINUE AS {email|upper}'],
+      ['~Send the code to (555) 123-4567', '~Send the code to {phone|mask:(###) ###-####}'],
+    ]
+    for (const [selector, stored] of cases) {
+      assert.equal(placeholderSelector(selector, inputs), stored)
+      assert.equal(restoreSelector(stored, inputs), selector)
+    }
+    assert.throws(() => restoreSelector('~{phone|mask:(###) ###-####}', { phone: '12345' }), /no longer fits/)
+  })
+
+  it('never store a value in a form they cannot rebuild, and say so when asked to', () => {
+    const inputs = { name: 'jane tester' }
+    const stored = placeholderSelector('~Hello Jane Tester', inputs)
+    assert.equal(stored, '~Hello {name|?}')
+    assert.throws(() => restoreSelector(stored, inputs), /can't rebuild/)
   })
 
   it('keep braces the app itself shows', () => {

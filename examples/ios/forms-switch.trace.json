@@ -11,8 +11,8 @@
   "platform": "ios",
   "provider": "jev",
   "input": "simulator",
-  "startedAt": "2026-09-29T23:36:08.859Z",
-  "durationMs": 2586,
+  "startedAt": "2026-09-30T01:38:07.360Z",
+  "durationMs": 2656,
   "outcome": "passed",
   "reason": "Goal reached and all 1 expectations hold.",
   "steps": [
@@ -26,18 +26,18 @@
       "actionCount": 7,
       "decision": {
         "action": "tap:e4",
-        "confidence": 0.96,
+        "confidence": 0.97,
         "probabilities": {
           "tap:e4": 0.98,
           "STUCK": 0.02,
-          "tap:e1": 0,
           "tap:e2": 0,
-          "tap:e3": 0
+          "tap:e5": 0,
+          "tap:e1": 0
         },
-        "goalMet": 0.05,
+        "goalMet": 0.06,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 231,
+        "latencyMs": 178,
         "usage": {
           "inputTokens": 728,
           "outputTokens": 109
@@ -72,15 +72,15 @@
         "confidence": 0.99,
         "probabilities": {
           "tap:e2": 1,
-          "tap:e9": 0,
-          "tap:e8": 0,
-          "tap:e6": 0,
-          "STUCK": 0
+          "tap:e3": 0,
+          "tap:e4": 0,
+          "tap:e5": 0,
+          "tap:e6": 0
         },
         "goalMet": 0.04,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 113,
+        "latencyMs": 106,
         "usage": {
           "inputTokens": 896,
           "outputTokens": 148
@@ -112,18 +112,18 @@
       "actionCount": 11,
       "decision": {
         "action": "STUCK",
-        "confidence": 0.7,
+        "confidence": 0.64,
         "probabilities": {
-          "STUCK": 0.73,
-          "tap:e2": 0.22,
+          "STUCK": 0.68,
+          "tap:e2": 0.26,
           "tap:e4": 0.02,
           "tap:e9": 0.02,
           "tap:e6": 0.01
         },
-        "goalMet": 0.85,
+        "goalMet": 0.81,
         "fills": {},
         "model": "jev-1.13.0",
-        "latencyMs": 118,
+        "latencyMs": 99,
         "usage": {
           "inputTokens": 914,
           "outputTokens": 147
@@ -141,6 +141,6 @@
   "replay": {
     "outcome": "passed",
     "reason": "The generated steps pass with plain Appium.",
-    "durationMs": 2355
+    "durationMs": 2347
   }
 }

@@ -4,9 +4,11 @@
 //   npm run benchmark -- --providers jev,openai --repeat 3 [--suites demo,shop] [--parallel 4] [--out dir]
 //
 // A provider whose key isn't set is skipped. Every run costs requests to that provider.
+// A round is kept only when it finished and wrote a trace for every criterion, so an
+// interrupted or broken round runs again next time.
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { parseArgs } from 'node:util'
 import type { Trace } from '../src/explorer.ts'
 
@@ -18,7 +20,9 @@ const SUITES: Record<string, { app: string; criteria: string[]; maxSteps: number
   },
   shop: {
     app: 'apps/mydemo-ios/Payload/My Demo App.app',
-    criteria: readdirSync('criteria/mydemo-ios').map((file) => `criteria/mydemo-ios/${file}`),
+    criteria: readdirSync('criteria/mydemo-ios')
+      .filter((file) => /\.ya?ml$/.test(file))
+      .map((file) => `criteria/mydemo-ios/${file}`),
     maxSteps: 20,
   },
 }
@@ -34,7 +38,7 @@ const { values } = parseArgs({
     parallel: { type: 'string' },
     device: { type: 'string', default: 'iPhone 17' },
     'platform-version': { type: 'string' },
-    out: { type: 'string', default: `benchmarks/providers-${new Date().toISOString().slice(0, 10)}` },
+    out: { type: 'string', default: `benchmarks/providers-${localDate()}` },
   },
 })
 try {
@@ -43,40 +47,64 @@ try {
   // The keys may already be in the environment.
 }
 
+const suites = values.suites.split(',')
+for (const suite of suites) if (!SUITES[suite]) fail(`Unknown suite "${suite}" (known: ${Object.keys(SUITES).join(', ')})`)
+const repeat = Number(values.repeat)
+if (!Number.isInteger(repeat) || repeat < 1) fail(`--repeat must be a whole number of 1 or more, not "${values.repeat}"`)
 const providers = values.providers.split(',').filter((provider) => {
-  if (!KEYS[provider]) throw new Error(`Unknown provider "${provider}"`)
+  if (!KEYS[provider]) fail(`Unknown provider "${provider}" (known: ${Object.keys(KEYS).join(', ')})`)
   if (process.env[KEYS[provider]]) return true
   console.log(`Skipping ${provider}: ${KEYS[provider]} is not set`)
   return false
 })
-const repeat = Number(values.repeat)
-
-for (const provider of providers) {
-  for (let round = 1; round <= repeat; round++) {
-    for (const suite of values.suites.split(',')) {
-      const { app, criteria, maxSteps } = SUITES[suite]
-      const runs = join(values.out, provider, `${suite}-${round}`)
-      if (existsSync(runs)) continue // already run; delete the folder to run it again
-      mkdirSync(runs, { recursive: true })
-      console.log(`\n${provider}, ${suite}, round ${round}`)
-      spawnSync(
-        'npx',
-        [
-          'tsx', 'src/cli.ts', 'explore', ...criteria, '--platform', 'ios', '--app', app, '--provider', provider,
-          '--max-steps', String(maxSteps), '--no-verify', '--device', values.device, '--runs', runs, '--out', join(runs, 'generated'),
-          ...(values['platform-version'] ? ['--platform-version', values['platform-version']] : []),
-          ...(values.parallel ? ['--parallel', values.parallel] : []),
-        ],
-        { stdio: 'inherit' },
-      )
-    }
-  }
+if (providers.length === 0) {
+  console.log('Nothing to run: no provider has its key set.')
+  process.exit(1)
 }
 
-const report = ['| | ' + providers.join(' | ') + ' |', '| --- |' + providers.map(() => ' --- |').join('')]
+const rounds = providers.flatMap((provider) =>
+  Array.from({ length: repeat }, (_, i) => suites.map((suite) => ({ provider, suite, round: i + 1 }))).flat(),
+)
+const folder = ({ provider, suite, round }: (typeof rounds)[number]) => join(values.out, provider, `${suite}-${round}`)
+const incomplete: string[] = []
+
+for (const entry of rounds) {
+  const done = folder(entry)
+  if (existsSync(done)) continue
+  const { app, criteria, maxSteps } = SUITES[entry.suite]
+  // A round runs in a staging folder and moves into place only once it is complete.
+  const staging = join(values.out, '.incomplete', entry.provider, `${entry.suite}-${entry.round}`)
+  rmSync(staging, { recursive: true, force: true })
+  mkdirSync(staging, { recursive: true })
+  console.log(`\n${entry.provider}, ${entry.suite}, round ${entry.round}`)
+  const child = spawnSync(
+    'npx',
+    [
+      'tsx', 'src/cli.ts', 'explore', ...criteria, '--platform', 'ios', '--app', app, '--provider', entry.provider,
+      '--max-steps', String(maxSteps), '--no-verify', '--device', values.device, '--runs', staging, '--out', join(staging, 'generated'),
+      ...(values['platform-version'] ? ['--platform-version', values['platform-version']] : []),
+      ...(values.parallel ? ['--parallel', values.parallel] : []),
+    ],
+    { stdio: 'inherit' },
+  )
+  // Exit 1 only means some criterion didn't pass; a signal, exit 2 or a missing trace means the round broke.
+  const finished = child.signal === null && (child.status === 0 || child.status === 1)
+  if (finished && tracesIn([staging]).length === criteria.length) {
+    mkdirSync(dirname(done), { recursive: true })
+    renameSync(staging, done)
+  } else {
+    rmSync(staging, { recursive: true, force: true })
+    incomplete.push(`${entry.provider} ${entry.suite} round ${entry.round}`)
+  }
+}
+rmSync(join(values.out, '.incomplete'), { recursive: true, force: true })
+
 const rows = new Map<string, string[]>()
+const add = (label: string, value: string) => rows.set(label, [...(rows.get(label) ?? []), value])
 for (const provider of providers) {
-  const traces = tracesIn(join(values.out, provider))
+  const all = tracesIn(rounds.filter((entry) => entry.provider === provider).map(folder))
+  // A run that broke (the device, the network, the provider refusing) says nothing about the model.
+  const traces = all.filter((trace) => trace.outcome !== 'error')
   const passed = traces.filter((trace) => trace.outcome === 'passed')
   const decisions = traces.flatMap((trace) => trace.steps.map((step) => step.decision))
   const latencies = decisions.map((decision) => decision.latencyMs).sort((a, b) => a - b)
@@ -84,29 +112,56 @@ for (const provider of providers) {
   const output = traces.reduce((sum, trace) => sum + trace.usage.outputTokens, 0)
   const requests = traces.reduce((sum, trace) => sum + trace.usage.requests, 0)
   const price = PRICES[provider]
-  // How well "goal reached" was judged in passing runs: 1 on the last step, 0 before it.
-  const judged = passed.flatMap((trace) => trace.steps.map((step, i) => [step.decision.goalMet, i === trace.steps.length - 1 ? 1 : 0]))
-  const add = (label: string, value: string) => rows.set(label, [...(rows.get(label) ?? []), value])
-  add('Runs passed', `${passed.length} of ${traces.length} (${percent(passed.length / traces.length)})`)
-  add('Decisions per passed run', average(passed.map((trace) => trace.steps.length)).toFixed(1))
-  add('Exploring time per passed run', `${(average(passed.map((trace) => trace.durationMs)) / 1000).toFixed(1)} s`)
-  add('Decision latency, median', `${quantile(latencies, 0.5)} ms`)
-  add('Decision latency, 90th percentile', `${quantile(latencies, 0.9)} ms`)
-  add('Input tokens per request', Math.round(input / requests).toLocaleString('en-US'))
-  add('Cost per 1,000 requests', price ? `$${(((input * price[0] + output * price[1]) / 1e6 / requests) * 1000).toFixed(3)}` : 'not published')
-  add('"Goal reached" Brier score (lower is better)', average(judged.map(([p, y]) => (p - y) ** 2)).toFixed(3))
+  // "Goal reached" against what the expectation checks found, in every run they ran in:
+  // true on the last screen of a pass, false everywhere else.
+  const checked = traces.filter((trace) => trace.outcome === 'passed' || trace.failedExpectations.length > 0)
+  const judged = checked.flatMap((trace) =>
+    trace.steps.map((step, i) => [step.decision.goalMet, trace.outcome === 'passed' && i === trace.steps.length - 1 ? 1 : 0]),
+  )
+  add('Runs passed', `${passed.length} of ${traces.length} (${show(passed.length / traces.length, (r) => `${Math.round(r * 100)}%`)})`)
+  add('Runs that broke (not counted)', String(all.length - traces.length))
+  add('Decisions kept per passed run', show(average(passed.map((trace) => trace.steps.length)), (n) => n.toFixed(1)))
+  add('Requests per passed run', show(average(passed.map((trace) => trace.usage.requests)), (n) => n.toFixed(1)))
+  add('Exploring time per passed run', show(average(passed.map((trace) => trace.durationMs)) / 1000, (s) => `${s.toFixed(1)} s`))
+  add('Decision latency, median', show(quantile(latencies, 0.5), (ms) => `${ms} ms`))
+  add('Decision latency, 90th percentile', show(quantile(latencies, 0.9), (ms) => `${ms} ms`))
+  add('Input tokens per request', show(input / requests, (n) => Math.round(n).toLocaleString('en-US')))
+  add('Cost per 1,000 requests', price ? show(((input * price[0] + output * price[1]) / 1e6 / requests) * 1000, (usd) => `$${usd.toFixed(3)}`) : 'not published')
+  add('"Goal reached" Brier score (lower is better)', show(average(judged.map(([p, y]) => (p - y) ** 2)), (n) => n.toFixed(3)))
 }
-for (const [label, cells] of rows) report.push(`| ${label} | ${cells.join(' | ')} |`)
-const table = report.join('\n')
-writeFileSync(join(values.out, 'results.md'), `${table}\n`)
-console.log(`\n${table}\n\nWritten to ${join(values.out, 'results.md')}`)
 
-function tracesIn(dir: string): Trace[] {
-  if (!existsSync(dir)) return []
-  return readdirSync(dir, { recursive: true })
-    .map(String)
-    .filter((file) => file.endsWith('.json') && !file.includes('generated'))
-    .map((file) => JSON.parse(readFileSync(join(dir, file), 'utf8')) as Trace)
+const table = [
+  `| | ${providers.join(' | ')} |`,
+  `| --- |${providers.map(() => ' --- |').join('')}`,
+  ...[...rows].map(([label, cells]) => `| ${label} | ${cells.join(' | ')} |`),
+].join('\n')
+const note = `Suites: ${suites.join(', ')}. Rounds: ${repeat}. Replays off.`
+mkdirSync(values.out, { recursive: true })
+writeFileSync(join(values.out, 'results.md'), `${note}\n\n${table}\n`)
+console.log(`\n${note}\n\n${table}\n\nWritten to ${join(values.out, 'results.md')}`)
+if (incomplete.length > 0) {
+  console.log(`\nThese rounds didn't finish and will run again next time: ${incomplete.join(', ')}`)
+  process.exitCode = 1
+}
+
+function fail(message: string): never {
+  console.error(`benchmark: ${message}`)
+  process.exit(2)
+}
+
+function tracesIn(dirs: string[]): Trace[] {
+  return dirs
+    .filter((dir) => existsSync(dir))
+    .flatMap((dir) =>
+      readdirSync(dir)
+        .filter((file) => file.endsWith('.json'))
+        .map((file) => JSON.parse(readFileSync(join(dir, file), 'utf8')) as Trace),
+    )
+}
+
+/** A number formatted, or "n/a" when there was nothing to measure. */
+function show(value: number, format: (value: number) => string): string {
+  return Number.isFinite(value) ? format(value) : 'n/a'
 }
 
 function average(numbers: number[]): number {
@@ -117,6 +172,7 @@ function quantile(sorted: number[], q: number): number {
   return sorted.length === 0 ? NaN : sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]
 }
 
-function percent(ratio: number): string {
-  return `${Math.round(ratio * 100)}%`
+function localDate(): string {
+  const now = new Date()
+  return [now.getFullYear(), now.getMonth() + 1, now.getDate()].map((n) => String(n).padStart(2, '0')).join('-')
 }

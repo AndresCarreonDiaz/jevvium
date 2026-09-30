@@ -299,8 +299,11 @@ describe('explore', () => {
   it('offers a covered element again once the screen changes', async () => {
     const app = new (class extends FakeApp {
       covered = true
+      async pageSource() {
+        return (await super.pageSource()) + (this.covered ? '' : '<!-- the toast is gone -->')
+      }
       async fingerprint() {
-        return fingerprintOf(await this.pageSource(), 'ios') + (this.covered ? '' : '<!-- the toast is gone -->')
+        return fingerprintOf(await this.pageSource(), 'ios')
       }
       async isVisible(locator: Locator) {
         if (toSelector(locator) !== '~Login' || !this.covered) return true
@@ -316,8 +319,9 @@ describe('explore', () => {
     const trace = await explore(app, criterion, { provider, settleTimeoutMs: 1_000 })
 
     assert.equal(trace.outcome, 'passed')
-    assert.ok(!provider.requests[1].actions.some((a) => a.description.includes('button "Login" (bottom')))
-    assert.ok(provider.requests[2].actions.some((a) => a.description.includes('button "Login" (bottom')))
+    assert.equal(trace.discardedDecisions, 1, 'only the decision that picked the covered tab')
+    // The screen had changed by the next read, and XCTest let the tab back in.
+    assert.ok(provider.requests[1].actions.some((a) => a.description.includes('button "Login" (bottom')))
   })
 
   it('waits for direct input to reach the app before reading the screen again', async () => {
@@ -332,6 +336,68 @@ describe('explore', () => {
     assert.equal(trace.outcome, 'passed')
     // Each decision saw the screen the previous action led to, so none was repeated or lost.
     assert.deepEqual(trace.steps.map((step) => step.taken?.[0].target ?? 'done'), ['Login', 'Email', 'Password', 'LOGIN', 'done'])
+  })
+
+  it('does not take a ticking countdown for the effect of a tap that has not landed yet', async () => {
+    const app = new (class extends FakeApp {
+      readonly input = 'simulator' as const
+      started = Date.now()
+      async pageSource() {
+        // A countdown on screen changes every 100 ms, whatever the taps do.
+        const left = 60 - Math.floor((Date.now() - this.started) / 100)
+        return (await super.pageSource()).replace(/"Support"/g, `"Resend in ${left}s"`)
+      }
+      async tap(element: ScreenElement) {
+        setTimeout(() => void super.tap(element), 300)
+      }
+    })()
+    const provider = new ScriptedProvider(happyPath)
+    const trace = await explore(app, criterion, { ...options, provider })
+    assert.equal(trace.outcome, 'passed')
+    assert.deepEqual(trace.steps.map((step) => step.taken?.[0].target ?? 'done'), ['Login', 'Email', 'Password', 'LOGIN', 'done'])
+  })
+
+  it('stops when the model keeps choosing covered elements whose names keep changing', async () => {
+    const app = new (class extends FakeApp {
+      ticks = 0
+      async pageSource() {
+        // "Login" carries a live value in its name, so each read shows a new element.
+        return (await super.pageSource()).replace(/"Login"/g, `"Login ${this.ticks++}%"`)
+      }
+      async fingerprint() {
+        return fingerprintOf(await this.pageSource(), 'ios')
+      }
+      async isVisible(locator: Locator) {
+        return !toSelector(locator).includes('Login ')
+      }
+    })()
+    const provider = new ScriptedProvider((request) => ({ action: request.actions.find((a) => a.description.includes('"Login '))?.key ?? STUCK }))
+    const trace = await explore(app, criterion, { provider, settleTimeoutMs: 0 })
+    assert.equal(trace.outcome, 'stuck')
+    assert.match(trace.reason, /covered elements in a row/)
+    assert.ok(provider.requests.length <= 8, `${provider.requests.length} requests`)
+  })
+
+  it('judges a goal claimed on a fast read again on a full read before calling it a failure', async () => {
+    // The fast read shows a success text that a full read marks hidden.
+    const hiddenSuccess = fixture('ios-home').replace('</XCUIElementTypeApplication>', '<XCUIElementTypeStaticText type="XCUIElementTypeStaticText" label="You are logged in!" visible="false" x="20" y="300" width="200" height="20"/></XCUIElementTypeApplication>')
+    const app = new (class extends FakeApp {
+      async fingerprint() {
+        return fingerprintOf(await this.pageSource(), 'ios')
+      }
+      async pageSource() {
+        return this.screen === 'ios-home' ? hiddenSuccess : fixture(this.screen)
+      }
+    })()
+    const provider = new ScriptedProvider((request) =>
+      request.screenText.includes('You are logged in!') && request.history.length < 4 && !request.screenText.includes('LOGIN')
+        ? { action: STUCK, goalMet: request.screenText.includes('WEBDRIVER') ? 0.95 : 0.97 }
+        : happyPath(request),
+    )
+    const trace = await explore(app, criterion, { ...options, provider })
+    assert.equal(trace.outcome, 'passed')
+    assert.equal(trace.steps[0].taken, undefined, 'the claim on the fast read took no action')
+    assert.ok(!provider.requests[1].screenText.includes('You are logged in!'), 'the full read left the hidden text out')
   })
 
   it('stops instead of looping when the chosen element stays covered on a changing screen', async () => {
