@@ -16,5 +16,8 @@ The CLI's closing lines, with the wall clock including the sessions starting:
 | four-simulators-1 | 5 criteria in 21.7 s on 4 simulators: 4 passed, 1 stuck |
 | one-simulator-2 | 5 criteria in 49.8 s: 4 passed, 1 stuck |
 | four-simulators-2 | 5 criteria in 21.1 s on 4 simulators: 4 passed, 1 stuck |
+| four-simulators-video | 5 criteria in 22.0 s on 4 simulators: 4 passed, 1 stuck |
+
+`four-simulators-video` is the run in the demo GIF, recorded with the four simulators' screens being captured at the same time.
 
 The stuck criterion is the app's sorting bug (see the README). Each folder holds the traces of one run.

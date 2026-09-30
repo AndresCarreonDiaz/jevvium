@@ -4,6 +4,10 @@
 
 **Turn acceptance criteria into Appium tests.** You describe the behaviour a new feature should have. A decision model finds the path through the app, one tap at a time. jevvium writes that path down as a plain WebdriverIO test, with fixed selectors and real assertions, replays it once with plain Appium to prove it passes on its own, and hands it over to run in CI with no AI in the loop.
 
+![Four iOS Simulators explore five acceptance criteria of a shop app at once, while the terminal prints the run and a clock counts real seconds](docs/demo.gif)
+
+Five acceptance criteria of a real shop app, explored on four iOS Simulators at once in 22.0 s, played here at 2x. Four passed and became tests; the fifth stopped on a real bug in the app. The run's traces are in [`benchmarks/2026-09-29-parallel`](benchmarks/2026-09-29-parallel/four-simulators-video).
+
 ```yaml
 # criteria/login.yml
 goal: A registered user logs in with a valid email and password and is told they are logged in.
