@@ -106,6 +106,11 @@ export function laneSimulator(available: Simulator[], base: Simulator, lane: num
 
 /** Whether Appium's WebDriverAgent runner is already installed on the simulator. */
 export async function hasWebDriverAgent(udid: string): Promise<boolean> {
+  // Its folder is there whether or not the simulator is booted; simctl only answers for a booted one.
+  const bundles = join(homedir(), 'Library/Developer/CoreSimulator/Devices', udid, 'data/Containers/Bundle/Application')
+  if (existsSync(bundles) && readdirSync(bundles).some((dir) => existsSync(join(bundles, dir, 'WebDriverAgentRunner-Runner.app')))) {
+    return true
+  }
   return run('xcrun', ['simctl', 'get_app_container', udid, WDA_RUNNER]).then(
     () => true,
     () => false,

@@ -63,6 +63,8 @@ export type Step = {
   decision: Decision
   /** What this step did: one action, or several fields of a form. */
   taken?: TakenAction[]
+  /** Changes the device made to how it works during this step, such as falling back to Appium input. */
+  notes?: string[]
 }
 
 /**
@@ -359,6 +361,11 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
       const seen = (repeats.get(loopKey) ?? 0) + 1
       repeats.set(loopKey, seen)
       if (seen >= REPEAT_LIMIT) return stop('stuck', `"${describeAction(action)}" was chosen ${seen} times on the same screen.`)
+      // A direct tap that changed nothing may never have reached the app. The second try goes
+      // through Appium, and so does every tap after it: retrying sooner could tap twice.
+      if (seen === 2 && action.type === 'tap' && device.input === 'simulator') {
+        device.fallBackToAppium?.('a tap sent straight to the simulator changed nothing, so taps go through Appium from now on')
+      }
 
       const batch = action.type === 'type' ? formFill(action, screen, actions, decision, fillConfidence) : [action]
       step.taken = []
@@ -380,6 +387,8 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
         history.push(description)
       }
       step.atMs = Date.now() - started
+      const notes = device.drainNotes?.() ?? []
+      if (notes.length > 0) step.notes = notes
       options.onStep?.(step)
 
       hidden.clear()

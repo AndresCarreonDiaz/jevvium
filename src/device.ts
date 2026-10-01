@@ -29,6 +29,13 @@ export interface Device {
   isDisplayed(locator: Locator, timeoutMs: number): Promise<boolean>
   /** Whether the element is on screen and not covered, right now. */
   isVisible?(locator: Locator): Promise<boolean>
+  /**
+   * Sends taps through Appium from now on, for a device whose direct taps may not
+   * reach the app. `reason` becomes a note.
+   */
+  fallBackToAppium?(reason: string): void
+  /** What the device changed about how it works since the last call, for the trace. */
+  drainNotes?(): string[]
   close?(): void
 }
 
@@ -68,6 +75,8 @@ export function webdriverDevice(browser: Browser): Device {
 
 /** How long a tapped field may take to get keyboard focus before XCTest types into it instead. */
 const FOCUS_TIMEOUT_MS = 1_500
+/** How long typed keys may keep arriving before the field is read back. */
+const TYPED_SETTLE_MS = 1_000
 
 /**
  * Reads the screen through Appium, but taps and types straight into the iOS
@@ -91,7 +100,7 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
     throw error
   })
   const { width, height } = size
-  const directTyping = hid.keyboard !== 'none'
+  let directTyping = hid.keyboard !== 'none'
 
   // Taps and typing move things (an opening keyboard scrolls a form), so after any
   // input an element's position is looked up again rather than trusted.
@@ -127,25 +136,46 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
    * the field before. The element is compared by identity, not position, since
    * focusing a field often scrolls the form.
    */
-  const focused = async (element: ScreenElement): Promise<boolean> => {
+  const focused = async (element: ScreenElement): Promise<string | undefined> => {
     const deadline = Date.now() + FOCUS_TIMEOUT_MS
     const target = await browser.findElement(element.locator.using, element.locator.value).catch(() => undefined)
     const targetId = target && elementId(target)
-    if (!targetId) return false
+    if (!targetId) return undefined
     do {
       const active = await browser.getActiveElement().catch(() => undefined)
-      if (active && elementId(active) === targetId) return true
+      if (active && elementId(active) === targetId) return targetId
       await new Promise((resolve) => setTimeout(resolve, 50))
     } while (Date.now() < deadline)
-    return false
+    return undefined
   }
+  /** Whether the field shows what was typed (see `showsTyped`), read once the keys have stopped arriving. */
+  const typedCorrectly = async (fieldId: string, value: string): Promise<boolean> => {
+    const read = () => browser.getElementAttribute(fieldId, 'value').then((shown) => shown ?? '', () => undefined)
+    const deadline = Date.now() + TYPED_SETTLE_MS
+    let shown = await read()
+    for (;;) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      const again = await read()
+      if (again === shown || Date.now() >= deadline) break
+      shown = again
+    }
+    return shown === undefined || showsTyped(shown, value)
+  }
+  let directTaps = true
+  const notes: string[] = []
 
   return {
     ...appium,
-    input: 'simulator',
+    get input() {
+      return directTaps ? ('simulator' as const) : ('appium' as const)
+    },
     pageSource: () => afterRead(appium.pageSource),
     fingerprint: () => afterRead(appium.fingerprint!),
     tap: async (element) => {
+      if (!directTaps) {
+        movedSinceRead = true
+        return appium.tap(element)
+      }
       await tap(element)
     },
     type: async (element, value) => {
@@ -156,12 +186,36 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
       // Appium focused and typed it when the field had to be scrolled into view.
       if (!(await tap(element))) return appium.type(element, value)
       // A field that never reports focus (a custom input) is typed into through XCTest.
-      if (!(await focused(element))) return appium.type({ ...element, empty: false }, value)
+      const fieldId = await focused(element)
+      if (!fieldId) return appium.type({ ...element, empty: false }, value)
       if (!element.empty) await hid.clear()
       await hid.type(value)
+      // Keys can go missing on some simulators. Then XCTest types it, now and from here on.
+      if (!(await typedCorrectly(fieldId, value))) {
+        directTyping = false
+        notes.push('text typed straight into the simulator came out wrong, so typing goes through Appium from now on')
+        await appium.type({ ...element, empty: false }, value)
+      }
     },
+    fallBackToAppium: (reason) => {
+      if (!directTaps) return
+      directTaps = false
+      notes.push(reason)
+    },
+    drainNotes: () => notes.splice(0),
     close: () => hid.close(),
   }
+}
+
+/**
+ * Whether a field showing `shown` holds `value`. Formatting the app applies (spaces,
+ * dashes, capitals) doesn't count as a difference, and a secure field, which shows
+ * bullets, only has to have the right length.
+ */
+export function showsTyped(shown: string, value: string): boolean {
+  if (/^[•●]+$/.test(shown)) return shown.length === value.length
+  const plain = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+  return plain(shown) === plain(value)
 }
 
 /** The id in a WebDriver element reference, in its W3C or older form. */

@@ -344,6 +344,40 @@ describe('explore', () => {
     assert.deepEqual(trace.steps.map((step) => step.taken?.[0].target ?? 'done'), ['Login', 'Email', 'Password', 'LOGIN', 'done'])
   })
 
+  it('sends taps through Appium once a direct tap has changed nothing', async () => {
+    // Some simulators drop direct taps. The model picks the same tap again, and that one goes through Appium.
+    const app = new (class extends FakeApp {
+      direct = true
+      notes: string[] = []
+      get input() {
+        return this.direct ? ('simulator' as const) : ('appium' as const)
+      }
+      async tap(element: ScreenElement) {
+        if (!this.direct) await super.tap(element)
+      }
+      fallBackToAppium(reason: string) {
+        this.direct = false
+        this.notes.push(reason)
+      }
+      drainNotes() {
+        return this.notes.splice(0)
+      }
+    })()
+    const byScreen = (request: DecisionRequest) => {
+      if (request.screenText.includes('You are logged in!')) return { action: STUCK, goalMet: 0.97 }
+      if (!request.screenText.includes('Login / Sign up Form')) return { action: find(request, 'button "Login" (bottom') }
+      const done = request.history.join('\n')
+      if (!done.includes('"email"')) return { action: find(request, 'test data "email" into the field "Email"') }
+      if (!done.includes('"password"')) return { action: find(request, 'test data "password" into the field "Password"') }
+      return { action: find(request, '"LOGIN"') }
+    }
+    const trace = await explore(app, criterion, { ...options, provider: new ScriptedProvider(byScreen) })
+    assert.equal(trace.outcome, 'passed')
+    assert.deepEqual(trace.steps.map((step) => step.taken?.[0].target ?? 'done'), ['Login', 'Login', 'Email', 'Password', 'LOGIN', 'done'])
+    assert.equal(trace.steps[0].notes, undefined)
+    assert.match(trace.steps[1].notes?.[0] ?? '', /taps go through Appium from now on/)
+  })
+
   it('does not take a ticking countdown for the effect of a tap that has not landed yet', async () => {
     const app = new (class extends FakeApp {
       readonly input = 'simulator' as const

@@ -578,6 +578,7 @@ function printStep(step: Step, out: Out, goalThreshold: number): void {
     const prefix = i === 0 ? String(step.index).padStart(4) : '    '
     out(`${prefix}  ${i === 0 ? line.padEnd(40) + stats : line}`)
   })
+  for (const note of step.notes ?? []) out(`      (${note})`)
 }
 
 function describeTaken(taken: TakenAction): string {
