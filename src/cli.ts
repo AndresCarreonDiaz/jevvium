@@ -14,6 +14,7 @@ import type { DecisionProvider } from './providers/types.ts'
 import { OpenAIDecisionsProvider } from './providers/openai.ts'
 import { redactor } from './redact.ts'
 import { replay } from './replay.ts'
+import { stopReport } from './report.ts'
 import { isAppiumUp, startAppium, type AppiumServer } from './appium.ts'
 import { builtWebDriverAgent, defaultSimulator, findSimulator, hasWebDriverAgent, simulators, simulatorSet } from './simulators.ts'
 import { checkSimulatorBuild, platformOf } from './app.ts'
@@ -26,6 +27,7 @@ const USAGE = `jevvium: turn acceptance criteria into Appium tests
 Usage (npx jevvium in a project that installed it with npm i -D jevvium):
   jevvium explore <criteria.yml...> --app <path> [options]
   jevvium codegen <trace.json> --criteria <criteria.yml> [--out <dir>]
+  jevvium validate <criteria.yml...>      check criteria files without a device or a key
 
 Explore options:
   --app <path>               the app to test: an iOS Simulator build (.app, or an .ipa or .zip
@@ -106,6 +108,21 @@ async function main(): Promise<number> {
     const trace = JSON.parse(readFileSync(files[0], 'utf8')) as Trace
     console.log(writeSpec(trace, loadCriterion(values.criteria), values.out))
     return 0
+  }
+  if (command === 'validate') {
+    let invalid = 0
+    for (const file of files) {
+      try {
+        const criterion = loadCriterion(file)
+        const checks = criterion.expect.length
+        const warning = checks === 0 ? "; it has no expect checks, so it would pass on the model's word" : ''
+        console.log(`ok     ${file}: ${checks} ${checks === 1 ? 'check' : 'checks'}, ${Object.keys(criterion.inputs).length} inputs${warning}`)
+      } catch (error) {
+        invalid++
+        console.log(`error  ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+    return invalid === 0 ? 0 : 1
   }
   if (command !== 'explore') throw new Error(`Unknown command "${command}"`)
 
@@ -349,6 +366,7 @@ async function main(): Promise<number> {
       const verdict = replayed.outcome === 'passed' ? 'passed' : `FAILED: ${replayed.reason}`
       out(`  replayed with plain Appium in ${(replayed.durationMs / 1000).toFixed(1)}s: ${verdict}`)
     }
+    for (const line of stopReport(trace)) out(`  ${line}`)
     out(`  trace: ${tracePath}`)
     if (trace.outcome !== 'passed') return
     try {
