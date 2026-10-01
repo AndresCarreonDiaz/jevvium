@@ -1,6 +1,6 @@
 {
   "name": "jevvium",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Turn acceptance criteria into Appium tests. A decision model explores the app, then jevvium writes a plain, deterministic test from the path it found.",
   "keywords": [
     "appium",
