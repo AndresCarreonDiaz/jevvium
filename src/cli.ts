@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { execFile } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
 import { parseArgs, promisify } from 'node:util'
 import { remote } from 'webdriverio'
 import { generateSpec, safeId, specFileName } from './codegen.ts'
@@ -15,6 +17,7 @@ import { OpenAIDecisionsProvider } from './providers/openai.ts'
 import { redactor } from './redact.ts'
 import { replay } from './replay.ts'
 import { stopReport } from './report.ts'
+import type { TestSettings } from './wdio.conf.ts'
 import { isAppiumUp, startAppium, type AppiumServer } from './appium.ts'
 import { builtWebDriverAgent, defaultSimulator, findSimulator, hasWebDriverAgent, simulators, simulatorSet } from './simulators.ts'
 import { checkSimulatorBuild, platformOf } from './app.ts'
@@ -28,6 +31,8 @@ Usage (npx jevvium in a project that installed it with npm i -D jevvium):
   jevvium explore <criteria.yml...> --app <path> [options]
   jevvium codegen <trace.json> --criteria <criteria.yml> [--out <dir>]
   jevvium validate <criteria.yml...>      check criteria files without a device or a key
+  jevvium test [spec...] --app <path>     run the generated tests (default: every one in --out)
+  jevvium init                            write a starter criterion, a .env for the key, .gitignore entries
 
 Explore options:
   --app <path>               the app to test: an iOS Simulator build (.app, or an .ipa or .zip
@@ -97,7 +102,7 @@ async function main(): Promise<number> {
   })
   const [command, ...files] = positionals
 
-  if (values.help || !command || files.length === 0) {
+  if (values.help || !command || (files.length === 0 && command !== 'init' && command !== 'test')) {
     console.log(USAGE)
     return values.help ? 0 : 1
   }
@@ -124,7 +129,8 @@ async function main(): Promise<number> {
     }
     return invalid === 0 ? 0 : 1
   }
-  if (command !== 'explore') throw new Error(`Unknown command "${command}"`)
+  if (command === 'init') return init()
+  if (command !== 'explore' && command !== 'test') throw new Error(`Unknown command "${command}"`)
 
   // Everything is checked before an Appium session is started, since that can take minutes.
   if (values.app && values['bundle-id']) throw new Error('Use --app or --bundle-id, not both')
@@ -147,15 +153,13 @@ async function main(): Promise<number> {
   const parallel = values.parallel === undefined ? 1 : count('--parallel', values.parallel)
   if (parallel > 1 && platform !== 'ios') throw new Error('--parallel only runs on iOS Simulators for now')
   const userServer = values.server === undefined ? undefined : serverAddress(values.server)
-  const criteria: [string, Criterion][] = files.map((file) => [file, loadCriterion(file)])
+  const criteria: [string, Criterion][] = command === 'explore' ? files.map((file) => [file, loadCriterion(file)]) : []
   const simulator =
     platform !== 'ios'
       ? undefined
       : values.device
         ? await findSimulator(values.device, values['platform-version'])
         : defaultSimulator(await simulators(), values['platform-version'])
-  const provider: DecisionProvider =
-    values.provider === 'openai' ? new OpenAIDecisionsProvider() : values.provider === 'claude' ? new ClaudeProvider() : new JevProvider()
   const baseCapabilities = capabilities(
     platform,
     { app, bundleId: values['bundle-id'] },
@@ -163,6 +167,13 @@ async function main(): Promise<number> {
     simulator?.version ?? values['platform-version'],
     simulator?.udid,
   )
+  if (command === 'test') {
+    if (simulator) console.log(`Simulator: ${simulator.name}, iOS ${simulator.version}`)
+    const given = values.server === undefined || !userServer ? undefined : { url: values.server, address: userServer }
+    return runTests(files, values.out, platform, baseCapabilities, values.runs, given)
+  }
+  const provider: DecisionProvider =
+    values.provider === 'openai' ? new OpenAIDecisionsProvider() : values.provider === 'claude' ? new ClaudeProvider() : new JevProvider()
   // A missing or refused key shows up now, rather than after a session has started.
   await provider.check?.()
 
@@ -374,6 +385,114 @@ async function main(): Promise<number> {
     } catch (error) {
       out(`  test:  not written: ${firstLine(error)}`)
     }
+  }
+}
+
+/** A first criterion to edit, with what each part is for. */
+const STARTER = `# A jevvium criterion: what a user does, the test data they type, and what the screen
+# shows when it worked. jevvium explores your app to find the path, then writes it down
+# as a plain WebdriverIO test.
+#
+#   check it, without a device:  npx jevvium validate criteria/example.yml
+#   explore it:                  npx jevvium explore criteria/example.yml --app path/to/YourApp.app
+
+# Where the feature is and what the user does, written like an acceptance criterion.
+goal: On the Login screen, a registered user logs in with their email and password and is told they are logged in.
+
+# Test data the user types, by name. The model sees only the names, so name each for its
+# role (wrong_password, not password2). Use made-up data: the values end up in the test.
+inputs:
+  email: qa.demo@example.com
+  password: Str0ngPassw0rd
+
+# What must be true at the end, checked without any model: an accessibility \`id\`, or a
+# \`text\` that matches an element's whole text, capitals and punctuation included.
+expect:
+  - text: You are logged in!
+`
+
+/** Writes what a project needs to start: a criterion to edit, a .env for the key, and .gitignore entries. */
+function init(): number {
+  const created: string[] = []
+  const starter = join('criteria', 'example.yml')
+  if (!existsSync(starter)) {
+    mkdirSync('criteria', { recursive: true })
+    writeFileSync(starter, STARTER)
+    created.push(starter)
+  }
+  if (!existsSync('.env')) {
+    writeFileSync('.env', '# Your Jev key, from console.typesafe.ai\nTYPESAFE_API_KEY=\n')
+    created.push('.env')
+  }
+  // The key, run logs and failure screenshots can hold secrets or test data; the generated tests are meant to be committed.
+  const ignored = existsSync('.gitignore') ? readFileSync('.gitignore', 'utf8') : ''
+  const missing = ['.env', 'runs/', 'screenshots/'].filter((entry) => !ignored.split('\n').some((line) => line.trim() === entry))
+  if (missing.length > 0) {
+    const separator = ignored && !ignored.endsWith('\n') ? '\n' : ''
+    writeFileSync('.gitignore', `${ignored}${separator}${missing.join('\n')}\n`)
+    created.push(`.gitignore entries for ${missing.join(', ')}`)
+  }
+  console.log(created.length > 0 ? `Created ${created.join(', ')}.` : 'Nothing to create: the starter criterion, .env and .gitignore entries are there.')
+  console.log(`
+Next:
+  1. Put your Jev key in .env (TYPESAFE_API_KEY=..., from console.typesafe.ai).
+  2. Edit ${starter} to describe a flow in your app.
+  3. npx jevvium explore ${starter} --app path/to/YourApp.app
+  4. npx jevvium test --app path/to/YourApp.app`)
+  return 0
+}
+
+/** Runs generated tests with WebdriverIO, on jevvium's own Appium server unless --server names one. */
+async function runTests(
+  specArgs: string[],
+  outDir: string,
+  platform: Platform,
+  caps: WebdriverIO.Capabilities,
+  runsDir: string,
+  given: { url: string; address: ServerAddress } | undefined,
+): Promise<number> {
+  const specs =
+    specArgs.length > 0
+      ? specArgs.map((file) => resolve(file))
+      : existsSync(outDir)
+        ? readdirSync(outDir)
+            .filter((file) => file.endsWith(`.${platform}.spec.ts`))
+            .map((file) => resolve(outDir, file))
+        : []
+  if (specs.length === 0) {
+    throw new Error(`No generated ${platform} tests in ${outDir}. Explore a criterion first: jevvium explore <criteria.yml> --app <path>`)
+  }
+  for (const spec of specs) {
+    if (!existsSync(spec)) throw new Error(`No test at ${spec}`)
+    // Generated tests import @wdio/globals, which Node looks for from the test's own folder up.
+    try {
+      createRequire(spec).resolve('@wdio/globals')
+    } catch {
+      throw new Error(`${spec} can't find @wdio/globals. Install jevvium in the project the tests are in: npm i -D jevvium`)
+    }
+  }
+
+  let own: AppiumServer | undefined
+  let address: ServerAddress
+  if (given) {
+    if (!(await isAppiumUp(given.url))) throw new Error(`No Appium server answers at ${given.url}. Leave out --server and jevvium starts its own.`)
+    address = given.address
+  } else {
+    mkdirSync(runsDir, { recursive: true })
+    const log = join(runsDir, 'appium.log')
+    console.log(`Starting Appium (log: ${log})`)
+    own = await startAppium(log)
+    address = { protocol: 'http', hostname: '127.0.0.1', port: own.port, path: '/' }
+  }
+  try {
+    const settings: TestSettings = { specs, ...address, capabilities: caps, screenshots: resolve('screenshots') }
+    process.env.JEVVIUM_WDIO = JSON.stringify(settings)
+    const { Launcher } = await import('@wdio/cli')
+    // The config sits next to this file: wdio.conf.ts when run from source, wdio.conf.js once built.
+    const config = fileURLToPath(new URL(import.meta.url.endsWith('.ts') ? './wdio.conf.ts' : './wdio.conf.js', import.meta.url))
+    return (await new Launcher(config).run()) ?? 1
+  } finally {
+    own?.stop()
   }
 }
 
