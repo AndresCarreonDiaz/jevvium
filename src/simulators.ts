@@ -52,6 +52,24 @@ export function pickSimulator(available: Simulator[], name: string, version?: st
 }
 
 /**
+ * The simulator to use when none is named: on the given iOS version, or else on the
+ * newest runtime, the plain "iPhone N" with the highest N, or else any iPhone.
+ */
+export function defaultSimulator(available: Simulator[], version?: string): Simulator {
+  const iPhones = available.filter(
+    (sim) => sim.name.startsWith('iPhone') && (!version || sim.version === version || sim.version.startsWith(`${version}.`)),
+  )
+  if (iPhones.length === 0) {
+    throw new Error(
+      `No iPhone simulator${version ? ` on iOS ${version}` : ''}. Add one in Xcode (Window > Devices and Simulators), ` +
+        'or name one with --device (see xcrun simctl list devices available).',
+    )
+  }
+  const model = (sim: Simulator) => Number(/^iPhone (\d+)$/.exec(sim.name)?.[1] ?? -1)
+  return [...iPhones].sort((a, b) => compareVersions(b.version, a.version) || model(b) - model(a))[0]
+}
+
+/**
  * Simulators to run criteria side by side: `base`, then ones named like
  * "jevvium 2 (iPhone 17)", of the same model and iOS version, created the first
  * time and kept for later runs. Each is booted, which takes a while only the first time.

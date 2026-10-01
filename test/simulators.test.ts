@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { laneName, laneSimulator, parseSimulators, pickSimulator, type Simulator } from '../src/simulators.ts'
+import { defaultSimulator, laneName, laneSimulator, parseSimulators, pickSimulator, type Simulator } from '../src/simulators.ts'
 
 const listing = JSON.stringify({
   devices: {
@@ -41,5 +41,21 @@ describe('simulators', () => {
     assert.equal(pickSimulator(available, 'iPhone 17', '26.5').udid, 'A')
     assert.equal(pickSimulator(available, 'iPhone 17').udid, 'C')
     assert.throws(() => pickSimulator(available, 'iPhone 17 Pro'), /No available simulator named "iPhone 17 Pro"/)
+  })
+
+  it('defaults to the plain iPhone with the highest number on the newest runtime, or on the version asked for', () => {
+    const sim = (udid: string, name: string, version: string): Simulator => ({ udid, name, runtime: `iOS-${version}`, version, deviceType: name })
+    const available = [
+      sim('A', 'iPhone 17', '26.5'),
+      sim('B', 'iPhone 16e', '27.0'),
+      sim('C', 'iPhone 17 Pro', '27.0'),
+      sim('D', 'iPhone 18', '27.0'),
+      sim('E', 'jevvium 2 (iPhone 17)', '27.0'),
+      sim('F', 'iPad Pro', '27.0'),
+    ]
+    assert.equal(defaultSimulator(available).udid, 'D')
+    assert.equal(defaultSimulator(available, '26.5').udid, 'A')
+    assert.equal(defaultSimulator([sim('C', 'iPhone 17 Pro', '27.0')]).udid, 'C')
+    assert.throws(() => defaultSimulator(available, '25.0'), /No iPhone simulator on iOS 25.0/)
   })
 })

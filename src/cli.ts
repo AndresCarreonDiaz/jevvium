@@ -15,7 +15,8 @@ import { OpenAIDecisionsProvider } from './providers/openai.ts'
 import { redactor } from './redact.ts'
 import { replay } from './replay.ts'
 import { isAppiumUp, startAppium, type AppiumServer } from './appium.ts'
-import { builtWebDriverAgent, findSimulator, hasWebDriverAgent, simulatorSet } from './simulators.ts'
+import { builtWebDriverAgent, defaultSimulator, findSimulator, hasWebDriverAgent, simulators, simulatorSet } from './simulators.ts'
+import { checkSimulatorBuild, platformOf } from './app.ts'
 import type { Criterion, Platform } from './types.ts'
 
 const run = promisify(execFile)
@@ -23,12 +24,14 @@ const run = promisify(execFile)
 const USAGE = `jevvium: turn acceptance criteria into Appium tests
 
 Usage (npx jevvium in a project that installed it with npm i -D jevvium):
-  jevvium explore <criteria.yml...> --platform <android|ios> --app <path> [options]
+  jevvium explore <criteria.yml...> --app <path> [options]
   jevvium codegen <trace.json> --criteria <criteria.yml> [--out <dir>]
 
 Explore options:
-  --platform <name>          android or ios (required)
-  --app <path>               .apk or .app to install (required)
+  --app <path>               the app to test: an iOS Simulator build (.app, or an .ipa or .zip
+                             holding one) or an Android .apk (required)
+  --bundle-id <id>           instead of --app: an iOS app already installed on the simulator
+  --platform <name>          android or ios (default: from the app)
   --device <name>            device name (default: "Android Emulator" or "iPhone 17")
   --platform-version <ver>   OS version of the emulator or simulator (default: Appium picks)
   --server <url>             an Appium server to use (default: jevvium starts its own)
@@ -71,6 +74,7 @@ async function main(): Promise<number> {
     options: {
       platform: { type: 'string' },
       app: { type: 'string' },
+      'bundle-id': { type: 'string' },
       device: { type: 'string' },
       'platform-version': { type: 'string' },
       server: { type: 'string' },
@@ -106,9 +110,18 @@ async function main(): Promise<number> {
   if (command !== 'explore') throw new Error(`Unknown command "${command}"`)
 
   // Everything is checked before an Appium session is started, since that can take minutes.
-  const platform = values.platform
-  if (platform !== 'android' && platform !== 'ios') throw new Error('--platform must be android or ios')
-  if (!values.app) throw new Error('--app is required')
+  if (values.app && values['bundle-id']) throw new Error('Use --app or --bundle-id, not both')
+  if (!values.app && !values['bundle-id']) {
+    throw new Error('--app <path> is required: the app to test (or --bundle-id <id> for an iOS app already installed on the simulator)')
+  }
+  const app = values.app === undefined ? undefined : resolve(values.app)
+  if (app && !existsSync(app)) throw new Error(`--app: nothing at ${app}`)
+  const platform = values.platform?.toLowerCase() ?? (app ? platformOf(app) : 'ios')
+  if (platform !== 'android' && platform !== 'ios') {
+    throw new Error(values.platform ? '--platform must be android or ios' : `Can't tell the platform from ${values.app}; add --platform ios or --platform android`)
+  }
+  if (values['bundle-id'] && platform !== 'ios') throw new Error('--bundle-id is for iOS apps; for Android, pass the .apk with --app')
+  if (app && platform === 'ios') await checkSimulatorBuild(app)
   if (values.input !== 'auto' && values.input !== 'appium') throw new Error('--input must be auto or appium')
   if (!['jev', 'openai', 'claude'].includes(values.provider)) throw new Error('--provider must be jev, openai or claude')
   const maxSteps = count('--max-steps', values['max-steps'])
@@ -118,15 +131,30 @@ async function main(): Promise<number> {
   if (parallel > 1 && platform !== 'ios') throw new Error('--parallel only runs on iOS Simulators for now')
   const userServer = values.server === undefined ? undefined : serverAddress(values.server)
   const criteria: [string, Criterion][] = files.map((file) => [file, loadCriterion(file)])
-  const app = resolve(values.app)
-  if (!existsSync(app)) throw new Error(`--app: nothing at ${app}`)
+  const simulator =
+    platform !== 'ios'
+      ? undefined
+      : values.device
+        ? await findSimulator(values.device, values['platform-version'])
+        : defaultSimulator(await simulators(), values['platform-version'])
   const provider: DecisionProvider =
     values.provider === 'openai' ? new OpenAIDecisionsProvider() : values.provider === 'claude' ? new ClaudeProvider() : new JevProvider()
-  const baseCapabilities = capabilities(platform, app, values.device, values['platform-version'])
+  const baseCapabilities = capabilities(
+    platform,
+    { app, bundleId: values['bundle-id'] },
+    simulator?.name ?? values.device,
+    simulator?.version ?? values['platform-version'],
+    simulator?.udid,
+  )
   // A missing or refused key shows up now, rather than after a session has started.
   await provider.check?.()
 
   const openSession = (address: ServerAddress, caps: WebdriverIO.Capabilities) => async (out: Out) => {
+    const settings = caps as Record<string, unknown>
+    const udid = settings['appium:udid']
+    if (typeof udid === 'string' && !settings['appium:prebuiltWDAPath'] && !(await hasWebDriverAgent(udid))) {
+      out('(first session on this simulator: Appium builds WebDriverAgent with Xcode, which takes a few minutes, once)')
+    }
     // WebdriverIO's own warnings are about requests it retried; jevvium reports what fails.
     const browser = await remote({ ...address, logLevel: 'error', connectionRetryTimeout: 600_000, capabilities: caps })
     let device: Device | undefined
@@ -185,7 +213,7 @@ async function main(): Promise<number> {
    * since one server starts one session at a time. The first uses the run's own server.
    */
   const parallelLanes = async (size: number): Promise<Lane[]> => {
-    const base = await findSimulator(values.device ?? 'iPhone 17', values['platform-version'])
+    const base = simulator!
     // The lanes launch the WebDriverAgent Appium already built: several xcodebuild runs building
     // it at once get in each other's way.
     const builtAgent = builtWebDriverAgent()
@@ -271,6 +299,7 @@ async function main(): Promise<number> {
   const results: Result[] = []
   try {
     const size = Math.min(parallel, criteria.length)
+    if (simulator) console.log(`Simulator: ${simulator.name}, iOS ${simulator.version}`)
     server = await appiumServer()
     lanes.push(...(size > 1 ? await parallelLanes(size) : [new Lane('', openSession(server, baseCapabilities))]))
     const queue = [...criteria]
@@ -472,9 +501,16 @@ function writeSpec(trace: Trace, criterion: Criterion, outDir: string): string {
   return path
 }
 
-function capabilities(platform: Platform, app: string, device?: string, version?: string): WebdriverIO.Capabilities {
+function capabilities(
+  platform: Platform,
+  target: { app?: string; bundleId?: string },
+  device?: string,
+  version?: string,
+  udid?: string,
+): WebdriverIO.Capabilities {
   const shared = {
-    'appium:app': app,
+    ...(target.app && { 'appium:app': target.app }),
+    ...(target.bundleId && { 'appium:bundleId': target.bundleId }),
     'appium:newCommandTimeout': 240,
     ...(version && { 'appium:platformVersion': version }),
   }
@@ -489,6 +525,7 @@ function capabilities(platform: Platform, app: string, device?: string, version?
         platformName: 'iOS',
         'appium:automationName': 'XCUITest',
         'appium:deviceName': device ?? 'iPhone 17',
+        ...(udid && { 'appium:udid': udid }),
         'appium:wdaLaunchTimeout': 240_000,
         // jevvium never reads the simulator's system log, and capturing it slows the session down.
         'appium:skipLogCapture': true,
