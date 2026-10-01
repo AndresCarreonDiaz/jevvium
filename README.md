@@ -19,7 +19,9 @@ expect:
 ```
 
 ```
-$ npm run jevvium -- explore criteria/login.yml --platform ios --app apps/wdiodemoapp.app
+$ npx jevvium explore criteria/login.yml --app apps/wdiodemoapp.app
+Simulator: iPhone 17, iOS 26.5
+Starting Appium (log: runs/appium.log)
 
 login: A registered user logs in with a valid email and password and is told they are logged in.
 (input: direct to the simulator)
@@ -94,7 +96,7 @@ Two of these found real problems in the app:
 - **Sorting by price.** After "Price - Ascending", the cheapest product is not at the top. The app compares prices as text, so $7.99 sorts after $49.99. The model can't see prices (they are all labelled "Product Price"), so it was unsure the goal was reached; the `expect` check is what caught it: "1 of 1 expectations do not hold."
 - **The on-screen keyboard.** jevvium's simulator input types like a hardware keyboard, so during exploration the on-screen keyboard never appears and both form flows pass. The replay types through XCTest, which raises the on-screen keyboard, and this app never closes it: it covers "To Payment", and nothing on the screen scrolls or dismisses it. On a phone without a hardware keyboard, "To Payment" would stay hidden behind the keyboard. The replay check reports this instead of handing over a test that can't pass, and the generated spec starts with a warning saying so.
 
-To run them: `npm run apps:mydemo` downloads the app from Sauce Labs' release (it isn't redistributed here; its build includes Sauce's beta-testing SDK, which may send session data to Sauce Labs, so the criteria use made-up data only), then `npm run jevvium -- explore criteria/mydemo-ios/*.yml --platform ios --app "apps/mydemo-ios/Payload/My Demo App.app" --max-steps 20`.
+To run them: `npm run apps:mydemo` downloads the app from Sauce Labs' release (it isn't redistributed here; its build includes Sauce's beta-testing SDK, which may send session data to Sauce Labs, so the criteria use made-up data only), then `npm run jevvium -- explore criteria/mydemo-ios/*.yml --app "apps/mydemo-ios/Payload/My Demo App.app" --max-steps 20`.
 
 ## Speed
 
@@ -144,7 +146,7 @@ What to know about it:
 - It types US keyboard key codes. On a simulator whose hardware keyboard layout isn't US, other characters come out; use `--input appium` there.
 - It tells the simulator a hardware keyboard is connected, like the Simulator app's Connect Hardware Keyboard option, and types like one, so the on-screen keyboard stays out of the way while exploring, on every simulator alike. The generated tests type through XCTest, which does raise it. The replay check catches an app where that difference matters (see the shop app above).
 - Its touches and key presses reach the app a moment after they are sent, later on a busy machine, and on separate channels. So before typing into a field, jevvium waits until XCTest reports that field has keyboard focus (about 50 ms), and after each action it waits up to 1 s for the screen to change before reading it again, not counting numbers that tick on their own, such as a countdown. An action that changes nothing costs that second.
-- Twice, after a long day of experiments, a simulator stopped reacting to the helper's touches while still accepting them; rebooting it fixed that (`xcrun simctl shutdown <udid>`, then boot it again).
+- Its input doesn't always arrive. On the iOS 27.0 simulator, the first tap of a session has been lost in every run so far, and twice, after a long day of experiments, an iOS 26.5 simulator stopped reacting to its touches until it was rebooted. So jevvium checks: when the model picks the same tap again on a screen that didn't change, that tap and every later one go through Appium, and typed text is read back and typed again through XCTest if it came out wrong. Each switch is noted under its step.
 - Appium still does the input where the helper can't do it safely: an element that has moved off screen or under the keyboard (XCTest scrolls it into view), text that isn't plain ASCII, and typing when the simulator's keyboard service didn't answer.
 - On a real device, or when the helper can't be built or can't connect, jevvium uses Appium for all input and says so. `--input appium` turns the helper off.
 
@@ -161,42 +163,61 @@ What to know about it:
 | The screen is still loading | Waits until the page source stops changing and no spinner is on screen, and after direct input, until the screen has changed |
 | A fast read misses what covers an element | XCTest confirms each element right before it is used. A covered one is left out until the screen changes, and the model decides again. The run stops after 6 covered choices in a row |
 | Keys land in the wrong field | Direct typing starts only once XCTest reports the tapped field has keyboard focus; otherwise XCTest types it |
+| Direct input doesn't reach the app | Typed text is read back and typed again through XCTest if it is wrong. A tap the model has to pick twice on an unchanged screen goes through Appium, and so do the ones after it |
 | Test data leaks | Test data values are replaced with `{name}` in what is sent to the model and what traces store (details under "What gets sent to the decision model") |
 
 ## Quick start
 
-Requirements: macOS with Xcode and an iOS simulator, and Node 22.13 or later (or 24). Android is experimental: its parser is unit-tested on a hand-written page source and it hasn't run on an emulator yet.
+You need macOS with Xcode and an iOS simulator, Node 22.13 or later (or 24), and a Jev key (see [Getting a key](#getting-a-key)). In the project your tests live in:
 
 ```bash
-npm ci
-npm run apps                   # downloads the pinned WebdriverIO demo app builds
-cp .env.example .env           # then add your TYPESAFE_API_KEY
-npx appium                     # in another terminal, from the jevvium folder
+npm i -D jevvium
+npx jevvium init        # a starter criterion, a .env for the key, .gitignore entries
+# put your key in .env, and describe a flow of your app in criteria/example.yml
+npx jevvium explore criteria/example.yml --app path/to/YourApp.app
+npx jevvium test --app path/to/YourApp.app
 ```
 
-Appium's drivers are project dependencies, so start it from the jevvium folder. The first iOS session builds WebDriverAgent, which can take several minutes; progress shows in the Appium terminal.
+`explore` writes each passing test to `generated/`, and `test` runs them with WebdriverIO. Both start their own Appium server, so there is nothing else to run. The first session on a simulator builds WebDriverAgent with Xcode, which takes a few minutes, once. Android is experimental: its parser is unit-tested on a hand-written page source and it hasn't run on an emulator yet.
 
-Explore a criterion and generate its test:
+| Command | What it does |
+| --- | --- |
+| `jevvium init` | Writes `criteria/example.yml`, a `.env` for the key and `.gitignore` entries |
+| `jevvium validate <criteria...>` | Checks criteria files, without a device or a key |
+| `jevvium explore <criteria...> --app <path>` | Explores each criterion, replays the path with plain Appium, and writes its test |
+| `jevvium test [specs...] --app <path>` | Runs the generated tests (default: every one in `generated/`) |
+| `jevvium codegen <trace> --criteria <file>` | Writes the test for an earlier run's trace |
+
+`npx jevvium --help` lists every option.
+
+### Your own app
+
+`--app` takes an iOS app built for the simulator: a `.app`, or an `.ipa` or `.zip` holding one. A build for devices, from an archive, TestFlight or most CI pipelines, won't run on a simulator, and jevvium says so before anything starts. To build one for the simulator:
 
 ```bash
-npm run jevvium -- explore criteria/login.yml --platform ios --app apps/wdiodemoapp.app
+xcodebuild -scheme YourScheme -sdk iphonesimulator -configuration Debug -derivedDataPath build build
+npx jevvium explore criteria/example.yml --app build/Build/Products/Debug-iphonesimulator/YourApp.app
 ```
 
-Without `--device` and `--platform-version`, jevvium asks for an "iPhone 17" on the newest simulator runtime your Xcode has. To pick one, list what you have with `xcrun simctl list devices available` and pass both, for example `--device "iPhone 17" --platform-version 26.5` (the runs in this README used iOS 26.5). Several criteria can be passed at once; they share one Appium session and the app is restarted between them (`--fresh-session` starts a new session for each instead), or `--parallel 4` explores four at a time on four simulators. `npm run jevvium -- --help` lists every option.
+Running the app on a simulator from Xcode leaves the same `.app` in `~/Library/Developer/Xcode/DerivedData/YourApp-*/Build/Products/Debug-iphonesimulator/`. An app that is already installed on the simulator can be explored with `--bundle-id com.example.YourApp` instead.
 
-Then run the generated tests the normal way. This starts its own Appium, so it doesn't need the one above:
-
-```bash
-npm run test:generated:ios     # set IOS_DEVICE_NAME, IOS_PLATFORM_VERSION or IOS_APP to change the target
-```
+jevvium uses the plain iPhone with the highest number on the newest simulator runtime your Xcode has, and says which. `--device "iPhone 17" --platform-version 26.5` picks another (`xcrun simctl list devices available` lists them; the runs in this README used iOS 26.5). Several criteria can be passed at once: they share one Appium session and the app is restarted between them (`--fresh-session` starts a new session for each instead), or `--parallel 4` explores four at a time on four simulators.
 
 ### Getting a key
 
 Jev needs a TypeSafe account and an API key from [console.typesafe.ai](https://console.typesafe.ai). Exploring the nine criteria once costs about half a cent: at TypeSafe's published price of $0.042 per million input tokens (output tokens are free), the four demo-app criteria used about 19,000 input tokens (under $0.001) and the five shop-app criteria about 104,000 (about $0.004). `TYPESAFE_API_URL` points jevvium at another endpoint that serves TypeSafe's API, and `JEVVIUM_MODEL` picks the model.
 
-### Trying it without a key
+### Trying it on the demo apps
 
-The generated tests need no key and no model. With `npm run apps` done, this runs one of the committed examples on the newest simulator runtime your Xcode has (it passes on iOS 26.5 and 27.0):
+The criteria in this repo are written for two public demo apps. From a clone:
+
+```bash
+npm ci
+npm run apps                   # downloads the pinned WebdriverIO demo app builds
+npm run jevvium -- explore criteria/login.yml --app apps/wdiodemoapp.app
+```
+
+The generated tests need no key and no model. This runs one of the committed examples on the newest simulator runtime your Xcode has (it passes on iOS 26.5 and 27.0):
 
 ```bash
 npx wdio run config/wdio.ios.conf.ts --spec examples/ios/login.ios.spec.ts
@@ -230,10 +251,10 @@ Every run that gets as far as exploring writes a trace (one whose session or app
 
 ## Using it as a library
 
-The explorer only needs a small `Device` interface, so it runs inside an existing WebdriverIO session. jevvium isn't on npm yet, so for now import it from a clone. Node 22.18 and later (and 24) run the TypeScript source directly; on 22.13 to 22.17, add `--experimental-strip-types` or load it through tsx:
+The explorer only needs a small `Device` interface, so it runs inside an existing WebdriverIO session:
 
 ```ts
-import { explore, webdriverDevice, JevProvider, generateSpec, loadCriterion } from './jevvium/src/index.ts'
+import { explore, webdriverDevice, JevProvider, generateSpec, loadCriterion } from 'jevvium'
 
 const criterion = loadCriterion('criteria/login.yml')
 const trace = await explore(webdriverDevice(browser), criterion, { provider: new JevProvider() })
@@ -324,6 +345,7 @@ Early, and built in the open. Latest runs, with `jev-1.13.0` on an iOS 26.5 simu
 npm test               # unit tests (no device needed)
 npm run typecheck
 npm run lint
+npm run build          # compiles the package to dist/, as npm pack does
 npm run build:helper   # builds the iOS input helper to /tmp/jevvium-hid, as CI does
 ```
 

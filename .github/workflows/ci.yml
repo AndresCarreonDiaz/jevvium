@@ -29,6 +29,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      # What npm publish would ship: the package must build, and only what it lists goes in.
+      - run: npm pack --dry-run
 
   # An open-source repo that handles API keys should prove it never commits one.
   secrets:
