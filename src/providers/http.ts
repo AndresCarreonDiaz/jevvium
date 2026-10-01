@@ -47,9 +47,9 @@ export async function postJson<T>(url: string, body: unknown, options: PostOptio
  */
 export function apiKey(value: string | undefined, variable: string, provider: string, hint = ''): string {
   const key = value?.trim()
-  if (!key) throw new Error(`Set ${variable} in .env or your shell to use the ${provider} provider.${hint ? ` ${hint}` : ''}`)
+  if (!key) throw new Error(`Set ${variable} in .env.jevvium or your shell to use the ${provider} provider.${hint ? ` ${hint}` : ''}`)
   // eslint-disable-next-line no-control-regex
-  if (/[\s\x00-\x1f\x7f]/.test(key)) throw new Error(`${variable} contains a space, line break or control character; check .env`)
+  if (/[\s\x00-\x1f\x7f]/.test(key)) throw new Error(`${variable} contains a space, line break or control character; check the file it comes from`)
   return key
 }
 

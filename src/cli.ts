@@ -18,7 +18,7 @@ import { redactor } from './redact.ts'
 import { replay } from './replay.ts'
 import { stopReport } from './report.ts'
 import type { TestSettings } from './wdio.conf.ts'
-import { isAppiumUp, startAppium, type AppiumServer } from './appium.ts'
+import { hasDriver, isAppiumUp, startAppium, type AppiumServer } from './appium.ts'
 import { builtWebDriverAgent, defaultSimulator, findSimulator, hasWebDriverAgent, simulators, simulatorSet } from './simulators.ts'
 import { checkSimulatorBuild, platformOf } from './app.ts'
 import type { Criterion, Platform } from './types.ts'
@@ -32,15 +32,16 @@ Usage (npx jevvium in a project that installed it with npm i -D jevvium):
   jevvium codegen <trace.json> --criteria <criteria.yml> [--out <dir>]
   jevvium validate <criteria.yml...>      check criteria files without a device or a key
   jevvium test [spec...] --app <path>     run the generated tests (default: every one in --out)
-  jevvium init                            write a starter criterion, a .env for the key, .gitignore entries
+  jevvium init                            write a starter criterion, a .env.jevvium for the key, .gitignore entries
 
 Explore options:
   --app <path>               the app to test: an iOS Simulator build (.app, or an .ipa or .zip
                              holding one) or an Android .apk (required)
   --bundle-id <id>           instead of --app: an iOS app already installed on the simulator
   --platform <name>          android or ios (default: from the app)
-  --device <name>            device name (default: "Android Emulator" or "iPhone 17")
-  --platform-version <ver>   OS version of the emulator or simulator (default: Appium picks)
+  --device <name>            simulator or emulator name (default on iOS: the plain iPhone with
+                             the highest number, on the newest runtime; on Android: the emulator)
+  --platform-version <ver>   OS version of the simulator or emulator (default: the newest)
   --server <url>             an Appium server to use (default: jevvium starts its own)
   --runs <dir>               where traces go (default: runs)
   --out <dir>                where generated specs go (default: generated)
@@ -60,7 +61,7 @@ Explore options:
   --no-verify                don't replay a passing run with plain Appium before writing its
                              test (faster, but the test isn't proven to pass on its own)
 
-Environment (read from .env if present):
+Environment (also read from .env.jevvium and then .env, if present):
   TYPESAFE_API_KEY           key for the Jev decision model
   TYPESAFE_API_URL           another endpoint that serves TypeSafe's API (optional)
   JEVVIUM_MODEL              Jev model name (default: jev-latest)
@@ -70,10 +71,14 @@ Environment (read from .env if present):
 `
 
 async function main(): Promise<number> {
-  try {
-    process.loadEnvFile()
-  } catch {
-    // No .env file; the environment may already have the key.
+  // jevvium's own file first: a project's .env may be committed, or built into the app. A file
+  // never overrides a variable that is already set, so the shell wins over both.
+  for (const file of ['.env.jevvium', '.env']) {
+    try {
+      process.loadEnvFile(file)
+    } catch {
+      // No such file; the environment may already have the key.
+    }
   }
 
   const { positionals, values } = parseArgs({
@@ -121,7 +126,8 @@ async function main(): Promise<number> {
         const criterion = loadCriterion(file)
         const checks = criterion.expect.length
         const warning = checks === 0 ? "; it has no expect checks, so it would pass on the model's word" : ''
-        console.log(`ok     ${file}: ${checks} ${checks === 1 ? 'check' : 'checks'}, ${Object.keys(criterion.inputs).length} inputs${warning}`)
+        const inputs = Object.keys(criterion.inputs).length
+        console.log(`ok     ${file}: ${checks} ${checks === 1 ? 'check' : 'checks'}, ${inputs} ${inputs === 1 ? 'input' : 'inputs'}${warning}`)
       } catch (error) {
         invalid++
         console.log(`error  ${error instanceof Error ? error.message : String(error)}`)
@@ -144,6 +150,9 @@ async function main(): Promise<number> {
     throw new Error(values.platform ? '--platform must be android or ios' : `Can't tell the platform from ${values.app}; add --platform ios or --platform android`)
   }
   if (values['bundle-id'] && platform !== 'ios') throw new Error('--bundle-id is for iOS apps; for Android, pass the .apk with --app')
+  if (platform === 'android' && values.server === undefined && !hasDriver('appium-uiautomator2-driver')) {
+    throw new Error("Android needs Appium's UiAutomator2 driver next to jevvium: npm i -D appium-uiautomator2-driver")
+  }
   if (app && platform === 'ios') await checkSimulatorBuild(app)
   if (values.input !== 'auto' && values.input !== 'appium') throw new Error('--input must be auto or appium')
   if (!['jev', 'openai', 'claude'].includes(values.provider)) throw new Error('--provider must be jev, openai or claude')
@@ -411,7 +420,11 @@ expect:
   - text: You are logged in!
 `
 
-/** Writes what a project needs to start: a criterion to edit, a .env for the key, and .gitignore entries. */
+/**
+ * Writes what a project needs to start: a criterion to edit, a file for the key, and
+ * .gitignore entries. The key gets a file of its own, readable only by its owner,
+ * because a project's .env may be committed or built into the app.
+ */
 function init(): number {
   const created: string[] = []
   const starter = join('criteria', 'example.yml')
@@ -420,22 +433,22 @@ function init(): number {
     writeFileSync(starter, STARTER)
     created.push(starter)
   }
-  if (!existsSync('.env')) {
-    writeFileSync('.env', '# Your Jev key, from console.typesafe.ai\nTYPESAFE_API_KEY=\n')
-    created.push('.env')
+  if (!existsSync('.env.jevvium')) {
+    writeFileSync('.env.jevvium', '# Your Jev key, from console.typesafe.ai\nTYPESAFE_API_KEY=\n', { mode: 0o600 })
+    created.push('.env.jevvium')
   }
   // The key, run logs and failure screenshots can hold secrets or test data; the generated tests are meant to be committed.
   const ignored = existsSync('.gitignore') ? readFileSync('.gitignore', 'utf8') : ''
-  const missing = ['.env', 'runs/', 'screenshots/'].filter((entry) => !ignored.split('\n').some((line) => line.trim() === entry))
+  const missing = ['.env.jevvium', 'runs/', 'screenshots/'].filter((entry) => !ignored.split('\n').some((line) => line.trim() === entry))
   if (missing.length > 0) {
     const separator = ignored && !ignored.endsWith('\n') ? '\n' : ''
     writeFileSync('.gitignore', `${ignored}${separator}${missing.join('\n')}\n`)
     created.push(`.gitignore entries for ${missing.join(', ')}`)
   }
-  console.log(created.length > 0 ? `Created ${created.join(', ')}.` : 'Nothing to create: the starter criterion, .env and .gitignore entries are there.')
+  console.log(created.length > 0 ? `Created ${created.join(', ')}.` : 'Nothing to create: the starter criterion, .env.jevvium and the .gitignore entries are there.')
   console.log(`
 Next:
-  1. Put your Jev key in .env (TYPESAFE_API_KEY=..., from console.typesafe.ai).
+  1. Put your Jev key in .env.jevvium (TYPESAFE_API_KEY=..., from console.typesafe.ai).
   2. Edit ${starter} to describe a flow in your app.
   3. npx jevvium explore ${starter} --app path/to/YourApp.app
   4. npx jevvium test --app path/to/YourApp.app`)
@@ -460,7 +473,7 @@ async function runTests(
             .map((file) => resolve(outDir, file))
         : []
   if (specs.length === 0) {
-    throw new Error(`No generated ${platform} tests in ${outDir}. Explore a criterion first: jevvium explore <criteria.yml> --app <path>`)
+    throw new Error(`No generated ${platform} tests in ${outDir}. Explore a criterion first: npx jevvium explore <criteria.yml> --app <path>`)
   }
   for (const spec of specs) {
     if (!existsSync(spec)) throw new Error(`No test at ${spec}`)
@@ -468,7 +481,9 @@ async function runTests(
     try {
       createRequire(spec).resolve('@wdio/globals')
     } catch {
-      throw new Error(`${spec} can't find @wdio/globals. Install jevvium in the project the tests are in: npm i -D jevvium`)
+      throw new Error(
+        `${spec} can't find @wdio/globals. Install jevvium in the project the tests are in (npm i -D jevvium; with pnpm, add @wdio/globals too)`,
+      )
     }
   }
 

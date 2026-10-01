@@ -53,6 +53,8 @@ describe('criteria', () => {
       const file = join(dir, 'pin.yml')
       writeFileSync(file, 'goal: Enter a PIN\ninputs:\n  pin: 0042\n  card: 41111111111111112\n')
       assert.deepEqual(loadCriterion(file).inputs, { pin: '0042', card: '41111111111111112' })
+      writeFileSync(file, 'goal: g\ninputs:\n  email:\n')
+      assert.throws(() => loadCriterion(file), /Input `email` has no value/)
       writeFileSync(file, 'goal: g\nexpects:\n  - text: x\n')
       assert.throws(() => loadCriterion(file), (error: Error) => error.message.startsWith(`${file}: Unknown key`))
     } finally {

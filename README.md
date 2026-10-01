@@ -19,7 +19,7 @@ expect:
 ```
 
 ```
-$ npx jevvium explore criteria/login.yml --app apps/wdiodemoapp.app
+$ npx jevvium explore criteria/login.yml --app apps/wdiodemoapp.app --platform-version 26.5
 Simulator: iPhone 17, iOS 26.5
 Starting Appium (log: runs/appium.log)
 
@@ -172,17 +172,19 @@ You need macOS with Xcode and an iOS simulator, Node 22.13 or later (or 24), and
 
 ```bash
 npm i -D jevvium
-npx jevvium init        # a starter criterion, a .env for the key, .gitignore entries
-# put your key in .env, and describe a flow of your app in criteria/example.yml
+npx jevvium init        # a starter criterion, a .env.jevvium for the key, .gitignore entries
+# put your key in .env.jevvium, and describe a flow of your app in criteria/example.yml
 npx jevvium explore criteria/example.yml --app path/to/YourApp.app
 npx jevvium test --app path/to/YourApp.app
 ```
 
-`explore` writes each passing test to `generated/`, and `test` runs them with WebdriverIO. Both start their own Appium server, so there is nothing else to run. The first session on a simulator builds WebDriverAgent with Xcode, which takes a few minutes, once. Android is experimental: its parser is unit-tested on a hand-written page source and it hasn't run on an emulator yet.
+`explore` writes each passing test to `generated/`, and `test` runs them with WebdriverIO. Both start their own Appium server, so there is nothing else to run. The first session on a simulator builds WebDriverAgent with Xcode, which takes a few minutes, once. Android is experimental: its parser is unit-tested on a hand-written page source and it hasn't run on an emulator yet, and it needs Appium's Android driver too (`npm i -D appium-uiautomator2-driver`).
+
+The key goes in `.env.jevvium`, a file only jevvium reads, rather than the project's `.env`, which may be committed or built into the app. jevvium also reads `.env` and the shell's environment.
 
 | Command | What it does |
 | --- | --- |
-| `jevvium init` | Writes `criteria/example.yml`, a `.env` for the key and `.gitignore` entries |
+| `jevvium init` | Writes `criteria/example.yml`, a `.env.jevvium` for the key and `.gitignore` entries |
 | `jevvium validate <criteria...>` | Checks criteria files, without a device or a key |
 | `jevvium explore <criteria...> --app <path>` | Explores each criterion, replays the path with plain Appium, and writes its test |
 | `jevvium test [specs...] --app <path>` | Runs the generated tests (default: every one in `generated/`) |
@@ -214,6 +216,7 @@ The criteria in this repo are written for two public demo apps. From a clone:
 ```bash
 npm ci
 npm run apps                   # downloads the pinned WebdriverIO demo app builds
+cp .env.example .env           # then add your TYPESAFE_API_KEY
 npm run jevvium -- explore criteria/login.yml --app apps/wdiodemoapp.app
 ```
 
@@ -265,7 +268,7 @@ A different model can be plugged in by implementing `DecisionProvider`.
 
 ## Comparing decision models
 
-`--provider openai` explores with OpenAI's Decisions API (GPT-6 Luna) instead of Jev. OpenAI announced it at DevDay on September 29, 2026, in limited preview, and hasn't published its API reference yet, so the request follows calls an early tester recorded against the live API; expect to adjust it once the reference is out. It needs an `OPENAI_API_KEY` from an organization with preview access, in `.env` next to the TypeSafe key. It is asked what Jev is asked, in the same words; the only difference is the API's own: its yes/no question takes no descriptions of the answers, so Jev's descriptions of "goal reached" are part of that question's wording.
+`--provider openai` explores with OpenAI's Decisions API (GPT-6 Luna) instead of Jev. OpenAI announced it at DevDay on September 29, 2026, in limited preview, and hasn't published its API reference yet, so the request follows calls an early tester recorded against the live API; expect to adjust it once the reference is out. It needs an `OPENAI_API_KEY` from an organization with preview access, in `.env.jevvium` next to the TypeSafe key. It is asked what Jev is asked, in the same words; the only difference is the API's own: its yes/no question takes no descriptions of the answers, so Jev's descriptions of "goal reached" are part of that question's wording.
 
 `--provider claude` explores with Claude through the Claude Code CLI, signed in with a Claude subscription instead of an API key, which makes it a way to compare models rather than a way to run jevvium. Each decision runs `claude -p` once (once more if the reply isn't a usable answer), with no tools and no prompt caching, asks what Jev is asked, in the same words, and reads the answers back as JSON. `CLAUDE_MODEL` picks the model (default: `sonnet`), and the effort is medium. The CLI adds about 0.2 s to each decision to start, and about 445 tokens of its own to each request. It turns thinking off where it can, but not for Sonnet 5.5, which decides for itself when to think, so the benchmark reports how often it did.
 

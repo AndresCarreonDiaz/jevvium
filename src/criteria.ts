@@ -42,6 +42,7 @@ export function parseCriterion(raw: unknown, fallbackId: string): Criterion {
       if (typeof value !== 'string' && typeof value !== 'number') {
         throw new Error(`Input \`${name}\` must be a string or a number`)
       }
+      if (value === '') throw new Error(`Input \`${name}\` has no value`)
       inputs[name] = String(value)
     }
   }

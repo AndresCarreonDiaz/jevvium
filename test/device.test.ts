@@ -14,5 +14,8 @@ describe('showsTyped', () => {
     assert.equal(showsTyped('•', 'Str0ngPassw0rd'), false)
     assert.equal(showsTyped('qa.demo@exa', 'qa.demo@example.com'), false)
     assert.equal(showsTyped('Email', 'qa.demo@example.com'), false)
+    assert.equal(showsTyped('qademo@example.com', 'qa.demo@example.com'), false)
+    assert.equal(showsTyped('1250', '12.50'), false)
+    assert.equal(showsTyped('https//example.com/a', 'https://example.com/a'), false)
   })
 })

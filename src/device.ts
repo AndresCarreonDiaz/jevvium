@@ -156,8 +156,9 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
     for (;;) {
       await new Promise((resolve) => setTimeout(resolve, 100))
       const again = await read()
-      if (again === shown || Date.now() >= deadline) break
+      const settled = again === shown
       shown = again
+      if (settled || Date.now() >= deadline) break
     }
     return shown === undefined || showsTyped(shown, value)
   }
@@ -183,8 +184,14 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
         movedSinceRead = true
         return appium.type(element, value)
       }
-      // Appium focused and typed it when the field had to be scrolled into view.
-      if (!(await tap(element))) return appium.type(element, value)
+      // Once taps go through Appium, so does the one that focuses the field; the keys still go direct.
+      if (!directTaps) {
+        movedSinceRead = true
+        await appium.tap(element)
+      } else if (!(await tap(element))) {
+        // Appium focused and typed it when the field had to be scrolled into view.
+        return appium.type(element, value)
+      }
       // A field that never reports focus (a custom input) is typed into through XCTest.
       const fieldId = await focused(element)
       if (!fieldId) return appium.type({ ...element, empty: false }, value)
@@ -208,13 +215,16 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
 }
 
 /**
- * Whether a field showing `shown` holds `value`. Formatting the app applies (spaces,
- * dashes, capitals) doesn't count as a difference, and a secure field, which shows
+ * Whether a field showing `shown` holds `value`. Formatting the app adds (spaces,
+ * dashes, brackets, capitals) doesn't count as a difference, but a character of the
+ * value that went missing does, punctuation included. A secure field, which shows
  * bullets, only has to have the right length.
  */
 export function showsTyped(shown: string, value: string): boolean {
   if (/^[•●]+$/.test(shown)) return shown.length === value.length
-  const plain = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+  const typed = new Set(value.toLowerCase())
+  const plain = (text: string) =>
+    [...text.toLowerCase()].filter((c) => /[\p{L}\p{N}]/u.test(c) || (typed.has(c) && c.trim() !== '')).join('')
   return plain(shown) === plain(value)
 }
 

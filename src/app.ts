@@ -43,7 +43,8 @@ export async function supportedPlatforms(app: string): Promise<string[] | undefi
   let scratch: string | undefined
   try {
     if (!statSync(app).isDirectory()) {
-      const { stdout } = await run('unzip', ['-Z1', app])
+      // Only the Info.plist entries: listing a large app in full can overflow the output buffer.
+      const { stdout } = await run('unzip', ['-Z1', app, '*.app/Info.plist'])
       const entry = stdout.split('\n').find((line) => /^(Payload\/)?[^/]+\.app\/Info\.plist$/.test(line))
       if (!entry) return undefined
       scratch = mkdtempSync(join(tmpdir(), 'jevvium-app-'))
