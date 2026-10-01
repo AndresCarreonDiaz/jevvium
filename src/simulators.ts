@@ -1,9 +1,7 @@
-import { execFile, spawn } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { createServer } from 'node:net'
+import { execFile } from 'node:child_process'
+import { existsSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { promisify } from 'node:util'
 
 const run = promisify(execFile)
@@ -105,52 +103,6 @@ export function builtWebDriverAgent(): string | undefined {
     .map((dir) => join(derivedData, dir, 'Build/Products/Debug-iphonesimulator/WebDriverAgentRunner-Runner.app'))
     .filter((app) => existsSync(app))
     .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0]
-}
-
-export type AppiumServer = { port: number; stop(): void }
-
-/**
- * Starts an Appium server from this project's dependencies on a free local port
- * and waits until it accepts sessions. One server creates one session at a time,
- * so sessions that should start together each need their own. `onSpawn` gets the
- * server as soon as its process exists, so a caller that stops early can stop it too.
- */
-export async function startAppium(logFile: string, onSpawn?: (server: AppiumServer) => void): Promise<AppiumServer> {
-  const port = await freePort()
-  const require = createRequire(import.meta.url)
-  const manifest = require.resolve('appium/package.json')
-  const bin = (JSON.parse(readFileSync(manifest, 'utf8')) as { bin: { appium: string } }).bin.appium
-  const child = spawn(
-    process.execPath,
-    [join(dirname(manifest), bin), '--address', '127.0.0.1', '--port', String(port), '--log', logFile, '--log-no-colors', '--log-timestamp'],
-    { stdio: 'ignore' },
-  )
-  const server = { port, stop: () => void child.kill() }
-  onSpawn?.(server)
-  let exited = false
-  child.once('exit', () => (exited = true))
-
-  const deadline = Date.now() + 60_000
-  while (Date.now() < deadline && !exited) {
-    const ready = await fetch(`http://127.0.0.1:${port}/status`, { signal: AbortSignal.timeout(1_000) })
-      .then(async (response) => ((await response.json()) as { value?: { ready?: boolean } }).value?.ready === true)
-      .catch(() => false)
-    if (ready) return server
-    await new Promise((resolve) => setTimeout(resolve, 100))
-  }
-  server.stop()
-  throw new Error(`The Appium server on port ${port} did not start (see ${logFile})`)
-}
-
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const probe = createServer()
-    probe.once('error', reject)
-    probe.listen(0, '127.0.0.1', () => {
-      const address = probe.address()
-      probe.close(() => (typeof address === 'object' && address ? resolve(address.port) : reject(new Error('No free port'))))
-    })
-  })
 }
 
 function compareVersions(a: string, b: string): number {

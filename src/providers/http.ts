@@ -11,6 +11,17 @@ export type PostOptions = {
   sleep: (ms: number) => Promise<void>
 }
 
+/** A request the service answered with an error status. */
+export class HttpError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'HttpError'
+    this.status = status
+  }
+}
+
 /** POSTs JSON with a bearer key, retrying with exponential backoff when the service is busy. */
 export async function postJson<T>(url: string, body: unknown, options: PostOptions): Promise<T> {
   for (let attempt = 0; ; attempt++) {
@@ -26,7 +37,7 @@ export async function postJson<T>(url: string, body: unknown, options: PostOptio
       continue
     }
     // The body explains validation errors; it never contains the key.
-    throw new Error(`${options.service} request failed with ${res.status}: ${oneLine(await res.text())}`)
+    throw new HttpError(`${options.service} request failed with ${res.status}: ${oneLine(await res.text())}`, res.status)
   }
 }
 
@@ -34,9 +45,9 @@ export async function postJson<T>(url: string, body: unknown, options: PostOptio
  * The API key from an option or the environment. A line break or other stray
  * character would otherwise end up quoted in a request error, and so in a trace.
  */
-export function apiKey(value: string | undefined, variable: string, provider: string): string {
+export function apiKey(value: string | undefined, variable: string, provider: string, hint = ''): string {
   const key = value?.trim()
-  if (!key) throw new Error(`Set ${variable} to use the ${provider} provider`)
+  if (!key) throw new Error(`Set ${variable} in .env or your shell to use the ${provider} provider.${hint ? ` ${hint}` : ''}`)
   // eslint-disable-next-line no-control-regex
   if (/[\s\x00-\x1f\x7f]/.test(key)) throw new Error(`${variable} contains a space, line break or control character; check .env`)
   return key

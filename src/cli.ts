@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -9,26 +10,28 @@ import { simulatorDevice, webdriverDevice, type Device } from './device.ts'
 import { explore, type Outcome, type Replay, type Step, type TakenAction, type Trace } from './explorer.ts'
 import { ClaudeProvider } from './providers/claude.ts'
 import { JevProvider } from './providers/jev.ts'
+import type { DecisionProvider } from './providers/types.ts'
 import { OpenAIDecisionsProvider } from './providers/openai.ts'
 import { redactor } from './redact.ts'
 import { replay } from './replay.ts'
-import { builtWebDriverAgent, findSimulator, hasWebDriverAgent, simulatorSet, startAppium, type AppiumServer } from './simulators.ts'
+import { isAppiumUp, startAppium, type AppiumServer } from './appium.ts'
+import { builtWebDriverAgent, findSimulator, hasWebDriverAgent, simulatorSet } from './simulators.ts'
 import type { Criterion, Platform } from './types.ts'
 
 const run = promisify(execFile)
 
 const USAGE = `jevvium: turn acceptance criteria into Appium tests
 
-Usage (from the jevvium folder):
-  npm run jevvium -- explore <criteria.yml...> --platform <android|ios> --app <path> [options]
-  npm run jevvium -- codegen <trace.json> --criteria <criteria.yml> [--out <dir>]
+Usage (npx jevvium in a project that installed it with npm i -D jevvium):
+  jevvium explore <criteria.yml...> --platform <android|ios> --app <path> [options]
+  jevvium codegen <trace.json> --criteria <criteria.yml> [--out <dir>]
 
 Explore options:
   --platform <name>          android or ios (required)
   --app <path>               .apk or .app to install (required)
   --device <name>            device name (default: "Android Emulator" or "iPhone 17")
   --platform-version <ver>   OS version of the emulator or simulator (default: Appium picks)
-  --server <url>             a local Appium server (default: http://127.0.0.1:4723)
+  --server <url>             an Appium server to use (default: jevvium starts its own)
   --runs <dir>               where traces go (default: runs)
   --out <dir>                where generated specs go (default: generated)
   --max-steps <n>            decisions that act before giving up (default: 15)
@@ -70,7 +73,7 @@ async function main(): Promise<number> {
       app: { type: 'string' },
       device: { type: 'string' },
       'platform-version': { type: 'string' },
-      server: { type: 'string', default: 'http://127.0.0.1:4723' },
+      server: { type: 'string' },
       runs: { type: 'string', default: 'runs' },
       out: { type: 'string', default: 'generated' },
       'max-steps': { type: 'string', default: '15' },
@@ -113,13 +116,15 @@ async function main(): Promise<number> {
   const goalThreshold = probability('--goal-threshold', values['goal-threshold'])
   const parallel = values.parallel === undefined ? 1 : count('--parallel', values.parallel)
   if (parallel > 1 && platform !== 'ios') throw new Error('--parallel only runs on iOS Simulators for now')
-  const server = serverAddress(values.server)
+  const userServer = values.server === undefined ? undefined : serverAddress(values.server)
   const criteria: [string, Criterion][] = files.map((file) => [file, loadCriterion(file)])
   const app = resolve(values.app)
   if (!existsSync(app)) throw new Error(`--app: nothing at ${app}`)
-  const provider =
+  const provider: DecisionProvider =
     values.provider === 'openai' ? new OpenAIDecisionsProvider() : values.provider === 'claude' ? new ClaudeProvider() : new JevProvider()
   const baseCapabilities = capabilities(platform, app, values.device, values['platform-version'])
+  // A missing or refused key shows up now, rather than after a session has started.
+  await provider.check?.()
 
   const openSession = (address: ServerAddress, caps: WebdriverIO.Capabilities) => async (out: Out) => {
     // WebdriverIO's own warnings are about requests it retried; jevvium reports what fails.
@@ -138,6 +143,21 @@ async function main(): Promise<number> {
 
   const lanes: Lane[] = []
   const servers: AppiumServer[] = []
+  /** The Appium server the first lane uses: the one --server names, once it answers, or one jevvium starts. */
+  let server!: ServerAddress
+  const appiumServer = async (): Promise<ServerAddress> => {
+    if (userServer) {
+      if (!(await isAppiumUp(values.server!))) {
+        throw new Error(`No Appium server answers at ${values.server}. Leave out --server and jevvium starts its own.`)
+      }
+      return userServer
+    }
+    mkdirSync(values.runs, { recursive: true })
+    const log = join(values.runs, 'appium.log')
+    console.log(`Starting Appium (log: ${log})`)
+    const own = await startAppium(log, (spawned) => servers.push(spawned))
+    return { protocol: 'http', hostname: '127.0.0.1', port: own.port, path: '/' }
+  }
   const shutDown = async () => {
     await Promise.all(lanes.map((lane) => lane.close()))
     for (const started of servers) started.stop()
@@ -162,7 +182,7 @@ async function main(): Promise<number> {
 
   /**
    * Simulators for running criteria side by side, each with its own Appium server,
-   * since one server starts one session at a time. The first uses --server.
+   * since one server starts one session at a time. The first uses the run's own server.
    */
   const parallelLanes = async (size: number): Promise<Lane[]> => {
     const base = await findSimulator(values.device ?? 'iPhone 17', values['platform-version'])
@@ -251,6 +271,7 @@ async function main(): Promise<number> {
   const results: Result[] = []
   try {
     const size = Math.min(parallel, criteria.length)
+    server = await appiumServer()
     lanes.push(...(size > 1 ? await parallelLanes(size) : [new Lane('', openSession(server, baseCapabilities))]))
     const queue = [...criteria]
     await Promise.all(

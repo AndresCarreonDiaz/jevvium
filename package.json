@@ -13,12 +13,31 @@
   ],
   "author": "Andres Carreon",
   "license": "MIT",
-  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AndresCarreonDiaz/jevvium.git"
   },
+  "homepage": "https://github.com/AndresCarreonDiaz/jevvium#readme",
+  "bugs": {
+    "url": "https://github.com/AndresCarreonDiaz/jevvium/issues"
+  },
   "type": "module",
+  "bin": {
+    "jevvium": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "native",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": "^22.13.0 || >=24"
   },
@@ -32,9 +51,13 @@
     "test:generated:ios": "wdio run config/wdio.ios.conf.ts",
     "typecheck": "tsc",
     "lint": "eslint .",
-    "build:helper": "xcrun clang -fobjc-arc -O2 -Wall -Werror -framework Foundation -framework CoreGraphics native/ios-hid/main.m -o /tmp/jevvium-hid"
+    "build:helper": "xcrun clang -fobjc-arc -O2 -Wall -Werror -framework Foundation -framework CoreGraphics native/ios-hid/main.m -o /tmp/jevvium-hid",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build"
   },
   "dependencies": {
+    "appium": "^3.8.0",
+    "appium-xcuitest-driver": "^12.13.3",
     "fast-xml-parser": "^5.11.2",
     "webdriverio": "^9.32.0",
     "yaml": "^2.9.1"
@@ -50,9 +73,7 @@
     "@wdio/local-runner": "^9.32.0",
     "@wdio/mocha-framework": "^9.32.0",
     "@wdio/spec-reporter": "^9.32.0",
-    "appium": "^3.8.0",
     "appium-uiautomator2-driver": "^8.7.0",
-    "appium-xcuitest-driver": "^12.13.3",
     "eslint": "^10.11.0",
     "eslint-plugin-wdio": "^9.31.3",
     "tsx": "^4.23.15",

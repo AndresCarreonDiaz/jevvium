@@ -63,4 +63,9 @@ export interface DecisionProvider {
   decide(request: DecisionRequest): Promise<Decision>
   /** Opens a connection ahead of the first decision, so that decision doesn't pay for the handshake. */
   warmUp?(): Promise<void>
+  /**
+   * Confirms the provider answers and accepts the key, so that a wrong key shows up
+   * before an Appium session starts. Throws an error that says what to fix.
+   */
+  check?(): Promise<void>
 }

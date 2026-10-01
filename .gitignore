@@ -9,3 +9,4 @@ screenshots/
 !.env.example
 .DS_Store
 generated/
+dist/

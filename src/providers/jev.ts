@@ -1,4 +1,4 @@
-import { apiKey, postJson } from './http.ts'
+import { apiKey, HttpError, postJson } from './http.ts'
 import { actionOptions, fillKey, fillQuestion, GOAL_MET, GOAL_MET_ANSWERS, inputOptions, NEXT_ACTION, stateOf } from './questions.ts'
 import type { Decision, DecisionProvider, DecisionRequest } from './types.ts'
 
@@ -43,7 +43,7 @@ export class JevProvider implements DecisionProvider {
   private readonly sleep: (ms: number) => Promise<void>
 
   constructor(options: JevOptions = {}) {
-    this.apiKey = apiKey(options.apiKey ?? process.env.TYPESAFE_API_KEY, 'TYPESAFE_API_KEY', 'Jev')
+    this.apiKey = apiKey(options.apiKey ?? process.env.TYPESAFE_API_KEY, 'TYPESAFE_API_KEY', 'Jev', 'Get a key at console.typesafe.ai.')
     this.model = options.model ?? process.env.JEVVIUM_MODEL ?? 'jev-latest'
     this.url = options.url ?? process.env.TYPESAFE_API_URL ?? DEFAULT_URL
     this.retries = options.retries ?? 3
@@ -55,6 +55,20 @@ export class JevProvider implements DecisionProvider {
   async warmUp(): Promise<void> {
     // Any answer will do: the TLS connection it leaves open is what the first decision reuses.
     await this.fetch(this.url, { method: 'HEAD', signal: AbortSignal.timeout(this.timeoutMs) }).catch(() => {})
+  }
+
+  async check(): Promise<void> {
+    // The smallest request System One takes: one yes-or-no question about nothing in particular.
+    const body = {
+      model: this.model,
+      state: { purpose: 'jevvium checks that the key works before a run' },
+      questions: { ok: { type: 'noul', instructions: 'Is this a check?', criteria: { true: 'Yes.', false: 'No.' } } },
+    }
+    try {
+      await this.post(body)
+    } catch (error) {
+      throw new Error(explain(error, this.url, this.model), { cause: error })
+    }
   }
 
   async decide(request: DecisionRequest): Promise<Decision> {
@@ -105,6 +119,19 @@ export class JevProvider implements DecisionProvider {
       sleep: this.sleep,
     })
   }
+}
+
+/** What a failed request to Jev means for the user, in one line. */
+function explain(error: unknown, url: string, model: string): string {
+  if (!(error instanceof HttpError)) {
+    return `Can't reach Jev at ${url}: ${error instanceof Error ? error.message : String(error)}`
+  }
+  if (error.status === 401 || error.status === 403) {
+    return `Jev refused TYPESAFE_API_KEY (HTTP ${error.status}). Check the key at console.typesafe.ai.`
+  }
+  if (error.status === 402) return 'Jev says the account has no credit left (HTTP 402). Add credit at console.typesafe.ai.'
+  if (error.status === 404) return `Jev answered HTTP 404. Check the model name (${model}, from JEVVIUM_MODEL) and TYPESAFE_API_URL.`
+  return error.message
 }
 
 export function buildBody(request: DecisionRequest, model: string) {
