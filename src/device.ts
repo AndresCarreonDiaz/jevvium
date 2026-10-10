@@ -4,7 +4,8 @@ import type { Browser } from 'webdriverio'
 import { canTypeDirectly, IosHid } from './ios-hid.ts'
 import { toSelector } from './locator.ts'
 import { parseScreen } from './screen.ts'
-import type { Locator, Platform, ScreenElement } from './types.ts'
+import { SWIPE, swipeDirection } from './scroll.ts'
+import type { Locator, Platform, ScreenElement, ScrollDirection } from './types.ts'
 
 /**
  * The few things jevvium needs from a device. The explorer only talks to this,
@@ -26,6 +27,8 @@ export interface Device {
   tap(element: ScreenElement): Promise<void>
   /** Types into a field. When `element.empty`, there is nothing to clear first. */
   type(element: ScreenElement, value: string): Promise<void>
+  /** Scrolls a list to show more in that direction. A device without it is never asked to scroll. */
+  scroll?(element: ScreenElement, direction: ScrollDirection): Promise<void>
   isDisplayed(locator: Locator, timeoutMs: number): Promise<boolean>
   /** Whether the element is on screen and not covered, right now. */
   isVisible?(locator: Locator): Promise<boolean>
@@ -60,6 +63,10 @@ export function webdriverDevice(browser: Browser): Device {
       const field = browser.$(toSelector(element.locator))
       if (element.empty) await field.addValue(value)
       else await field.setValue(value)
+    },
+    scroll: async (element, direction) => {
+      // The same swipe the generated test makes, so the list ends up where it did while exploring.
+      await browser.swipe({ ...SWIPE, direction: swipeDirection(direction), scrollableElement: browser.$(toSelector(element.locator)) })
     },
     isVisible: (locator) => browser.$(toSelector(locator)).isDisplayed(),
     isDisplayed: (locator, timeoutMs) =>
@@ -203,6 +210,11 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
         notes.push('text typed straight into the simulator came out wrong, so typing goes through Appium from now on')
         await appium.type({ ...element, empty: false }, value)
       }
+    },
+    scroll: async (element, direction) => {
+      // Appium scrolls; the helper only taps and types. Everything on screen moves.
+      movedSinceRead = true
+      await appium.scroll!(element, direction)
     },
     fallBackToAppium: (reason) => {
       if (!directTaps) return

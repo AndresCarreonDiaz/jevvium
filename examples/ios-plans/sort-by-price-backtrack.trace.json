@@ -1,0 +1,803 @@
+{
+  "criterion": {
+    "id": "mydemo-sort-by-price",
+    "goal": "On the Catalog screen, the shopper opens the sort options with the button at the top of the screen and sorts the products by price, from low to high.",
+    "expect": [
+      {
+        "text": "Sauce Labs Onesie"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "jev",
+  "input": "simulator",
+  "startedAt": "2026-10-10T19:43:12.571Z",
+  "durationMs": 43319,
+  "outcome": "stuck",
+  "reason": "The model found no action on this screen that moves toward the goal. 1 of 1 expectations do not hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 411,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 30,
+      "decision": {
+        "action": "tap:e28",
+        "confidence": 0.42,
+        "probabilities": {
+          "tap:e28": 0.44,
+          "tap:e27": 0.3,
+          "tap:e1": 0.24000000000000002,
+          "scroll:e2:down": 0.01,
+          "STUCK": 0.01
+        },
+        "goalMet": 0.09,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 171,
+        "usage": {
+          "inputTokens": 1520,
+          "outputTokens": 340
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Catalog-tab-item",
+          "description": "Tap the button \"Catalog-tab-item\" (bottom of the screen)",
+          "selector": "~Catalog-tab-item"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 1554,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 30,
+      "decision": {
+        "action": "tap:e1",
+        "confidence": 0.81,
+        "probabilities": {
+          "tap:e1": 0.8200000000000001,
+          "tap:e27": 0.08,
+          "scroll:e2:down": 0.05,
+          "STUCK": 0.03,
+          "tap:e28": 0.01
+        },
+        "goalMet": 0.07,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 117,
+        "usage": {
+          "inputTokens": 1536,
+          "outputTokens": 339
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Button",
+          "description": "Tap the button \"Button\" (top of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Button\""
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 1968,
+      "screenText": [
+        "Sort by:",
+        "Name - Ascending",
+        "Name - Descending",
+        "Price - Ascending",
+        "Price - Descending",
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 34,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 1,
+        "probabilities": {
+          "tap:e3": 1,
+          "tap:e1": 0,
+          "tap:e2": 0,
+          "tap:e4": 0,
+          "tap:e5": 0
+        },
+        "goalMet": 0.12,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 89,
+        "usage": {
+          "inputTokens": 1709,
+          "outputTokens": 379
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Price - Ascending",
+          "description": "Tap the button \"Price - Ascending\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Price - Ascending\""
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "atMs": 5753,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Bolt T-Shirt - Black",
+        "Product Price",
+        "Sauce Labs Bolt T-Shirt - Blue",
+        "Sauce Labs Bolt T-Shirt - Green",
+        "Sauce Labs Bolt T-Shirt - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 31,
+      "decision": {
+        "action": "scroll:e2:down",
+        "confidence": 0.46,
+        "probabilities": {
+          "scroll:e2:down": 0.48,
+          "STUCK": 0.31,
+          "tap:e27": 0.15000000000000002,
+          "tap:e28": 0.02,
+          "tap:e1": 0.01
+        },
+        "goalMet": 0.31,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 98,
+        "usage": {
+          "inputTokens": 1614,
+          "outputTokens": 351
+        }
+      },
+      "taken": [
+        {
+          "type": "scroll",
+          "kind": "list",
+          "target": "screen",
+          "description": "Scroll down in the screen to see more of it",
+          "selector": "(//XCUIElementTypeCollectionView)[1]",
+          "direction": "down"
+        }
+      ],
+      "undone": true
+    },
+    {
+      "index": 5,
+      "atMs": 6225,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Bolt T-Shirt - Yellow",
+        "Product Price",
+        "Test.allTheThings() T-Shirt - Orange",
+        "Test.allTheThings() T-Shirt - Pink",
+        "Test.allTheThings() T-Shirt - Purple",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 32,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.33,
+        "probabilities": {
+          "STUCK": 0.35000000000000003,
+          "scroll:e2:down": 0.28,
+          "scroll:e2:up": 0.22,
+          "tap:e27": 0.060000000000000005,
+          "tap:e1": 0.02
+        },
+        "goalMet": 0.34,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 335,
+        "usage": {
+          "inputTokens": 1664,
+          "outputTokens": 359
+        }
+      },
+      "backtrack": {
+        "to": 4,
+        "instead": "Tap the button \"Go Shopping\" (middle of the screen)"
+      },
+      "undone": true
+    },
+    {
+      "index": 6,
+      "atMs": 11622,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Bolt T-Shirt - Black",
+        "Product Price",
+        "Sauce Labs Bolt T-Shirt - Blue",
+        "Sauce Labs Bolt T-Shirt - Green",
+        "Sauce Labs Bolt T-Shirt - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 31,
+      "decision": {
+        "action": "scroll:e2:down",
+        "confidence": 0.46,
+        "probabilities": {
+          "scroll:e2:down": 0.48,
+          "STUCK": 0.31,
+          "tap:e27": 0.15000000000000002,
+          "tap:e28": 0.02,
+          "tap:e1": 0.01
+        },
+        "goalMet": 0.31,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 98,
+        "usage": {
+          "inputTokens": 1614,
+          "outputTokens": 351
+        }
+      },
+      "retry": {
+        "of": 4
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Go Shopping",
+          "description": "Tap the button \"Go Shopping\" (middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Go Shopping\""
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "atMs": 11902,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Bolt T-Shirt - Black",
+        "Product Price",
+        "Sauce Labs Bolt T-Shirt - Blue",
+        "Sauce Labs Bolt T-Shirt - Green",
+        "Sauce Labs Bolt T-Shirt - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 31,
+      "decision": {
+        "action": "tap:e28",
+        "confidence": 0.31,
+        "probabilities": {
+          "tap:e28": 0.33,
+          "scroll:e2:down": 0.22,
+          "STUCK": 0.21000000000000002,
+          "tap:e1": 0.09,
+          "tap:e27": 0.06999999999999999
+        },
+        "goalMet": 0.17,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 137,
+        "usage": {
+          "inputTokens": 1630,
+          "outputTokens": 350
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Catalog-tab-item",
+          "description": "Tap the button \"Catalog-tab-item\" (bottom of the screen)",
+          "selector": "~Catalog-tab-item"
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "atMs": 13040,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 30,
+      "decision": {
+        "action": "tap:e1",
+        "confidence": 0.31,
+        "probabilities": {
+          "tap:e1": 0.33,
+          "scroll:e2:down": 0.31,
+          "STUCK": 0.16,
+          "tap:e28": 0.13,
+          "tap:e3": 0.04
+        },
+        "goalMet": 0.15,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 112,
+        "usage": {
+          "inputTokens": 1603,
+          "outputTokens": 339
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Button",
+          "description": "Tap the button \"Button\" (top of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Button\""
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "atMs": 13450,
+      "screenText": [
+        "Sort by:",
+        "Name - Ascending",
+        "Name - Descending",
+        "Price - Ascending",
+        "Price - Descending",
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 34,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.92,
+        "probabilities": {
+          "tap:e3": 0.92,
+          "tap:e32": 0.03,
+          "scroll:e6:down": 0.02,
+          "tap:e5": 0.01,
+          "STUCK": 0.01
+        },
+        "goalMet": 0.23,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 115,
+        "usage": {
+          "inputTokens": 1776,
+          "outputTokens": 379
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Price - Ascending",
+          "description": "Tap the button \"Price - Ascending\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Price - Ascending\""
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "atMs": 17206,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Bolt T-Shirt - Black",
+        "Product Price",
+        "Sauce Labs Bolt T-Shirt - Blue",
+        "Sauce Labs Bolt T-Shirt - Green",
+        "Sauce Labs Bolt T-Shirt - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 31,
+      "decision": {
+        "action": "scroll:e2:down",
+        "confidence": 0.49,
+        "probabilities": {
+          "scroll:e2:down": 0.51,
+          "STUCK": 0.28,
+          "tap:e1": 0.06999999999999999,
+          "tap:e28": 0.06999999999999999,
+          "tap:e3": 0.02
+        },
+        "goalMet": 0.24,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 92,
+        "usage": {
+          "inputTokens": 1681,
+          "outputTokens": 351
+        }
+      },
+      "taken": [
+        {
+          "type": "scroll",
+          "kind": "list",
+          "target": "screen",
+          "description": "Scroll down in the screen to see more of it",
+          "selector": "(//XCUIElementTypeCollectionView)[1]",
+          "direction": "down"
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "atMs": 20991,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Bolt T-Shirt - Yellow",
+        "Product Price",
+        "Test.allTheThings() T-Shirt - Orange",
+        "Test.allTheThings() T-Shirt - Pink",
+        "Test.allTheThings() T-Shirt - Purple",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 32,
+      "decision": {
+        "action": "scroll:e2:up",
+        "confidence": 0.31,
+        "probabilities": {
+          "scroll:e2:up": 0.33,
+          "scroll:e2:down": 0.3,
+          "STUCK": 0.23,
+          "tap:e9": 0.03,
+          "tap:e28": 0.03
+        },
+        "goalMet": 0.31,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 146,
+        "usage": {
+          "inputTokens": 1731,
+          "outputTokens": 362
+        }
+      },
+      "taken": [
+        {
+          "type": "scroll",
+          "kind": "list",
+          "target": "screen",
+          "description": "Scroll up in the screen to see more of it",
+          "selector": "(//XCUIElementTypeCollectionView)[1]",
+          "direction": "up"
+        }
+      ],
+      "undone": true
+    },
+    {
+      "index": 12,
+      "atMs": 21288,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Bolt T-Shirt - Black",
+        "Product Price",
+        "Sauce Labs Bolt T-Shirt - Blue",
+        "Sauce Labs Bolt T-Shirt - Green",
+        "Sauce Labs Bolt T-Shirt - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 32,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.41,
+        "probabilities": {
+          "STUCK": 0.43,
+          "scroll:e2:down": 0.26,
+          "tap:e28": 0.11,
+          "tap:e1": 0.08,
+          "tap:e3": 0.05
+        },
+        "goalMet": 0.25,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 125,
+        "usage": {
+          "inputTokens": 1732,
+          "outputTokens": 359
+        }
+      },
+      "backtrack": {
+        "to": 11,
+        "instead": "Scroll down in the screen to see more of it"
+      },
+      "undone": true
+    },
+    {
+      "index": 13,
+      "atMs": 35892,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Bolt T-Shirt - Yellow",
+        "Product Price",
+        "Test.allTheThings() T-Shirt - Orange",
+        "Test.allTheThings() T-Shirt - Pink",
+        "Test.allTheThings() T-Shirt - Purple",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 32,
+      "decision": {
+        "action": "scroll:e2:up",
+        "confidence": 0.31,
+        "probabilities": {
+          "scroll:e2:up": 0.33,
+          "scroll:e2:down": 0.3,
+          "STUCK": 0.23,
+          "tap:e9": 0.03,
+          "tap:e28": 0.03
+        },
+        "goalMet": 0.31,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 146,
+        "usage": {
+          "inputTokens": 1731,
+          "outputTokens": 362
+        }
+      },
+      "retry": {
+        "of": 11
+      },
+      "taken": [
+        {
+          "type": "scroll",
+          "kind": "list",
+          "target": "screen",
+          "description": "Scroll down in the screen to see more of it",
+          "selector": "(//XCUIElementTypeCollectionView)[1]",
+          "direction": "down"
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "atMs": 39578,
+      "screenText": [
+        "Button",
+        "title",
+        "Test.allTheThings() T-Shirt - Red",
+        "Product Price",
+        "Test.allTheThings() T-Shirt - Turquoise",
+        "Test.allTheThings() T-Shirt - Yellow",
+        "Sauce Labs Backpack - Black",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 32,
+      "decision": {
+        "action": "scroll:e2:down",
+        "confidence": 0.25,
+        "probabilities": {
+          "scroll:e2:down": 0.27,
+          "STUCK": 0.26,
+          "scroll:e2:up": 0.21000000000000002,
+          "tap:e21": 0.06999999999999999,
+          "tap:e3": 0.05
+        },
+        "goalMet": 0.34,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 172,
+        "usage": {
+          "inputTokens": 1744,
+          "outputTokens": 362
+        }
+      },
+      "taken": [
+        {
+          "type": "scroll",
+          "kind": "list",
+          "target": "screen",
+          "description": "Scroll down in the screen to see more of it",
+          "selector": "(//XCUIElementTypeCollectionView)[1]",
+          "direction": "down"
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "atMs": 42000,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Backpack - Green",
+        "Product Price",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "Sauce Labs Backpack - Violet",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 32,
+      "decision": {
+        "action": "scroll:e2:down",
+        "confidence": 0.36,
+        "probabilities": {
+          "scroll:e2:down": 0.38,
+          "STUCK": 0.3,
+          "scroll:e2:up": 0.17,
+          "tap:e1": 0.05,
+          "tap:e3": 0.03
+        },
+        "goalMet": 0.27,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 150,
+        "usage": {
+          "inputTokens": 1729,
+          "outputTokens": 362
+        }
+      },
+      "taken": [
+        {
+          "type": "scroll",
+          "kind": "list",
+          "target": "screen",
+          "description": "Scroll down in the screen to see more of it",
+          "selector": "(//XCUIElementTypeCollectionView)[1]",
+          "direction": "down"
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "atMs": 42283,
+      "screenText": [
+        "Button",
+        "title",
+        "Sauce Labs Backpack - Red",
+        "Product Price",
+        "Sauce Labs Backpack - Violet",
+        "Sauce Labs Backpack - Yellow",
+        "Sauce Labs Fleece Jacket - Blue",
+        "Sauce Labs Fleece Jacket - Brown",
+        "Sauce Labs Fleece Jacket - Green",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 44,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.36,
+        "probabilities": {
+          "STUCK": 0.37,
+          "scroll:e2:down": 0.31,
+          "scroll:e2:up": 0.17,
+          "tap:e1": 0.05,
+          "tap:e40": 0.05
+        },
+        "goalMet": 0.35,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 128,
+        "usage": {
+          "inputTokens": 2142,
+          "outputTokens": 479
+        }
+      }
+    }
+  ],
+  "failedExpectations": [
+    {
+      "text": "Sauce Labs Onesie"
+    }
+  ],
+  "discardedDecisions": 2,
+  "usage": {
+    "requests": 16,
+    "inputTokens": 28002,
+    "outputTokens": 6143
+  }
+}

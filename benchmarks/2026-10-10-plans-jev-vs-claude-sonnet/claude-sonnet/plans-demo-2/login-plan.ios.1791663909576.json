@@ -1,0 +1,263 @@
+{
+  "criterion": {
+    "id": "login-plan",
+    "goal": "Log in",
+    "steps": [
+      "Open the Login tab at the bottom of the screen",
+      "Enter {email} as the email and {password} as the password",
+      "Tap LOGIN"
+    ],
+    "expect": [
+      {
+        "text": "You are logged in!"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "claude",
+  "input": "simulator",
+  "startedAt": "2026-10-10T20:24:51.918Z",
+  "durationMs": 17657,
+  "outcome": "passed",
+  "reason": "Goal reached and all 1 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 2305,
+      "screenText": [
+        "WEBDRIVER",
+        "Demo app for the appium-boilerplate",
+        "Support"
+      ],
+      "actionCount": 7,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.96,
+        "probabilities": {
+          "tap:e3": 0.96
+        },
+        "goalMet": 0.03,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 2100,
+        "apiLatencyMs": 1879,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1484,
+          "outputTokens": 42
+        }
+      },
+      "planStep": 1,
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Login",
+          "description": "Tap the button \"Login\" (bottom of the screen)",
+          "selector": "~Login"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 5966,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "type:e3:email",
+        "confidence": 0.8,
+        "probabilities": {
+          "type:e3:email": 0.8
+        },
+        "goalMet": 0.9,
+        "fills": {
+          "e3": {
+            "input": "email",
+            "confidence": 0.97
+          },
+          "e4": {
+            "input": "password",
+            "confidence": 0.97
+          }
+        },
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1808,
+        "apiLatencyMs": 1595,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2052,
+          "outputTokens": 86
+        }
+      },
+      "planStep": 1,
+      "completed": 1
+    },
+    {
+      "index": 3,
+      "atMs": 9535,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "type:e3:email",
+        "confidence": 0.93,
+        "probabilities": {
+          "type:e3:email": 0.93
+        },
+        "goalMet": 0.03,
+        "fills": {
+          "e3": {
+            "input": "email",
+            "confidence": 0.97
+          },
+          "e4": {
+            "input": "password",
+            "confidence": 0.97
+          }
+        },
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1957,
+        "apiLatencyMs": 1740,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2052,
+          "outputTokens": 86
+        }
+      },
+      "planStep": 2,
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Email",
+          "description": "Type the test data \"email\" into the field \"Email\" (id input-email, top of the screen)",
+          "selector": "~input-email",
+          "input": "email"
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Password",
+          "description": "Type the test data \"password\" into the field \"Password\" (id input-password, middle of the screen)",
+          "selector": "~input-password",
+          "input": "password"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "atMs": 11496,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "tap:e5",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e5": 0.9
+        },
+        "goalMet": 0.9,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1827,
+        "apiLatencyMs": 1626,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1884,
+          "outputTokens": 38
+        }
+      },
+      "planStep": 2,
+      "completed": 2
+    },
+    {
+      "index": 5,
+      "atMs": 13479,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "tap:e5",
+        "confidence": 0.93,
+        "probabilities": {
+          "tap:e5": 0.93
+        },
+        "goalMet": 0.04,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1805,
+        "apiLatencyMs": 1595,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1884,
+          "outputTokens": 42
+        }
+      },
+      "planStep": 3,
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "LOGIN",
+          "description": "Tap the button \"LOGIN\" (id button-LOGIN, middle of the screen)",
+          "selector": "~button-LOGIN"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "atMs": 17515,
+      "screenText": [
+        "Success",
+        "You are logged in!"
+      ],
+      "actionCount": 1,
+      "decision": {
+        "action": "tap:e1",
+        "confidence": 0.5,
+        "probabilities": {
+          "tap:e1": 0.5
+        },
+        "goalMet": 0.95,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1551,
+        "apiLatencyMs": 1308,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1410,
+          "outputTokens": 38
+        }
+      },
+      "planStep": 3
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 1,
+  "usage": {
+    "requests": 7,
+    "inputTokens": 12244,
+    "outputTokens": 370
+  }
+}

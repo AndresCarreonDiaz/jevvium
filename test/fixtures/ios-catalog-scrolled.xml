@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AppiumAUT>
+  <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="My Demo App" label="My Demo App" enabled="true" visible="true" accessible="false" x="0" y="0" width="393" height="852" index="0" traits="" processId="7033" bundleId="com.saucelabs.mydemo.app.ios">
+    <XCUIElementTypeWindow type="XCUIElementTypeWindow" enabled="true" visible="true" accessible="false" x="0" y="0" width="393" height="852" index="0" traits="">
+      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="393" height="852" index="0" traits="">
+        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="393" height="852" index="0" traits="">
+          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="393" height="852" index="0" traits="">
+            <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="393" height="852" index="0" traits="">
+              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="393" height="852" index="0" traits="">
+                <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="393" height="852" index="0" traits="">
+                  <XCUIElementTypeOther type="XCUIElementTypeOther" name="Catalog-screen" enabled="true" visible="true" accessible="false" x="0" y="61" width="393" height="757" index="0" traits="">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="61" width="393" height="60" index="0" traits="">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="16" y="81" width="153" height="20" index="0" traits="">
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="AppLogo Icons" enabled="true" visible="true" accessible="false" x="16" y="81" width="19" height="20" index="0" traits="Image"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="AppTitle Icons" enabled="true" visible="true" accessible="false" x="48" y="81" width="121" height="20" index="1" traits="Image"/>
+                      </XCUIElementTypeOther>
+                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="Button" label="Button" enabled="true" visible="true" accessible="true" x="357" y="81" width="20" height="20" index="1" traits="Button">
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Button" name="Button" label="Button" enabled="true" visible="false" accessible="false" x="377" y="80" width="0" height="22" index="0" traits="StaticText"/>
+                      </XCUIElementTypeButton>
+                    </XCUIElementTypeOther>
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="123" width="393" height="633" index="1" traits="">
+                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="title" name="title" label="title" enabled="true" visible="true" accessible="true" x="16" y="147" width="369" height="24" index="0" traits="StaticText"/>
+                      <XCUIElementTypeCollectionView type="XCUIElementTypeCollectionView" enabled="true" visible="true" accessible="false" x="0" y="195" width="393" height="561" index="1" traits="">
+                        <XCUIElementTypeCell type="XCUIElementTypeCell" enabled="true" visible="true" accessible="false" x="16" y="195" width="172" height="272" index="0" traits="">
+                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="16" y="195" width="172" height="272" index="0" traits="">
+                            <XCUIElementTypeOther type="XCUIElementTypeOther" name="ProductItem" enabled="true" visible="true" accessible="false" x="16" y="195" width="172" height="272" index="0" traits="">
+                              <XCUIElementTypeImage type="XCUIElementTypeImage" name="Product Image" label="Product Image" enabled="true" visible="true" accessible="true" x="16" y="195" width="172" height="172" index="0" traits="Image"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Sauce Labs Backpack - Violet" name="Product Name" label="Sauce Labs Backpack - Violet" enabled="true" visible="true" accessible="true" x="18" y="371" width="181" height="14" index="1" traits="StaticText"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Product Price" name="Product Price" label="Product Price" enabled="true" visible="true" accessible="true" x="18" y="397" width="62" height="18" index="2" traits="StaticText"/>
+                              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="18" y="420" width="97" height="13" index="3" traits="">
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="18" y="420" width="13" height="13" index="0" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="39" y="420" width="13" height="13" index="1" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="60" y="420" width="13" height="13" index="2" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="81" y="420" width="13" height="13" index="3" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarUnSelected Icons" label="StarUnSelected Icons" enabled="true" visible="true" accessible="true" x="102" y="420" width="13" height="13" index="4" traits="Button"/>
+                              </XCUIElementTypeOther>
+                            </XCUIElementTypeOther>
+                          </XCUIElementTypeOther>
+                        </XCUIElementTypeCell>
+                        <XCUIElementTypeCell type="XCUIElementTypeCell" enabled="true" visible="true" accessible="false" x="205" y="195" width="172" height="272" index="1" traits="">
+                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="205" y="195" width="172" height="272" index="0" traits="">
+                            <XCUIElementTypeOther type="XCUIElementTypeOther" name="ProductItem" enabled="true" visible="true" accessible="false" x="205" y="195" width="172" height="272" index="0" traits="">
+                              <XCUIElementTypeImage type="XCUIElementTypeImage" name="Product Image" label="Product Image" enabled="true" visible="true" accessible="true" x="205" y="195" width="172" height="172" index="0" traits="Image"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Sauce Labs Backpack - Yellow" name="Product Name" label="Sauce Labs Backpack - Yellow" enabled="true" visible="true" accessible="true" x="207" y="371" width="185" height="14" index="1" traits="StaticText"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Product Price" name="Product Price" label="Product Price" enabled="true" visible="true" accessible="true" x="207" y="397" width="62" height="18" index="2" traits="StaticText"/>
+                              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="207" y="420" width="97" height="13" index="3" traits="">
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="207" y="420" width="13" height="13" index="0" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="228" y="420" width="13" height="13" index="1" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="249" y="420" width="13" height="13" index="2" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="270" y="420" width="13" height="13" index="3" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarUnSelected Icons" label="StarUnSelected Icons" enabled="true" visible="true" accessible="true" x="291" y="420" width="13" height="13" index="4" traits="Button"/>
+                              </XCUIElementTypeOther>
+                            </XCUIElementTypeOther>
+                          </XCUIElementTypeOther>
+                        </XCUIElementTypeCell>
+                        <XCUIElementTypeCell type="XCUIElementTypeCell" enabled="true" visible="true" accessible="false" x="16" y="472" width="172" height="272" index="2" traits="">
+                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="16" y="472" width="172" height="272" index="0" traits="">
+                            <XCUIElementTypeOther type="XCUIElementTypeOther" name="ProductItem" enabled="true" visible="true" accessible="false" x="16" y="472" width="172" height="272" index="0" traits="">
+                              <XCUIElementTypeImage type="XCUIElementTypeImage" name="Product Image" label="Product Image" enabled="true" visible="true" accessible="true" x="16" y="472" width="172" height="172" index="0" traits="Image"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Sauce Labs Bike Light" name="Product Name" label="Sauce Labs Bike Light" enabled="true" visible="true" accessible="true" x="18" y="648" width="135" height="14" index="1" traits="StaticText"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Product Price" name="Product Price" label="Product Price" enabled="true" visible="true" accessible="true" x="18" y="674" width="52" height="18" index="2" traits="StaticText"/>
+                              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="18" y="697" width="97" height="13" index="3" traits="">
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="18" y="697" width="13" height="13" index="0" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="39" y="697" width="13" height="13" index="1" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="60" y="697" width="13" height="13" index="2" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="81" y="697" width="13" height="13" index="3" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarUnSelected Icons" label="StarUnSelected Icons" enabled="true" visible="true" accessible="true" x="102" y="697" width="13" height="13" index="4" traits="Button"/>
+                              </XCUIElementTypeOther>
+                            </XCUIElementTypeOther>
+                          </XCUIElementTypeOther>
+                        </XCUIElementTypeCell>
+                        <XCUIElementTypeCell type="XCUIElementTypeCell" enabled="true" visible="true" accessible="false" x="205" y="472" width="172" height="272" index="3" traits="">
+                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="205" y="472" width="172" height="272" index="0" traits="">
+                            <XCUIElementTypeOther type="XCUIElementTypeOther" name="ProductItem" enabled="true" visible="true" accessible="false" x="205" y="472" width="172" height="272" index="0" traits="">
+                              <XCUIElementTypeImage type="XCUIElementTypeImage" name="Product Image" label="Product Image" enabled="true" visible="true" accessible="true" x="205" y="472" width="172" height="172" index="0" traits="Image"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Sauce Labs Bolt T-Shirt - Black" name="Product Name" label="Sauce Labs Bolt T-Shirt - Black" enabled="true" visible="true" accessible="true" x="207" y="648" width="186" height="14" index="1" traits="StaticText"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Product Price" name="Product Price" label="Product Price" enabled="true" visible="true" accessible="true" x="207" y="674" width="59" height="18" index="2" traits="StaticText"/>
+                              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="207" y="697" width="97" height="13" index="3" traits="">
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="207" y="697" width="13" height="13" index="0" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="228" y="697" width="13" height="13" index="1" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="249" y="697" width="13" height="13" index="2" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="true" accessible="true" x="270" y="697" width="13" height="13" index="3" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarUnSelected Icons" label="StarUnSelected Icons" enabled="true" visible="true" accessible="true" x="291" y="697" width="13" height="13" index="4" traits="Button"/>
+                              </XCUIElementTypeOther>
+                            </XCUIElementTypeOther>
+                          </XCUIElementTypeOther>
+                        </XCUIElementTypeCell>
+                        <XCUIElementTypeCell type="XCUIElementTypeCell" enabled="true" visible="true" accessible="false" x="16" y="749" width="172" height="272" index="4" traits="">
+                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="16" y="749" width="172" height="272" index="0" traits="">
+                            <XCUIElementTypeOther type="XCUIElementTypeOther" name="ProductItem" enabled="true" visible="true" accessible="false" x="16" y="749" width="172" height="272" index="0" traits="">
+                              <XCUIElementTypeImage type="XCUIElementTypeImage" name="Product Image" label="Product Image" enabled="true" visible="true" accessible="true" x="16" y="749" width="172" height="172" index="0" traits="Image"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Sauce Labs Bolt T-Shirt - Blue" name="Product Name" label="Sauce Labs Bolt T-Shirt - Blue" enabled="true" visible="false" accessible="true" x="18" y="925" width="180" height="14" index="1" traits="StaticText"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Product Price" name="Product Price" label="Product Price" enabled="true" visible="false" accessible="true" x="18" y="951" width="59" height="18" index="2" traits="StaticText"/>
+                              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="18" y="974" width="97" height="13" index="3" traits="">
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="false" accessible="true" x="18" y="974" width="13" height="13" index="0" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="false" accessible="true" x="39" y="974" width="13" height="13" index="1" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="false" accessible="true" x="60" y="974" width="13" height="13" index="2" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="false" accessible="true" x="81" y="974" width="13" height="13" index="3" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarUnSelected Icons" label="StarUnSelected Icons" enabled="true" visible="false" accessible="true" x="102" y="974" width="13" height="13" index="4" traits="Button"/>
+                              </XCUIElementTypeOther>
+                            </XCUIElementTypeOther>
+                          </XCUIElementTypeOther>
+                        </XCUIElementTypeCell>
+                        <XCUIElementTypeCell type="XCUIElementTypeCell" enabled="true" visible="true" accessible="false" x="205" y="749" width="172" height="272" index="5" traits="">
+                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="205" y="749" width="172" height="272" index="0" traits="">
+                            <XCUIElementTypeOther type="XCUIElementTypeOther" name="ProductItem" enabled="true" visible="true" accessible="false" x="205" y="749" width="172" height="272" index="0" traits="">
+                              <XCUIElementTypeImage type="XCUIElementTypeImage" name="Product Image" label="Product Image" enabled="true" visible="true" accessible="true" x="205" y="749" width="172" height="172" index="0" traits="Image"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Sauce Labs Bolt T-Shirt - Green" name="Product Name" label="Sauce Labs Bolt T-Shirt - Green" enabled="true" visible="false" accessible="true" x="207" y="925" width="191" height="14" index="1" traits="StaticText"/>
+                              <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Product Price" name="Product Price" label="Product Price" enabled="true" visible="false" accessible="true" x="207" y="951" width="59" height="18" index="2" traits="StaticText"/>
+                              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="207" y="974" width="97" height="13" index="3" traits="">
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="false" accessible="true" x="207" y="974" width="13" height="13" index="0" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="false" accessible="true" x="228" y="974" width="13" height="13" index="1" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="false" accessible="true" x="249" y="974" width="13" height="13" index="2" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarSelected Icons" label="StarSelected Icons" enabled="true" visible="false" accessible="true" x="270" y="974" width="13" height="13" index="3" traits="Button"/>
+                                <XCUIElementTypeButton type="XCUIElementTypeButton" name="StarUnSelected Icons" label="StarUnSelected Icons" enabled="true" visible="false" accessible="true" x="291" y="974" width="13" height="13" index="4" traits="Button"/>
+                              </XCUIElementTypeOther>
+                            </XCUIElementTypeOther>
+                          </XCUIElementTypeOther>
+                        </XCUIElementTypeCell>
+                      </XCUIElementTypeCollectionView>
+                    </XCUIElementTypeOther>
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="123" width="393" height="635" index="2" traits="">
+                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="No Items" name="No Items" label="No Items" enabled="true" visible="false" accessible="true" x="149" y="193" width="95" height="24" index="0" traits="StaticText"/>
+                      <XCUIElementTypeImage type="XCUIElementTypeImage" name="CartEmpty Icons" enabled="true" visible="false" accessible="false" x="144" y="249" width="105" height="104" index="1" traits="Image"/>
+                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Oh no! Your cart is empty. Fill it up with swag to complete your purchase." name="Oh no! Your cart is empty. Fill it up with swag to complete your purchase." label="Oh no! Your cart is empty. Fill it up with swag to complete your purchase." enabled="true" visible="false" accessible="true" x="16" y="385" width="361" height="32" index="2" traits="StaticText"/>
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="76" y="465" width="241" height="80" index="3" traits="">
+                        <XCUIElementTypeButton type="XCUIElementTypeButton" name="Go Shopping" label="Go Shopping" enabled="true" visible="false" accessible="true" x="92" y="481" width="209" height="48" index="0" traits="Button">
+                          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Go Shopping" name="Go Shopping" label="Go Shopping" enabled="true" visible="false" accessible="false" x="147" y="494" width="99" height="22" index="0" traits="StaticText"/>
+                        </XCUIElementTypeButton>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="758" width="393" height="15" index="3" traits=""/>
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="758" width="393" height="60" index="4" traits="">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="758" width="393" height="60" index="0" traits="">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="758" width="131" height="60" index="0" traits="">
+                          <XCUIElementTypeButton type="XCUIElementTypeButton" name="Catalog-tab-item" enabled="true" visible="true" accessible="true" x="0" y="758" width="131" height="60" index="0" traits="Button">
+                            <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" enabled="true" visible="false" accessible="false" x="0" y="758" width="0" height="0" index="0" traits="StaticText"/>
+                          </XCUIElementTypeButton>
+                          <XCUIElementTypeImage type="XCUIElementTypeImage" name="CatalogSelected Icons" enabled="true" visible="false" accessible="false" x="55" y="773" width="21" height="20" index="1" traits="Image"/>
+                          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Catalog" name="Catalog" label="Catalog" enabled="true" visible="false" accessible="true" x="48" y="796" width="35" height="10" index="2" traits="StaticText"/>
+                        </XCUIElementTypeOther>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="131" y="758" width="131" height="60" index="1" traits="">
+                          <XCUIElementTypeButton type="XCUIElementTypeButton" name="Cart-tab-item" enabled="true" visible="true" accessible="true" x="131" y="758" width="131" height="60" index="0" traits="Button">
+                            <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" enabled="true" visible="false" accessible="false" x="131" y="758" width="0" height="0" index="0" traits="StaticText"/>
+                          </XCUIElementTypeButton>
+                          <XCUIElementTypeImage type="XCUIElementTypeImage" name="AddToCartUnselected Icons" enabled="true" visible="false" accessible="false" x="186" y="773" width="21" height="20" index="1" traits="Image"/>
+                          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Cart" name="Cart" label="Cart" enabled="true" visible="false" accessible="true" x="187" y="796" width="19" height="10" index="2" traits="StaticText"/>
+                        </XCUIElementTypeOther>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="262" y="758" width="131" height="60" index="2" traits="">
+                          <XCUIElementTypeButton type="XCUIElementTypeButton" name="More-tab-item" enabled="true" visible="true" accessible="true" x="262" y="758" width="131" height="60" index="0" traits="Button">
+                            <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" enabled="true" visible="false" accessible="false" x="262" y="758" width="0" height="0" index="0" traits="StaticText"/>
+                          </XCUIElementTypeButton>
+                          <XCUIElementTypeImage type="XCUIElementTypeImage" name="Menu Icons" enabled="true" visible="false" accessible="false" x="317" y="773" width="21" height="20" index="1" traits="Image"/>
+                          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="More" name="More" label="More" enabled="true" visible="false" accessible="true" x="316" y="796" width="23" height="10" index="2" traits="StaticText"/>
+                        </XCUIElementTypeOther>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeOther>
+                </XCUIElementTypeOther>
+              </XCUIElementTypeOther>
+            </XCUIElementTypeOther>
+          </XCUIElementTypeOther>
+        </XCUIElementTypeOther>
+      </XCUIElementTypeOther>
+    </XCUIElementTypeWindow>
+  </XCUIElementTypeApplication>
+</AppiumAUT>

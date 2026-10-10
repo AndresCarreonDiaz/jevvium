@@ -17,6 +17,11 @@ export function toSelector(locator: Locator): string {
 /** Where to look for an expectation. Ids match on both platforms; text is platform-specific. */
 export function expectationLocator(expectation: Expectation, platform: Platform): Locator {
   if ('id' in expectation) return { using: 'accessibility id', value: expectation.id }
+  if ('contains' in expectation) {
+    return platform === 'ios'
+      ? { using: '-ios predicate string', value: `label CONTAINS ${quoted(expectation.contains)}` }
+      : { using: 'xpath', value: `//*[contains(@text, ${xpathLiteral(expectation.contains)})]` }
+  }
   return platform === 'ios'
     ? { using: '-ios predicate string', value: `label == ${quoted(expectation.text)}` }
     : { using: 'xpath', value: `//*[@text=${xpathLiteral(expectation.text)}]` }

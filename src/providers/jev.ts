@@ -1,5 +1,5 @@
 import { apiKey, HttpError, postJson } from './http.ts'
-import { actionOptions, fillKey, fillQuestion, GOAL_MET, GOAL_MET_ANSWERS, inputOptions, NEXT_ACTION, stateOf } from './questions.ts'
+import { actionOptions, fillKey, fillQuestion, goalMetQuestion, inputOptions, nextActionQuestion, stateOf } from './questions.ts'
 import type { Decision, DecisionProvider, DecisionRequest } from './types.ts'
 
 const DEFAULT_URL = 'https://api.typesafe.ai/v1/systemone'
@@ -143,12 +143,13 @@ export function buildBody(request: DecisionRequest, model: string) {
     request.fields.map((field) => [fillKey(field.key), { type: 'choice', instructions: fillQuestion(field), criteria: inputs }]),
   )
 
+  const goal = goalMetQuestion(request)
   return {
     model,
     state: stateOf(request),
     questions: {
-      next_action: { type: 'choice', instructions: NEXT_ACTION, criteria: actionOptions(request) },
-      goal_met: { type: 'noul', instructions: GOAL_MET, criteria: GOAL_MET_ANSWERS },
+      next_action: { type: 'choice', instructions: nextActionQuestion(request), criteria: actionOptions(request) },
+      goal_met: { type: 'noul', instructions: goal.instructions, criteria: goal.answers },
       ...fillQuestions,
     },
   }

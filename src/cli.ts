@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execFile } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { createRequire } from 'node:module'
@@ -8,6 +9,7 @@ import { parseArgs, promisify } from 'node:util'
 import { remote } from 'webdriverio'
 import { generateSpec, safeId, specFileName } from './codegen.ts'
 import { loadCriterion } from './criteria.ts'
+import { STARTER_PLAN } from './plan.ts'
 import { simulatorDevice, webdriverDevice, type Device } from './device.ts'
 import { explore, type Outcome, type Replay, type Step, type TakenAction, type Trace } from './explorer.ts'
 import { ClaudeProvider } from './providers/claude.ts'
@@ -25,14 +27,17 @@ import type { Criterion, Platform } from './types.ts'
 
 const run = promisify(execFile)
 
-const USAGE = `jevvium: turn acceptance criteria into Appium tests
+const USAGE = `jevvium: turn test plans written in plain words into Appium tests
 
 Usage (npx jevvium in a project that installed it with npm i -D jevvium):
-  jevvium explore <criteria.yml...> --app <path> [options]
-  jevvium codegen <trace.json> --criteria <criteria.yml> [--out <dir>]
-  jevvium validate <criteria.yml...>      check criteria files without a device or a key
+  jevvium explore <plan.md...> --app <path> [options]
+  jevvium codegen <trace.json> --criteria <plan.md> [--out <dir>]
+  jevvium validate <plan.md...>           check test plans without a device or a key
   jevvium test [spec...] --app <path>     run the generated tests (default: every one in --out)
-  jevvium init                            write a starter criterion, a .env.jevvium for the key, .gitignore entries
+  jevvium init                            write a starter test plan, a .env.jevvium for the key, .gitignore entries
+
+A test plan is a Markdown file: a title, numbered steps, and "Expected:" checks. A YAML
+criteria file (goal, steps, inputs, expect) is accepted too.
 
 Explore options:
   --app <path>               the app to test: an iOS Simulator build (.app, or an .ipa or .zip
@@ -48,6 +53,8 @@ Explore options:
   --max-steps <n>            decisions that act before giving up (default: 15)
   --min-confidence <p>       below this, stop and escalate (default: 0.2)
   --goal-threshold <p>       "goal reached" probability that triggers the checks (default: 0.8)
+  --max-backtracks <n>       times a run may restart the app and try the model's runner-up at
+                             the decision that led to a dead end (default: 2; 0 turns it off)
   --input <auto|appium>      auto taps and types straight into an iOS Simulator, skipping XCTest,
                              and falls back to Appium elsewhere (default: auto)
   --provider <name>          the decision model: jev (TypeSafe's Jev), openai (OpenAI's
@@ -95,6 +102,7 @@ async function main(): Promise<number> {
       'max-steps': { type: 'string', default: '15' },
       'min-confidence': { type: 'string', default: '0.2' },
       'goal-threshold': { type: 'string', default: '0.8' },
+      'max-backtracks': { type: 'string', default: '2' },
       criteria: { type: 'string' },
       input: { type: 'string', default: 'auto' },
       provider: { type: 'string', default: 'jev' },
@@ -127,7 +135,9 @@ async function main(): Promise<number> {
         const checks = criterion.expect.length
         const warning = checks === 0 ? "; it has no expect checks, so it would pass on the model's word" : ''
         const inputs = Object.keys(criterion.inputs).length
-        console.log(`ok     ${file}: ${checks} ${checks === 1 ? 'check' : 'checks'}, ${inputs} ${inputs === 1 ? 'input' : 'inputs'}${warning}`)
+        const steps = criterion.steps?.length ? `${criterion.steps.length} steps, ` : ''
+        console.log(`ok     ${file}: ${steps}${checks} ${checks === 1 ? 'check' : 'checks'}, ${inputs} ${inputs === 1 ? 'input' : 'inputs'}${warning}`)
+        for (const [name, value] of Object.entries(criterion.inputs)) console.log(`         ${name}: ${value}`)
       } catch (error) {
         invalid++
         console.log(`error  ${error instanceof Error ? error.message : String(error)}`)
@@ -159,6 +169,7 @@ async function main(): Promise<number> {
   const maxSteps = count('--max-steps', values['max-steps'])
   const minConfidence = probability('--min-confidence', values['min-confidence'])
   const goalThreshold = probability('--goal-threshold', values['goal-threshold'])
+  const maxBacktracks = values['max-backtracks'] === '0' ? 0 : count('--max-backtracks', values['max-backtracks'])
   const parallel = values.parallel === undefined ? 1 : count('--parallel', values.parallel)
   if (parallel > 1 && platform !== 'ios') throw new Error('--parallel only runs on iOS Simulators for now')
   const userServer = values.server === undefined ? undefined : serverAddress(values.server)
@@ -186,14 +197,20 @@ async function main(): Promise<number> {
   // A missing or refused key shows up now, rather than after a session has started.
   await provider.check?.()
 
+  // How long the sessions took to start, which the summary shows apart from the criteria.
+  let sessionMs = 0
   const openSession = (address: ServerAddress, caps: WebdriverIO.Capabilities) => async (out: Out) => {
     const settings = caps as Record<string, unknown>
     const udid = settings['appium:udid']
-    if (typeof udid === 'string' && !settings['appium:prebuiltWDAPath'] && !(await hasWebDriverAgent(udid))) {
-      out('(first session on this simulator: Appium builds WebDriverAgent with Xcode, which takes a few minutes, once)')
-    }
+    // Appium builds WebDriverAgent with Xcode when it has none for this driver, which can't be
+    // told from here: the first session on a simulator, and the first after a driver update.
+    const first = typeof udid === 'string' && !settings['appium:prebuiltWDAPath'] && !(await hasWebDriverAgent(udid))
+    out(`Starting the Appium session (${first ? 'the first on this simulator' : 'a first session on a simulator'} builds WebDriverAgent with Xcode: a minute or a few)`)
+    const started = Date.now()
     // WebdriverIO's own warnings are about requests it retried; jevvium reports what fails.
     const browser = await remote({ ...address, logLevel: 'error', connectionRetryTimeout: 600_000, capabilities: caps })
+    sessionMs += Date.now() - started
+    out(`(session ready in ${((Date.now() - started) / 1000).toFixed(1)} s)`)
     let device: Device | undefined
     try {
       device = values.input === 'appium' || !browser.isIOS ? webdriverDevice(browser) : await directInput(browser, out)
@@ -269,10 +286,7 @@ async function main(): Promise<number> {
       simulators.map(async (simulator, i) => {
         const installed = await hasWebDriverAgent(simulator.udid)
         const caps = {
-          ...baseCapabilities,
-          'appium:udid': simulator.udid,
-          'appium:wdaLocalPort': 8100 + i,
-          'appium:mjpegServerPort': 9100 + i,
+          ...capabilities(platform, { app, bundleId: values['bundle-id'] }, simulator.name, simulator.version, simulator.udid),
           // Launching an installed WebDriverAgent skips an xcodebuild run for every session.
           'appium:usePreinstalledWDA': true,
           ...(!installed && { 'appium:prebuiltWDAPath': builtAgent }),
@@ -285,7 +299,7 @@ async function main(): Promise<number> {
 
   /** Explores one criterion on a lane, replays a pass and writes the results. */
   const runOne = async (lane: Lane, criterion: Criterion, out: Out): Promise<Result> => {
-    out(`\n${lanes.length > 1 ? `[${lane.name}] ` : ''}${criterion.id}: ${criterion.goal}`)
+    out(`\n${lanes.length > 1 ? `[${lane.name}] ` : ''}${criterion.id}: ${criterion.title ?? criterion.goal}`)
     let session: Session
     try {
       session = await lane.ready(values['fresh-session'], out)
@@ -301,6 +315,9 @@ async function main(): Promise<number> {
         maxSteps,
         minConfidence,
         goalThreshold,
+        // A dead end can go back and try again, since the app can be restarted from here.
+        restart: () => restartApp(session),
+        maxBacktracks,
         onStep: (step) => printStep(step, out, goalThreshold),
       })
       if (stopping) return { outcome: 'interrupted' }
@@ -370,7 +387,7 @@ async function main(): Promise<number> {
     await stopping.done
     return exitCode(stopping.signal)
   }
-  console.log(`\n${summary(results, Date.now() - started, lanes.length)}`)
+  console.log(`\n${summary(results, Date.now() - started, sessionMs, lanes.length)}`)
   return results.every(succeeded) ? 0 : 1
 
   /** Writes the trace and, for a pass, the spec. */
@@ -397,40 +414,17 @@ async function main(): Promise<number> {
   }
 }
 
-/** A first criterion to edit, with what each part is for. */
-const STARTER = `# A jevvium criterion: what a user does, the test data they type, and what the screen
-# shows when it worked. jevvium explores your app to find the path, then writes it down
-# as a plain WebdriverIO test.
-#
-#   check it, without a device:  npx jevvium validate criteria/example.yml
-#   explore it:                  npx jevvium explore criteria/example.yml --app path/to/YourApp.app
-
-# Where the feature is and what the user does, written like an acceptance criterion.
-goal: On the Login screen, a registered user logs in with their email and password and is told they are logged in.
-
-# Test data the user types, by name. The model sees only the names, so name each for its
-# role (wrong_password, not password2). Use made-up data: the values end up in the test.
-inputs:
-  email: qa.demo@example.com
-  password: Str0ngPassw0rd
-
-# What must be true at the end, checked without any model: an accessibility \`id\`, or a
-# \`text\` that matches an element's whole text, capitals and punctuation included.
-expect:
-  - text: You are logged in!
-`
-
 /**
- * Writes what a project needs to start: a criterion to edit, a file for the key, and
+ * Writes what a project needs to start: a test plan to edit, a file for the key, and
  * .gitignore entries. The key gets a file of its own, readable only by its owner,
  * because a project's .env may be committed or built into the app.
  */
 function init(): number {
   const created: string[] = []
-  const starter = join('criteria', 'example.yml')
+  const starter = join('criteria', 'example.md')
   if (!existsSync(starter)) {
     mkdirSync('criteria', { recursive: true })
-    writeFileSync(starter, STARTER)
+    writeFileSync(starter, STARTER_PLAN)
     created.push(starter)
   }
   if (!existsSync('.env.jevvium')) {
@@ -445,11 +439,11 @@ function init(): number {
     writeFileSync('.gitignore', `${ignored}${separator}${missing.join('\n')}\n`)
     created.push(`.gitignore entries for ${missing.join(', ')}`)
   }
-  console.log(created.length > 0 ? `Created ${created.join(', ')}.` : 'Nothing to create: the starter criterion, .env.jevvium and the .gitignore entries are there.')
+  console.log(created.length > 0 ? `Created ${created.join(', ')}.` : 'Nothing to create: the starter test plan, .env.jevvium and the .gitignore entries are there.')
   console.log(`
 Next:
   1. Put your Jev key in .env.jevvium (TYPESAFE_API_KEY=..., from console.typesafe.ai).
-  2. Edit ${starter} to describe a flow in your app.
+  2. Edit ${starter} to describe a flow in your app, the way you'd write a test plan.
   3. npx jevvium explore ${starter} --app path/to/YourApp.app
   4. npx jevvium test --app path/to/YourApp.app`)
   return 0
@@ -473,7 +467,7 @@ async function runTests(
             .map((file) => resolve(outDir, file))
         : []
   if (specs.length === 0) {
-    throw new Error(`No generated ${platform} tests in ${outDir}. Explore a criterion first: npx jevvium explore <criteria.yml> --app <path>`)
+    throw new Error(`No generated ${platform} tests in ${outDir}. Explore a plan first: npx jevvium explore criteria/example.md --app <path>`)
   }
   for (const spec of specs) {
     if (!existsSync(spec)) throw new Error(`No test at ${spec}`)
@@ -519,8 +513,8 @@ function succeeded({ outcome, replay }: Result): boolean {
   return outcome === 'passed' && (replay === undefined || replay === 'passed')
 }
 
-/** "5 criteria in 21.4 s on 3 simulators: 3 passed, 1 failed its replay, 1 stuck" */
-function summary(results: Result[], durationMs: number, simulators: number): string {
+/** "5 criteria in 21.4 s (6.2 s of it starting the sessions) on 3 simulators: 3 passed, 1 failed its replay, 1 stuck" */
+function summary(results: Result[], durationMs: number, sessionMs: number, simulators: number): string {
   const counts = new Map<string, number>()
   for (const result of results) {
     const label =
@@ -532,8 +526,9 @@ function summary(results: Result[], durationMs: number, simulators: number): str
     counts.set(label, (counts.get(label) ?? 0) + 1)
   }
   const where = simulators > 1 ? ` on ${simulators} simulators` : ''
+  const starting = sessionMs > 0 ? ` (${(sessionMs / 1000).toFixed(1)} s of it starting the ${simulators > 1 ? 'sessions' : 'session'})` : ''
   const parts = [...counts].map(([label, n]) => `${n} ${label}`).join(', ')
-  return `${results.length} ${results.length === 1 ? 'criterion' : 'criteria'} in ${(durationMs / 1000).toFixed(1)} s${where}: ${parts}`
+  return `${results.length} ${results.length === 1 ? 'criterion' : 'criteria'} in ${(durationMs / 1000).toFixed(1)} s${starting}${where}: ${parts}`
 }
 
 /** One device and the Appium server that drives it. Its criteria run one after another. */
@@ -677,12 +672,22 @@ function capabilities(
         platformName: 'iOS',
         'appium:automationName': 'XCUITest',
         'appium:deviceName': device ?? 'iPhone 17',
-        ...(udid && { 'appium:udid': udid }),
+        ...(udid && { 'appium:udid': udid, 'appium:wdaLocalPort': wdaPort(udid), 'appium:mjpegServerPort': wdaPort(udid) + 1000 }),
         'appium:wdaLaunchTimeout': 240_000,
         // jevvium never reads the simulator's system log, and capturing it slows the session down.
         'appium:skipLogCapture': true,
         ...shared,
       }
+}
+
+/**
+ * WebDriverAgent's port for a simulator, from its udid, so that no two simulators share
+ * one: the driver reuses whatever WebDriverAgent answers on the port, whichever simulator
+ * it drives. The one a run leaves running on the same simulator is reused, which is what
+ * makes the next session start in a few seconds.
+ */
+function wdaPort(udid: string): number {
+  return 8100 + (createHash('sha256').update(udid).digest().readUInt16BE(0) % 1000)
 }
 
 function serverAddress(value: string) {
@@ -721,20 +726,23 @@ function probability(flag: string, value: string): number {
 /** One line per step: what it did, then the model's confidence and how long it took to answer. */
 function printStep(step: Step, out: Out, goalThreshold: number): void {
   const { decision } = step
-  const reached = !step.taken?.length && decision.goalMet >= goalThreshold
+  const reached = !step.taken?.length && (step.completed !== undefined || decision.goalMet >= goalThreshold)
   const stats = `${reached ? `goal ${decision.goalMet.toFixed(2)}` : decision.confidence.toFixed(2)} · ${decision.latencyMs} ms`
   const lines = step.taken?.length
     ? step.taken.map(describeTaken)
-    : [reached ? 'goal reached' : decision.action === 'STUCK' ? 'no way forward' : 'unsure']
+    : [step.completed ? `step ${step.completed} done` : reached ? 'goal reached' : decision.action === 'STUCK' ? 'no way forward' : 'unsure']
   lines.forEach((line, i) => {
     const prefix = i === 0 ? String(step.index).padStart(4) : '    '
     out(`${prefix}  ${i === 0 ? line.padEnd(40) + stats : line}`)
   })
   for (const note of step.notes ?? []) out(`      (${note})`)
+  if (step.backtrack) out(`      (dead end: restarting the app and going back to step ${step.backtrack.to} to try "${step.backtrack.instead}" instead)`)
+  if (step.retry) out(`      (step ${step.retry.of} again, with the model's runner-up)`)
 }
 
 function describeTaken(taken: TakenAction): string {
   if (taken.type === 'type') return `type ${taken.input} → "${taken.target}"`
+  if (taken.type === 'scroll') return `scroll ${taken.direction} ${taken.target === 'screen' ? 'the screen' : `"${taken.target}"`}`
   if (taken.kind === 'key') return `press "${taken.target}"`
   return `${taken.kind === 'switch' ? 'toggle' : 'tap'} "${taken.target}"`
 }

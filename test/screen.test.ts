@@ -40,6 +40,25 @@ describe('parseScreen on iOS', () => {
     ])
   })
 
+  it('offers to scroll a list whose content sticks out of it, but not an alert whose message fits', () => {
+    const lists = (name: string) => parseScreen(fixture(name), 'ios').elements.filter((e) => e.kind === 'list')
+    // The shop app's catalog: a collection view whose last row of cells starts near its bottom edge.
+    assert.deepEqual(summary({ ...parseScreen(fixture('ios-catalog'), 'ios'), elements: lists('ios-catalog') }), [
+      'list screen @middle -> (//XCUIElementTypeCollectionView)[1]',
+    ])
+    assert.deepEqual(lists('ios-catalog')[0].scrolls, ['down'])
+    // Its cells have no ids, so each is found by the product name it shows, not by its position in the list.
+    const cells = parseScreen(fixture('ios-catalog'), 'ios').elements.filter((e) => e.label.startsWith('Sauce Labs'))
+    assert.equal(toSelector(cells[0].locator), '//XCUIElementTypeCell[.//XCUIElementTypeStaticText[@label="Sauce Labs Backpack - Black"]]')
+    assert.deepEqual(cells.map((e) => e.label).slice(0, 2), ['Sauce Labs Backpack - Black', 'Sauce Labs Backpack - Green'])
+    // The demo app's Swipe tab: a page three screens tall with a carousel across it.
+    assert.deepEqual(lists('ios-swipe')[0].scrolls, ['down', 'right'])
+    // The alert's message scroll view reports "2 pages", but its text fits.
+    assert.deepEqual(lists('ios-login-success'), [])
+    assert.deepEqual(lists('ios-login'), [])
+    assert.deepEqual(lists('ios-forms'), [], 'the Forms screen fits on one page')
+  })
+
   it('only sees the alert when one covers the screen', () => {
     const screen = parseScreen(fixture('ios-login-success'), 'ios')
     assert.deepEqual(summary(screen), ['button OK @middle -> ~OK'])

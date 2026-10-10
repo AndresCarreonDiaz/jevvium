@@ -29,8 +29,15 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
-      # What npm publish would ship: the package must build, and only what it lists goes in.
-      - run: npm pack --dry-run
+      # What npm publish would ship, installed the way a new user installs it: the packed
+      # tarball, in an empty project, with the starter plan that init writes.
+      # npm pack doesn't create its destination.
+      - run: mkdir "$RUNNER_TEMP/pack" && npm pack --pack-destination "$RUNNER_TEMP/pack"
+      - run: |
+          mkdir "$RUNNER_TEMP/fresh" && cd "$RUNNER_TEMP/fresh" && npm init -y > /dev/null
+          npm i -D "$RUNNER_TEMP"/pack/jevvium-*.tgz
+          npx jevvium init
+          npx jevvium validate criteria/example.md
 
   # An open-source repo that handles API keys should prove it never commits one.
   secrets:

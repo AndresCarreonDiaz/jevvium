@@ -13,6 +13,11 @@ export const LEAVE_EMPTY = 'leave_empty'
 export type DecisionRequest = {
   platform: Platform
   goal: string
+  /**
+   * The plan's steps and which one the test is on (1-based), when the criterion
+   * has steps. The "goal reached" question is then about the current step.
+   */
+  plan?: { steps: string[]; current: number }
   /** Visible text on the current screen. */
   screenText: string[]
   /** State that text doesn't show, e.g. `The switch "Wi-Fi" is on`. */

@@ -1,8 +1,10 @@
 import type { Browser } from 'webdriverio'
+import { describeExpectation } from './expectations.ts'
 import type { Replay, Trace } from './explorer.ts'
 import { expectationLocator, toSelector } from './locator.ts'
 import { redactor, restoreSelector } from './redact.ts'
-import type { Criterion, Expectation } from './types.ts'
+import { SWIPE, swipeDirection } from './scroll.ts'
+import type { Criterion } from './types.ts'
 
 /** How long the generated specs wait for an element (config/wdio.shared.conf.ts), so the replay waits as long. */
 export const SPEC_WAIT_MS = 15_000
@@ -25,11 +27,12 @@ export async function replay(browser: Browser, trace: Trace, criterion: Criterio
   })
 
   try {
-    for (const taken of trace.steps.flatMap((step) => step.taken ?? [])) {
+    for (const taken of trace.steps.flatMap((step) => (step.undone ? [] : step.taken ?? []))) {
       const element = browser.$(restoreSelector(taken.selector, criterion.inputs))
       // A spec's commands wait for their element the same way, through its waitforTimeout.
       await element.waitForExist({ timeout: waitMs })
       if (taken.type === 'type') await element.setValue(criterion.inputs[taken.input!])
+      else if (taken.type === 'scroll') await browser.swipe({ ...SWIPE, direction: swipeDirection(taken.direction!), scrollableElement: element })
       else await element.click()
     }
     for (const expectation of criterion.expect) {
@@ -44,7 +47,7 @@ export async function replay(browser: Browser, trace: Trace, criterion: Criterio
             return false
           },
         )
-      if (!shown) return result('failed', `${describe(expectation)} is not on screen at the end.`)
+      if (!shown) return result('failed', `The ${describeExpectation(expectation)} is not on screen at the end.`)
     }
     return result('passed', 'The generated steps pass with plain Appium.')
   } catch (error) {
@@ -57,8 +60,4 @@ export async function replay(browser: Browser, trace: Trace, criterion: Criterio
 function lostSession(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return /invalid session id|session is either terminated or not started|could not proxy command|ECONNREFUSED|socket hang up|unable to connect/i.test(message)
-}
-
-function describe(expectation: Expectation): string {
-  return 'id' in expectation ? `The element "${expectation.id}"` : `The text "${expectation.text}"`
 }

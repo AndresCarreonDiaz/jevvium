@@ -2,16 +2,22 @@ import { redactor } from './redact.ts'
 import type { Action, Screen, ScreenElement } from './types.ts'
 
 /**
- * Every action worth offering on a screen: tap each button or switch, and type
- * each named input into each field. Typing is offered by input name only, so
- * the decision model never sees the value.
+ * Every action worth offering on a screen: tap each button or switch, type each
+ * named input into each field, and scroll each list that has more to show, when
+ * the device can scroll. Typing is offered by input name only, so the decision
+ * model never sees the value.
  */
-export function buildActions(screen: Screen, inputNames: string[]): Action[] {
+export function buildActions(screen: Screen, inputNames: string[], canScroll = true): Action[] {
   const actions: Action[] = []
   for (const element of screen.elements) {
     if (element.kind === 'input') {
       for (const input of inputNames) {
         actions.push({ key: `type:${element.key}:${input}`, type: 'type', element, input })
+      }
+    } else if (element.kind === 'list') {
+      if (!canScroll) continue
+      for (const direction of element.scrolls ?? []) {
+        actions.push({ key: `scroll:${element.key}:${direction}`, type: 'scroll', element, direction })
       }
     } else {
       actions.push({ key: `tap:${element.key}`, type: 'tap', element })
@@ -22,6 +28,10 @@ export function buildActions(screen: Screen, inputNames: string[]): Action[] {
 
 export function describeAction(action: Action): string {
   if (action.element.kind === 'key') return `Press the "${action.element.label}" key on the on-screen keyboard`
+  if (action.type === 'scroll') {
+    const where = action.element.label === 'screen' ? 'the screen' : describeElement(action.element)
+    return `Scroll ${action.direction} in ${where} to see more of it`
+  }
   const target = describeElement(action.element)
   return action.type === 'type'
     ? `Type the test data "${action.input}" into ${target}`

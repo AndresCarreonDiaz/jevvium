@@ -1,0 +1,14 @@
+Simulator: iPhone 17, iOS 26.5
+Starting Appium (log: runs/appium.log)
+[0-0] RUNNING in iOS(26.5) on iOS - file:///generated/bike-light.ios.spec.ts
+[0-0] PASSED in iOS(26.5) on iOS - file:///generated/bike-light.ios.spec.ts
+ "spec" Reporter:
+------------------------------------------------------------------
+[My Demo App.app iOS #0-0] Running: My Demo App.app on iOS
+[My Demo App.app iOS #0-0]
+[My Demo App.app iOS #0-0] » generated/bike-light.ios.spec.ts
+[My Demo App.app iOS #0-0] bike-light
+[My Demo App.app iOS #0-0]    ✓ Add the bike light to the cart
+[My Demo App.app iOS #0-0]
+[My Demo App.app iOS #0-0] 1 passing (6.6s)
+Spec Files:	 1 passed, 1 total (100% completed) in 00:00:10  

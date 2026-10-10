@@ -20,7 +20,7 @@ const criterion: Criterion = {
 /** The demo app's login flow, driven by the real iOS page sources. */
 class FakeApp implements Device {
   readonly platform = 'ios' as const
-  screen: 'ios-home' | 'ios-login' | 'ios-login-success' = 'ios-home'
+  screen: string = 'ios-home'
   typed: Record<string, string> = {}
   loginWorks = true
 
@@ -547,5 +547,235 @@ describe('explore', () => {
   it('refuses to write a spec from a criteria file that differs from the explored one', async () => {
     const trace = await explore(new FakeApp(), criterion, { ...options, provider: new ScriptedProvider(happyPath) })
     assert.throws(() => generateSpec(trace, { ...criterion, expect: [{ text: 'Something else' }] }), /doesn't match/)
+  })
+})
+
+describe('explore with backtracking', () => {
+  /** The demo app, where tapping the Forms tab is a wrong turn for the login flow. */
+  class WrongTurnApp extends FakeApp {
+    restarts = 0
+    async tap(element: ScreenElement) {
+      if (toSelector(element.locator) === '~Forms') this.screen = 'ios-forms'
+      else await super.tap(element)
+    }
+    async restart() {
+      this.restarts++
+      this.screen = 'ios-home'
+      this.typed = {}
+    }
+  }
+
+  /** Prefers Forms on the home screen, with Login as the runner-up, and is stuck once there. */
+  const wrongTurn = (request: DecisionRequest) => {
+    if (request.history.length === 0 && request.actions.some((a) => a.description.includes('"Forms"'))) {
+      return { action: find(request, '"Forms"'), probabilities: { [find(request, '"Forms"')]: 0.5, [find(request, 'button "Login" (bottom')]: 0.4 } }
+    }
+    if (request.screenText.includes('Form components')) return { action: STUCK }
+    return happyPath(request)
+  }
+
+  it('restarts, replays and takes the runner-up when it dead-ends, and the spec keeps only the final path', async () => {
+    const app = new WrongTurnApp()
+    const provider = new ScriptedProvider(wrongTurn)
+    const trace = await explore(app, criterion, { ...options, provider, restart: () => app.restart() })
+
+    assert.equal(trace.outcome, 'passed', trace.reason)
+    assert.equal(app.restarts, 1)
+    assert.deepEqual(
+      trace.steps.map((s) => [s.index, s.taken?.[0]?.selector, s.undone, s.backtrack?.to, s.retry?.of]),
+      [
+        [1, '~Forms', true, undefined, undefined],
+        [2, undefined, true, 1, undefined],
+        [3, '~Login', undefined, undefined, 1],
+        [4, '~input-email', undefined, undefined, undefined],
+        [5, '~input-password', undefined, undefined, undefined],
+        [6, '~button-LOGIN', undefined, undefined, undefined],
+        [7, undefined, undefined, undefined, undefined],
+      ],
+    )
+    assert.equal(trace.steps[1].backtrack?.instead, 'Tap the button "Login" (bottom of the screen)')
+    // The model is asked about the path the run is on, not the one it abandoned.
+    assert.deepEqual(provider.requests[2].history, ['Tap the button "Login" (bottom of the screen)'])
+    const spec = generateSpec(trace, criterion)
+    assert.ok(!spec.includes('~Forms'), 'the wrong turn is not in the test')
+    assert.match(spec, /\$\('~Login'\)\.click\(\)/)
+  })
+
+  it('stops at a dead end when nothing can restart the app, or when the runner-up is too unlikely', async () => {
+    const stuck = await explore(new WrongTurnApp(), criterion, { ...options, provider: new ScriptedProvider(wrongTurn) })
+    assert.equal(stuck.outcome, 'stuck')
+
+    const app = new WrongTurnApp()
+    const unlikely = new ScriptedProvider((request) => {
+      const choice = wrongTurn(request)
+      return 'probabilities' in choice ? { ...choice, probabilities: { [choice.action]: 0.95 } } : choice
+    })
+    const trace = await explore(app, criterion, { ...options, provider: unlikely, restart: () => app.restart() })
+    assert.equal(trace.outcome, 'stuck')
+    assert.equal(app.restarts, 0)
+  })
+
+  it('stops when another path leads to the same dead end, since the app is the problem then', async () => {
+    const app = new WrongTurnApp()
+    // Whatever tab it picks first, it ends up on Forms, stuck.
+    const provider = new ScriptedProvider((request) => {
+      if (request.history.length === 0) {
+        return { action: find(request, '"Forms"'), probabilities: { [find(request, '"Forms"')]: 0.4, [find(request, '"Webview"')]: 0.3, [find(request, '"Swipe"')]: 0.2 } }
+      }
+      if (request.history.length === 1 && !request.screenText.includes('Form components')) return { action: find(request, '"Forms"') }
+      return { action: STUCK }
+    })
+    const trace = await explore(app, criterion, { ...options, provider, restart: () => app.restart(), maxBacktracks: 5 })
+    assert.equal(trace.outcome, 'stuck')
+    assert.equal(app.restarts, 1)
+  })
+
+  it('gives up backtracking after the limit', async () => {
+    const app = new WrongTurnApp()
+    // Stuck everywhere but on the home screen, with options to spare.
+    const provider = new ScriptedProvider((request) =>
+      request.history.length === 0
+        ? { action: find(request, '"Forms"'), probabilities: { [find(request, '"Forms"')]: 0.4, [find(request, '"Webview"')]: 0.3, [find(request, '"Swipe"')]: 0.2 } }
+        : { action: STUCK },
+    )
+    const trace = await explore(app, criterion, { ...options, provider, restart: () => app.restart(), maxBacktracks: 1 })
+    assert.equal(trace.outcome, 'stuck')
+    assert.equal(app.restarts, 1)
+    assert.equal(trace.steps.filter((s) => s.retry).length, 1)
+  })
+})
+
+describe('explore with scrolling', () => {
+  const catalog: Criterion = {
+    id: 'bike-light',
+    goal: 'Open the Sauce Labs Bike Light from the catalog.',
+    inputs: {},
+    expect: [{ text: 'Sauce Labs Bike Light' }],
+  }
+
+  /** The shop app's catalog: the bike light is below the fold until the list is scrolled. */
+  class Catalog implements Device {
+    readonly platform = 'ios' as const
+    screen: 'ios-catalog' | 'ios-catalog-scrolled' = 'ios-catalog'
+    scrolls: string[] = []
+    async pageSource() {
+      return fixture(this.screen)
+    }
+    async tap() {}
+    async type() {}
+    async scroll(element: ScreenElement, direction: string) {
+      this.scrolls.push(`${toSelector(element.locator)} ${direction}`)
+      if (direction === 'down') this.screen = 'ios-catalog-scrolled'
+    }
+    async isDisplayed(locator: Locator) {
+      return this.screen === 'ios-catalog-scrolled' && toSelector(locator).includes('Bike Light')
+    }
+  }
+
+  it('scrolls a list to reach what is below the fold, then offers the way back', async () => {
+    const app = new Catalog()
+    const provider = new ScriptedProvider((request) => {
+      if (request.screenText.includes('Sauce Labs Bike Light')) return { action: STUCK, goalMet: 0.95 }
+      return { action: find(request, 'Scroll down in the screen') }
+    })
+    const trace = await explore(app, catalog, { ...options, provider })
+
+    assert.equal(trace.outcome, 'passed', trace.reason)
+    assert.deepEqual(app.scrolls, ['(//XCUIElementTypeCollectionView)[1] down'])
+    assert.deepEqual(trace.steps[0].taken, [
+      {
+        type: 'scroll',
+        kind: 'list',
+        target: 'screen',
+        description: 'Scroll down in the screen to see more of it',
+        selector: '(//XCUIElementTypeCollectionView)[1]',
+        direction: 'down',
+      },
+    ])
+    const after = provider.requests[1].actions.map((a) => a.description).filter((d) => d.startsWith('Scroll'))
+    assert.deepEqual(after, ['Scroll down in the screen to see more of it', 'Scroll up in the screen to see more of it'])
+
+    const spec = generateSpec(trace, catalog)
+    assert.match(spec, /import \{ \$, browser, expect \} from '@wdio\/globals'/)
+    assert.match(spec, /await browser\.swipe\(\{ direction: 'up', duration: 1000, percent: 0\.8, scrollableElement: \$\('\(\/\/XCUIElementTypeCollectionView\)\[1\]'\) \}\)/)
+  })
+
+  it('offers no scrolling on a device that cannot scroll', async () => {
+    const app = new Catalog()
+    ;(app as { scroll?: unknown }).scroll = undefined
+    const provider = new ScriptedProvider(() => ({ action: STUCK }))
+    await explore(app, catalog, { ...options, provider })
+    assert.ok(!provider.requests[0].actions.some((a) => a.description.startsWith('Scroll')))
+  })
+})
+
+describe('explore with a test plan', () => {
+  const plan: Criterion = {
+    id: 'login-plan',
+    title: 'Log in',
+    goal: 'Log in. The account exists.',
+    steps: ['Open the Login tab', 'Enter qa.demo@example.com as the email and Str0ngPassw0rd as the password', 'Submit the form'],
+    inputs: { email: 'qa.demo@example.com', password: 'Str0ngPassw0rd' },
+    expect: [{ contains: 'logged in' }],
+  }
+
+  /** The demo app, with the plan's `contains` check answered from the success screen. */
+  class PlanApp extends FakeApp {
+    async isDisplayed(locator: Locator) {
+      return this.screen === 'ios-login-success' && toSelector(locator) === '-ios predicate string:label CONTAINS "logged in"'
+    }
+  }
+
+  /** Judges each step from the screen: the model is asked about the current step only. */
+  const followPlan = (request: DecisionRequest) => {
+    const { current } = request.plan!
+    const onLogin = request.screenText.includes('LOGIN')
+    const filled = request.history.length >= 3
+    if (current === 1 && onLogin) return { action: STUCK, goalMet: 0.95 }
+    if (current === 2 && filled) return { action: STUCK, goalMet: 0.9 }
+    if (current === 3 && request.screenText.includes('You are logged in!')) return { action: STUCK, goalMet: 0.97 }
+    return happyPath(request)
+  }
+
+  it('works through the steps in order, asks about the current one, and checks the expectations at the end', async () => {
+    const provider = new ScriptedProvider(followPlan)
+    const trace = await explore(new PlanApp(), plan, { ...options, provider })
+
+    assert.equal(trace.outcome, 'passed', trace.reason)
+    assert.deepEqual(trace.criterion.steps, ['Open the Login tab', 'Enter {email} as the email and {password} as the password', 'Submit the form'])
+    assert.deepEqual(
+      trace.steps.map((s) => [s.planStep, s.completed, s.taken?.map((t) => t.selector)]),
+      [
+        [1, undefined, ['~Login']],
+        [1, 1, undefined],
+        [2, undefined, ['~input-email']],
+        [2, undefined, ['~input-password']],
+        [2, 2, undefined],
+        [3, undefined, ['~button-LOGIN']],
+        [3, undefined, undefined],
+      ],
+    )
+    assert.deepEqual(provider.requests.map((r) => r.plan!.current), [1, 1, 2, 2, 2, 3, 3])
+    assert.ok(!JSON.stringify(provider.requests).includes('Str0ngPassw0rd'), 'the plan is redacted before it is sent')
+    assert.equal(trace.steps.filter((s) => s.taken).length, 4)
+  })
+
+  it("doesn't count moving on to the next step against the step limit", async () => {
+    const trace = await explore(new PlanApp(), plan, { ...options, provider: new ScriptedProvider(followPlan), maxSteps: 4 })
+    assert.equal(trace.outcome, 'passed', trace.reason)
+  })
+
+  it('heads the generated test with the plan steps', async () => {
+    const trace = await explore(new PlanApp(), plan, { ...options, provider: new ScriptedProvider(followPlan) })
+    const spec = generateSpec(trace, plan)
+    assert.match(spec, /it\('Log in', async/, 'the test is named after the plan, not the goal with its context')
+    assert.equal(trace.criterion.title, 'Log in')
+    // A trace written before plans had titles still generates its test.
+    const { title, ...untitled } = trace.criterion
+    assert.ok(title)
+    assert.match(generateSpec({ ...trace, criterion: untitled }, plan), /it\('Log in', async/)
+    assert.match(spec, /\/\/ 1\. Open the Login tab\n\s+await \$\('~Login'\)\.click\(\)\n\s+\/\/ 2\. Enter qa\.demo@example\.com as the email/)
+    assert.match(spec, /\/\/ 3\. Submit the form\n\s+await \$\('~button-LOGIN'\)\.click\(\)\n\s+\/\/ Expected\n/)
+    assert.match(spec, /label CONTAINS "logged in"/)
   })
 })

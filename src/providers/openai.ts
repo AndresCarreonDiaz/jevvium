@@ -1,5 +1,5 @@
 import { apiKey, postJson } from './http.ts'
-import { actionOptions, fillKey, fillQuestion, GOAL_MET, GOAL_MET_ANSWERS, inputOptions, NEXT_ACTION, stateOf } from './questions.ts'
+import { actionOptions, fillKey, fillQuestion, goalMetQuestion, inputOptions, nextActionQuestion, stateOf } from './questions.ts'
 import type { Decision, DecisionProvider, DecisionRequest } from './types.ts'
 
 const DEFAULT_URL = 'https://api.openai.com/v1/decisions'
@@ -118,10 +118,11 @@ type Question =
 export function buildDecisionsBody(request: DecisionRequest, model: string) {
   const choices = (options: Record<string, string>) => Object.entries(options).map(([value, description]) => ({ value, description }))
   const inputs = choices(inputOptions(request))
+  const goal = goalMetQuestion(request)
   const questions: Question[] = [
-    { type: 'choice', name: 'next_action', instructions: NEXT_ACTION, choices: choices(actionOptions(request)) },
+    { type: 'choice', name: 'next_action', instructions: nextActionQuestion(request), choices: choices(actionOptions(request)) },
     // A predicate takes no descriptions of its answers, so Jev's go in its instructions.
-    { type: 'predicate', name: 'goal_met', instructions: `${GOAL_MET} Yes: ${GOAL_MET_ANSWERS.true} No: ${GOAL_MET_ANSWERS.false}` },
+    { type: 'predicate', name: 'goal_met', instructions: `${goal.instructions} Yes: ${goal.answers.true} No: ${goal.answers.false}` },
     // Fields past the question limit (more than 62 empty fields on one screen) wait for a later decision.
     ...request.fields.slice(0, MAX_QUESTIONS - 2).map((field) => ({
       type: 'choice' as const,

@@ -1,0 +1,291 @@
+{
+  "criterion": {
+    "id": "bike-light",
+    "goal": "Add the bike light to the cart",
+    "steps": [
+      "In the catalog, scroll down until the Sauce Labs Bike Light shows, and open it",
+      "Add it to the cart, then open the Cart tab"
+    ],
+    "expect": [
+      {
+        "text": "My Cart"
+      },
+      {
+        "text": "Sauce Labs Bike Light"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "claude",
+  "input": "simulator",
+  "startedAt": "2026-10-10T20:27:05.058Z",
+  "durationMs": 19722,
+  "outcome": "passed",
+  "reason": "Goal reached and all 2 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 5687,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 30,
+      "decision": {
+        "action": "scroll:e2:down",
+        "confidence": 0.9,
+        "probabilities": {
+          "scroll:e2:down": 0.9
+        },
+        "goalMet": 0.03,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1865,
+        "apiLatencyMs": 1654,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2402,
+          "outputTokens": 41
+        }
+      },
+      "planStep": 1,
+      "taken": [
+        {
+          "type": "scroll",
+          "kind": "list",
+          "target": "screen",
+          "description": "Scroll down in the screen to see more of it",
+          "selector": "(//XCUIElementTypeCollectionView)[1]",
+          "direction": "down"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 7634,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Violet",
+        "Product Price",
+        "Sauce Labs Backpack - Yellow",
+        "Sauce Labs Bike Light",
+        "Sauce Labs Bolt T-Shirt - Black",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 31,
+      "decision": {
+        "action": "tap:e15",
+        "confidence": 0.8,
+        "probabilities": {
+          "tap:e15": 0.8
+        },
+        "goalMet": 0.1,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1659,
+        "apiLatencyMs": 1458,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2454,
+          "outputTokens": 38
+        }
+      },
+      "planStep": 1,
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Sauce Labs Bike Light",
+          "description": "Tap the button \"Sauce Labs Bike Light\" (bottom of the screen)",
+          "selector": "//XCUIElementTypeCell[.//XCUIElementTypeStaticText[@label=\"Sauce Labs Bike Light\"]]"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 11255,
+      "screenText": [
+        "Products",
+        "Sauce Labs Bike Light",
+        "$ 9.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 13,
+      "decision": {
+        "action": "tap:e10",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e10": 0.9
+        },
+        "goalMet": 0.85,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1592,
+        "apiLatencyMs": 1365,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1804,
+          "outputTokens": 38
+        }
+      },
+      "planStep": 1,
+      "completed": 1
+    },
+    {
+      "index": 4,
+      "atMs": 13266,
+      "screenText": [
+        "Products",
+        "Sauce Labs Bike Light",
+        "$ 9.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 13,
+      "decision": {
+        "action": "tap:e10",
+        "confidence": 0.9,
+        "probabilities": {
+          "tap:e10": 0.9
+        },
+        "goalMet": 0.05,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1883,
+        "apiLatencyMs": 1681,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1804,
+          "outputTokens": 38
+        }
+      },
+      "planStep": 2,
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Add To Cart",
+          "description": "Tap the button \"Add To Cart\" (id AddToCart, bottom of the screen)",
+          "selector": "~AddToCart"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "atMs": 15278,
+      "screenText": [
+        "Products",
+        "Sauce Labs Bike Light",
+        "$ 9.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 13,
+      "decision": {
+        "action": "tap:e12",
+        "confidence": 0.88,
+        "probabilities": {
+          "tap:e12": 0.88
+        },
+        "goalMet": 0.1,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1811,
+        "apiLatencyMs": 1602,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 1836,
+          "outputTokens": 38
+        }
+      },
+      "planStep": 2,
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Cart-tab-item",
+          "description": "Tap the button \"Cart-tab-item\" (bottom of the screen)",
+          "selector": "~Cart-tab-item"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "atMs": 19539,
+      "screenText": [
+        "My Cart",
+        "Sauce Labs Bike Light",
+        "$ 9.99",
+        "Color:",
+        "Black",
+        "1",
+        "Remove Item",
+        "© 2023 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Total:",
+        "1 Items",
+        "$9.99",
+        "Proceed To Checkout",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 21,
+      "decision": {
+        "action": "tap:e18",
+        "confidence": 0.4,
+        "probabilities": {
+          "tap:e18": 0.4
+        },
+        "goalMet": 0.93,
+        "fills": {},
+        "model": "claude-sonnet-5-5",
+        "latencyMs": 1906,
+        "apiLatencyMs": 1716,
+        "thinkingTokens": 0,
+        "usage": {
+          "inputTokens": 2229,
+          "outputTokens": 38
+        }
+      },
+      "planStep": 2
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 2,
+  "usage": {
+    "requests": 8,
+    "inputTokens": 17597,
+    "outputTokens": 310
+  }
+}

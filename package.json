@@ -1,12 +1,13 @@
 {
   "name": "jevvium",
   "version": "0.1.2",
-  "description": "Turn acceptance criteria into Appium tests. A decision model explores the app, then jevvium writes a plain, deterministic test from the path it found.",
+  "description": "Turn test plans written in plain words into Appium tests. A decision model follows the plan through the app, tapping, typing and scrolling, then jevvium writes a plain, deterministic test from the path it found.",
   "keywords": [
     "appium",
     "webdriverio",
     "mobile-testing",
     "test-automation",
+    "test-plan",
     "jev",
     "decision-model",
     "acceptance-criteria"
@@ -44,6 +45,7 @@
   "scripts": {
     "jevvium": "tsx src/cli.ts",
     "benchmark": "tsx scripts/benchmark.ts",
+    "compare": "tsx scripts/compare.ts",
     "apps": "./scripts/download-apps.sh",
     "apps:mydemo": "./scripts/download-mydemo.sh",
     "test": "node --import tsx --test \"test/**/*.test.ts\"",
@@ -62,7 +64,7 @@
     "@wdio/mocha-framework": "^9.32.0",
     "@wdio/spec-reporter": "^9.32.0",
     "appium": "^3.8.0",
-    "appium-xcuitest-driver": "^12.13.3",
+    "appium-xcuitest-driver": "12.13.3",
     "fast-xml-parser": "^5.11.2",
     "webdriverio": "^9.32.0",
     "yaml": "^2.9.1"

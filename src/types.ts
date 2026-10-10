@@ -10,8 +10,14 @@ export type Locator = {
   value: string
 }
 
-/** `key` is the keyboard's return key (done, go, search...), which closes or submits it. */
-export type ElementKind = 'button' | 'input' | 'switch' | 'key'
+/**
+ * `key` is the keyboard's return key (done, go, search...), which closes or submits it.
+ * `list` is a scrollable container with more content than fits: a list, a table, a form.
+ */
+export type ElementKind = 'button' | 'input' | 'switch' | 'key' | 'list'
+
+/** Where more content is: scrolling `down` reveals what is below the fold. */
+export type ScrollDirection = 'up' | 'down' | 'left' | 'right'
 
 /** One element on screen that the user can act on. */
 export type ScreenElement = {
@@ -30,6 +36,8 @@ export type ScreenElement = {
   empty?: boolean
   /** An input's placeholder, when its caption became its label. */
   placeholder?: string
+  /** The directions a list can scroll in to show more. */
+  scrolls?: ScrollDirection[]
   /** Its centre on screen, in points from the top left, for tapping it directly. */
   centre?: { x: number; y: number }
   locator: Locator
@@ -46,15 +54,26 @@ export type Screen = {
 export type Action =
   | { key: string; type: 'tap'; element: ScreenElement }
   | { key: string; type: 'type'; element: ScreenElement; input: string }
+  | { key: string; type: 'scroll'; element: ScreenElement; direction: ScrollDirection }
 
-/** A thing that must be true at the end, checked without any model. */
-export type Expectation = { id: string } | { text: string }
+/**
+ * A thing that must be true at the end, checked without any model: an element with
+ * this accessibility id, one whose whole text is this, or one whose text contains it.
+ */
+export type Expectation = { id: string } | { text: string } | { contains: string }
 
-/** An acceptance criterion, as written in a criteria file. */
+/** An acceptance criterion, as written in a criteria file or a test plan. */
 export type Criterion = {
   id: string
-  /** The behaviour to reach, in plain language. */
+  /** The plan's title, when it has one: what the generated test is called. */
+  title?: string
+  /** The behaviour to reach, in plain language: for a plan, its title and any context paragraphs. */
   goal: string
+  /**
+   * The plan's numbered steps, in order, when it has them. The explorer works
+   * through them one at a time, asking the model whether the current one is done.
+   */
+  steps?: string[]
   /** Test data the flow may type, by name. Values never leave the machine. */
   inputs: Record<string, string>
   /** Deterministic checks. The run only passes if all of them hold. */

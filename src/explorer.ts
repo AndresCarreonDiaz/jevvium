@@ -1,10 +1,11 @@
 import { buildActions, controlStates, describeAction, describeElement, redactScreen } from './actions.ts'
 import { fingerprintOf, type Device } from './device.ts'
+import { redactExpectation } from './expectations.ts'
 import { expectationLocator, toSelector } from './locator.ts'
 import { LEAVE_EMPTY, STUCK, type Decision, type DecisionProvider, type DecisionRequest } from './providers/types.ts'
 import { placeholderSelector, redactor } from './redact.ts'
 import { isBusy, needsFullRead, parseScreen } from './screen.ts'
-import type { Action, Criterion, ElementKind, Expectation, Platform, Screen } from './types.ts'
+import type { Action, Criterion, ElementKind, Expectation, Platform, Screen, ScreenElement, ScrollDirection } from './types.ts'
 
 export type ExploreOptions = {
   provider: DecisionProvider
@@ -19,6 +20,12 @@ export type ExploreOptions = {
   /** Probability above which the model's "goal reached" triggers the checks. */
   goalThreshold?: number
   /**
+   * Probability above which a plan step before the last counts as done and the test
+   * moves on to the next. Lower than `goalThreshold`: moving on too early costs little,
+   * since the whole plan stays in view and the checks still decide the pass.
+   */
+  stepThreshold?: number
+  /**
    * When the model decides to type into a field, other empty fields whose
    * answer is at least this confident are filled in the same step.
    */
@@ -27,6 +34,14 @@ export type ExploreOptions = {
   expectTimeoutMs?: number
   /** How long to wait for the screen to stop changing, and spinners to go, after an action. */
   settleTimeoutMs?: number
+  /**
+   * Restarts the app on its first screen. With it, a run that dead-ends can backtrack:
+   * restart, replay its actions up to the decision that led it wrong, and take the
+   * model's runner-up there instead. Without it, a dead end ends the run.
+   */
+  restart?: () => Promise<void>
+  /** How many times a run may backtrack (default 2). Each costs a restart and a replay. */
+  maxBacktracks?: number
   onStep?: (step: Step) => void
 }
 
@@ -52,6 +67,8 @@ export type TakenAction = {
   selector: string
   /** Name of the test data typed, for `type` actions. */
   input?: string
+  /** Which way the list was scrolled, for `scroll` actions. */
+  direction?: ScrollDirection
 }
 
 export type Step = {
@@ -61,10 +78,23 @@ export type Step = {
   screenText: string[]
   actionCount: number
   decision: Decision
+  /** For a criterion with a plan: which of its steps (1-based) the test was on when it decided. */
+  planStep?: number
+  /** For a criterion with a plan: the model found this plan step done, so the test moved on to the next. */
+  completed?: number
   /** What this step did: one action, or several fields of a form. */
   taken?: TakenAction[]
   /** Changes the device made to how it works during this step, such as falling back to Appium input. */
   notes?: string[]
+  /**
+   * This step was a dead end, and the run went back: the app was restarted and replayed
+   * up to step `to`, where `instead` (the model's runner-up there) was taken.
+   */
+  backtrack?: { to: number; instead: string }
+  /** This step took the model's runner-up at step `of` instead of its choice, after a backtrack. */
+  retry?: { of: number }
+  /** A backtrack undid this step: its actions aren't part of the path the run ended on. */
+  undone?: true
 }
 
 /**
@@ -73,7 +103,7 @@ export type Step = {
  * and code generation fills the placeholders in selectors back in.
  */
 export type Trace = {
-  criterion: { id: string; goal: string; expect: Expectation[] }
+  criterion: { id: string; title?: string; goal: string; steps?: string[]; expect: Expectation[] }
   platform: Platform
   provider: string
   /** How taps and ASCII typing reached the app. */
@@ -96,6 +126,8 @@ export type Trace = {
 }
 
 const TOP_PROBABILITIES = 5
+/** The least likely an option may be for a backtrack to try it. */
+const RUNNER_UP_MIN = 0.1
 /** When a run stops, the screen has already settled, so its checks don't need a long wait. */
 const STOP_CHECK_MS = 1_000
 const REPEAT_LIMIT = 3
@@ -113,12 +145,29 @@ const EFFECT_WAIT_MS = 1_000
 /** A page source, and whether visibility in it has to be worked out from positions. */
 type Read = { source: string; geometric: boolean }
 type View = { read: Read; screen: Screen; actions: Action[]; request: DecisionRequest }
+/** A step that acted, with what a backtrack needs to replay it or try something else there. */
+type Performed = {
+  step: Step
+  /** The actions done, with the selectors that find their elements again. */
+  batch: Action[]
+  /** Every action the model could have picked, by key. */
+  options: Map<string, Action>
+  /** The model's probability for each option, untrimmed. */
+  probabilities: Record<string, number>
+  /** Options tried at this step so far: the model's choice, then any runner-up. */
+  tried: Set<string>
+  planStep: number
+  /** How long the history was before this step acted. */
+  historyLength: number
+}
 
 /** Drives the app toward the criterion's goal, one decision at a time. */
 export async function explore(device: Device, criterion: Criterion, options: ExploreOptions): Promise<Trace> {
   const maxSteps = options.maxSteps ?? 15
+  const maxBacktracks = options.restart ? (options.maxBacktracks ?? 2) : 0
   const minConfidence = options.minConfidence ?? 0.2
   const goalThreshold = options.goalThreshold ?? 0.8
+  const stepThreshold = options.stepThreshold ?? Math.min(0.6, goalThreshold)
   const fillConfidence = options.fillConfidence ?? 0.5
   const expectTimeoutMs = options.expectTimeoutMs ?? 5_000
   const settleTimeoutMs = options.settleTimeoutMs ?? 15_000
@@ -126,17 +175,32 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
 
   const started = Date.now()
   const redact = redactor(criterion.inputs)
-  const redactExpectation = (e: Expectation): Expectation => ('id' in e ? { id: redact(e.id) } : { text: redact(e.text) })
+  const redacted = (e: Expectation) => redactExpectation(e, redact)
   const inputNames = Object.keys(criterion.inputs)
   const steps: Step[] = []
   const history: string[] = []
+  /** The steps that acted and still stand, oldest first. */
+  const performed: Performed[] = []
+  let backtracks = 0
+  /** The screens the run dead-ended on. Reaching one again another way means the app, not the path, is the problem. */
+  const deadEnds = new Set<string>()
+  let next: Read
   const repeats = new Map<string, number>()
   const usage = { requests: 0, inputTokens: 0, outputTokens: 0 }
   let failedExpectations: Expectation[] = []
   let discardedDecisions = 0
+  // A plan is worked through one step at a time; a criterion without one is a single step, its goal.
+  const plan = criterion.steps?.map(redact) ?? []
+  let planStep = 1
 
   const finish = (outcome: Outcome, reason: string): Trace => ({
-    criterion: { id: criterion.id, goal: redact(criterion.goal), expect: criterion.expect.map(redactExpectation) },
+    criterion: {
+      id: criterion.id,
+      ...(criterion.title && { title: redact(criterion.title) }),
+      goal: redact(criterion.goal),
+      ...(plan.length > 0 && { steps: plan }),
+      expect: criterion.expect.map(redacted),
+    },
     platform,
     provider: options.provider.name,
     input: device.input ?? 'appium',
@@ -145,7 +209,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     outcome,
     reason,
     steps,
-    failedExpectations: failedExpectations.map(redactExpectation),
+    failedExpectations: failedExpectations.map(redacted),
     discardedDecisions,
     usage,
   })
@@ -165,6 +229,10 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
   // How often each element was chosen and found covered since the last action.
   const covered = new Map<string, number>()
   let coveredSinceAction = 0
+  // Which way each list was scrolled, by selector. A list recycles what scrolls off, so the page
+  // source can't show there is a way back; this does.
+  const scrolled = new Map<string, Set<ScrollDirection>>()
+  const BACK: Record<ScrollDirection, ScrollDirection> = { down: 'up', up: 'down', right: 'left', left: 'right' }
 
   /**
    * On iOS, a read without XCTest's `visible` is several times faster, so it is
@@ -193,8 +261,12 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
       }
       parsed.elements = parsed.elements.filter((element) => !hidden.has(toSelector(element.locator)))
     }
+    for (const element of parsed.elements) {
+      const back = element.kind === 'list' ? scrolled.get(toSelector(element.locator)) : undefined
+      if (back) element.scrolls = [...new Set([...(element.scrolls ?? []), ...[...back].map((direction) => BACK[direction])])]
+    }
     const screen = redactScreen(parsed, criterion.inputs)
-    const actions = buildActions(screen, inputNames)
+    const actions = buildActions(screen, inputNames, device.scroll !== undefined)
     const fields = inputNames.length === 0
       ? []
       : screen.elements
@@ -203,6 +275,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     const request: DecisionRequest = {
       platform,
       goal: redact(criterion.goal),
+      ...(plan.length > 0 && { plan: { steps: plan, current: planStep } }),
       screenText: screen.texts,
       controlStates: controlStates(screen),
       actions: actions.map((action) => ({ key: action.key, description: describeAction(action) })),
@@ -268,16 +341,136 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     return { ...settledView, decision: await decide(settledView.request) }
   }
 
+  /** The element on the current screen that this selector finds, by the same reading the run uses. */
+  const findOnScreen = async (selector: string, deadline: number): Promise<{ read: Read; element: ScreenElement } | undefined> => {
+    const current = await settle(deadline)
+    const search = (visibility: 'attribute' | 'geometry' | 'all') =>
+      parseScreen(current.source, platform, { visibility }).elements.find((element) => toSelector(element.locator) === selector)
+    const element = search(current.geometric ? 'geometry' : 'attribute') ?? search('all')
+    return element && { read: current, element }
+  }
+
+  /** Does one action again, on the element its selector finds now. */
+  const redo = async (action: Action, deadline: number): Promise<boolean> => {
+    const found = await findOnScreen(toSelector(action.element.locator), deadline)
+    if (!found) return false
+    const { element } = found
+    if (action.type === 'type') await device.type(element, criterion.inputs[action.input])
+    else if (action.type === 'scroll') await device.scroll!(element, action.direction)
+    else await device.tap(element)
+    next = device.input === 'simulator' ? await changedFrom(found.read) : await read()
+    return true
+  }
+
+  /**
+   * The run went wrong somewhere before this dead end. Going back from the most recent
+   * decision, the first one with an untried option that the model gave a real chance is
+   * where to try again: the app is restarted, the actions before it are done again, and
+   * that option is taken there. True when the run can carry on from the new screen.
+   */
+  const backtrack = async (deadEnd: Step): Promise<boolean> => {
+    if (backtracks >= maxBacktracks) return false
+    const screen = deadEnd.screenText.join('\n')
+    if (deadEnds.has(screen)) return false
+    deadEnds.add(screen)
+    let at: { entry: Performed; key: string } | undefined
+    for (let i = performed.length - 1; i >= 0 && !at; i--) {
+      const entry = performed[i]
+      const key = Object.entries(entry.probabilities)
+        .sort(([, a], [, b]) => b - a)
+        .find(([option, p]) => p >= RUNNER_UP_MIN && option !== STUCK && !entry.tried.has(option) && entry.options.has(option))?.[0]
+      if (key) at = { entry, key }
+    }
+    if (!at) return false
+    backtracks++
+    const { entry, key } = at
+    const instead = entry.options.get(key)!
+    const description = describeAction(instead)
+    deadEnd.backtrack = { to: entry.step.index, instead: description }
+    options.onStep?.(deadEnd)
+
+    // Everything from the wrong turn on is undone: replayed steps keep their place in the path.
+    const from = performed.indexOf(entry)
+    for (const step of steps) if (step.index >= entry.step.index && !step.undone) step.undone = true
+    const keep = performed.slice(0, from)
+    performed.length = 0
+    entry.tried.add(key)
+    history.length = entry.historyLength
+    planStep = entry.planStep
+    repeats.clear()
+    hidden.clear()
+    covered.clear()
+    coveredSinceAction = 0
+    scrolled.clear()
+
+    await options.restart!()
+    next = await read()
+    const deadline = () => Date.now() + settleTimeoutMs
+    for (const earlier of keep) {
+      for (const action of earlier.batch) {
+        if (!(await redo(action, deadline()))) throw new Error(`Backtracking couldn't repeat "${describeAction(action)}": its element wasn't found`)
+        if (action.type === 'scroll') scrolled.set(toSelector(action.element.locator), (scrolled.get(toSelector(action.element.locator)) ?? new Set()).add(action.direction))
+      }
+      performed.push(earlier)
+    }
+    const retry: Step = {
+      index: steps.length + 1,
+      atMs: Date.now() - started,
+      screenText: entry.step.screenText,
+      actionCount: entry.step.actionCount,
+      decision: entry.step.decision,
+      ...(plan.length > 0 && { planStep }),
+      retry: { of: entry.step.index },
+    }
+    if (!(await redo(instead, deadline()))) throw new Error(`Backtracking couldn't try "${description}": its element wasn't found`)
+    retry.taken = [takenFrom(instead, description)]
+    retry.atMs = Date.now() - started
+    steps.push(retry)
+    history.push(description)
+    performed.push({ ...entry, step: retry, batch: [instead], tried: entry.tried })
+    options.onStep?.(retry)
+    return true
+  }
+
+  const takenFrom = (item: Action, description: string): TakenAction => ({
+    type: item.type,
+    kind: item.element.kind,
+    target: item.element.label,
+    description,
+    selector: placeholderSelector(toSelector(item.element.locator), criterion.inputs),
+    ...(item.type === 'type' && { input: item.input }),
+    ...(item.type === 'scroll' && { direction: item.direction }),
+  })
+
   try {
     // Idle connections close after a few seconds, so open one now, while the first screen is read.
     void Promise.resolve()
       .then(() => options.provider.warmUp?.())
       .catch(() => {})
-    let next = await read()
-    for (let index = 1; index <= maxSteps + 1; index++) {
+    next = await read()
+    // Decisions that acted. Those that only moved the plan on to its next step don't count.
+    let acted = 0
+    for (let index = 1; ; index++) {
       const { read: settled, screen, actions, request, decision } = await observe(next)
-      const step: Step = { index, atMs: Date.now() - started, screenText: screen.texts, actionCount: actions.length, decision: trim(decision) }
+      const step: Step = {
+        index: steps.length + 1,
+        atMs: Date.now() - started,
+        screenText: screen.texts,
+        actionCount: actions.length,
+        decision: trim(decision),
+        ...(plan.length > 0 && { planStep }),
+      }
       steps.push(step)
+
+      // A plan step done, with more to come: the test moves on to the next step. The action the
+      // model picked was for the step just finished, so it is asked again about the new one.
+      if (decision.goalMet >= stepThreshold && planStep < plan.length) {
+        step.completed = planStep
+        planStep++
+        options.onStep?.(step)
+        next = settled
+        continue
+      }
 
       if (decision.goalMet >= goalThreshold) {
         options.onStep?.(step)
@@ -305,29 +498,37 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
        * A run that took no action can't pass this way, or a criterion whose
        * expectations already hold on the first screen would pass untested.
        */
-      const stop = async (outcome: Outcome, reason: string): Promise<Trace> => {
-        options.onStep?.(step)
-        const acted = steps.some((s) => s.taken)
+      const stop = async (outcome: Outcome, reason: string): Promise<Trace | undefined> => {
+        const acted = performed.length > 0
         if (acted && criterion.expect.length > 0) {
           const failed = await failing(device, criterion.expect, STOP_CHECK_MS)
           if (failed.length === 0) {
+            options.onStep?.(step)
             return finish('passed', `All ${criterion.expect.length} expectations hold, although the model was unsure the goal was reached.`)
           }
           failedExpectations = failed
-          return finish(outcome, `${reason} ${failed.length} of ${criterion.expect.length} expectations do not hold.`)
+          reason = `${reason} ${failed.length} of ${criterion.expect.length} expectations do not hold.`
         }
+        // A dead end after a wrong turn: go back and try the model's runner-up there, when there is one.
+        if (outcome === 'stuck' && acted && (await backtrack(step))) {
+          failedExpectations = []
+          return undefined
+        }
+        options.onStep?.(step)
         return finish(outcome, reason)
       }
 
-      if (index > maxSteps) return stop('gave-up', `The goal was not reached within ${maxSteps} steps.`)
+      if (acted >= maxSteps) return (await stop('gave-up', `The goal was not reached within ${maxSteps} steps.`))!
       if (decision.action === STUCK) {
-        return stop('stuck', 'The model found no action on this screen that moves toward the goal.')
+        const trace = await stop('stuck', 'The model found no action on this screen that moves toward the goal.')
+        if (trace) return trace
+        continue
       }
       if (decision.confidence < minConfidence) {
-        return stop(
+        return (await stop(
           'escalated',
           `Confidence ${decision.confidence.toFixed(2)} is below ${minConfidence}. A person should decide this step.`,
-        )
+        ))!
       }
 
       const action = actions.find((a) => a.key === decision.action)
@@ -342,11 +543,15 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
         coveredSinceAction++
         // It came back as visible and was covered again: whatever covers it keeps coming back.
         if (times >= REPEAT_LIMIT) {
-          return stop('stuck', `"${describeAction(action)}" was chosen ${times} times, but the element stays covered.`)
+          const trace = await stop('stuck', `"${describeAction(action)}" was chosen ${times} times, but the element stays covered.`)
+          if (trace) return trace
+          continue
         }
         // Different covered elements, one after another (their names can change as they tick).
         if (coveredSinceAction >= COVERED_LIMIT) {
-          return stop('stuck', `The model chose ${coveredSinceAction} covered elements in a row.`)
+          const trace = await stop('stuck', `The model chose ${coveredSinceAction} covered elements in a row.`)
+          if (trace) return trace
+          continue
         }
         hidden.set(selector, fingerprintOf(settled.source, platform))
         steps.pop()
@@ -360,7 +565,11 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
       const loopKey = `${screen.texts.join('|')}#${action.key}`
       const seen = (repeats.get(loopKey) ?? 0) + 1
       repeats.set(loopKey, seen)
-      if (seen >= REPEAT_LIMIT) return stop('stuck', `"${describeAction(action)}" was chosen ${seen} times on the same screen.`)
+      if (seen >= REPEAT_LIMIT) {
+        const trace = await stop('stuck', `"${describeAction(action)}" was chosen ${seen} times on the same screen.`)
+        if (trace) return trace
+        continue
+      }
       // A direct tap that changed nothing may never have reached the app. The second try goes
       // through Appium, and so does every tap after it: retrying sooner could tap twice.
       if (seen === 2 && action.type === 'tap' && device.input === 'simulator') {
@@ -369,23 +578,33 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
 
       const batch = action.type === 'type' ? formFill(action, screen, actions, decision, fillConfidence) : [action]
       step.taken = []
+      acted++
+      const done: Action[] = []
+      const entry: Performed = {
+        step,
+        batch: done,
+        options: new Map(actions.map((a) => [a.key, a])),
+        probabilities: decision.probabilities,
+        tried: new Set([action.key]),
+        planStep,
+        historyLength: history.length,
+      }
       for (const item of batch) {
         // The other fields of a form are checked right before each is used, after the
         // earlier ones have opened the keyboard. A covered one is left for a later decision.
         if (item !== action && settled.geometric && !(await visible(device, item))) continue
         if (item.type === 'type') await device.type(item.element, criterion.inputs[item.input])
-        else await device.tap(item.element)
+        else if (item.type === 'scroll') {
+          await device.scroll!(item.element, item.direction)
+          const selector = toSelector(item.element.locator)
+          scrolled.set(selector, (scrolled.get(selector) ?? new Set()).add(item.direction))
+        } else await device.tap(item.element)
         const description = request.actions.find((d) => d.key === item.key)!.description
-        step.taken.push({
-          type: item.type,
-          kind: item.element.kind,
-          target: item.element.label,
-          description,
-          selector: placeholderSelector(toSelector(item.element.locator), criterion.inputs),
-          ...(item.type === 'type' && { input: item.input }),
-        })
+        step.taken.push(takenFrom(item, description))
+        done.push(item)
         history.push(description)
       }
+      performed.push(entry)
       step.atMs = Date.now() - started
       const notes = device.drainNotes?.() ?? []
       if (notes.length > 0) step.notes = notes
@@ -396,7 +615,6 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
       coveredSinceAction = 0
       next = device.input === 'simulator' && step.taken.length > 0 ? await changedFrom(settled) : await read()
     }
-    return finish('gave-up', `The goal was not reached within ${maxSteps} steps.`)
   } catch (error) {
     // WebdriverIO quotes the selector in its errors, and a selector can hold test data.
     const message = error instanceof Error ? error.message : String(error)

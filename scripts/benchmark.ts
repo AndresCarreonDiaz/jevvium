@@ -28,6 +28,13 @@ const SUITES: Record<string, { app: string; criteria: string[]; maxSteps: number
       .map((file) => `criteria/mydemo-ios/${file}`),
     maxSteps: 20,
   },
+  // The test plans in Markdown, with steps the model works through in order.
+  'plans-demo': { app: 'apps/wdiodemoapp.app', criteria: ['criteria/login-plan.md'], maxSteps: 15 },
+  'plans-shop': {
+    app: 'apps/mydemo-ios/Payload/My Demo App.app',
+    criteria: ['criteria/mydemo-ios/bike-light.md', 'criteria/mydemo-ios/checkout-plan.md'],
+    maxSteps: 25,
+  },
 }
 const KEYS: Record<string, string> = { jev: 'TYPESAFE_API_KEY', openai: 'OPENAI_API_KEY' }
 /** Each CLI run the Claude provider made in a round, refused replies included, written there by the provider. */
@@ -159,10 +166,13 @@ for (const provider of providers) {
   const models = [...new Set(decisions.map((decision) => decision.model))]
   const price = PRICES[provider] ?? (models.length === 1 ? PRICES[models[0]] : undefined)
   // "Goal reached" against what the expectation checks found, in every run they ran in:
-  // true on the last screen of a pass, false everywhere else.
+  // true on the last screen of a pass, false everywhere else. On a plan, the question is
+  // about the current step, so only the decisions made on its last step are about the goal.
   const checked = traces.filter((trace) => trace.outcome === 'passed' || trace.failedExpectations.length > 0)
   const judged = checked.flatMap((trace) =>
-    trace.steps.map((step, i) => [step.decision.goalMet, trace.outcome === 'passed' && i === trace.steps.length - 1 ? 1 : 0]),
+    trace.steps
+      .filter((step) => step.planStep === undefined || step.planStep === trace.criterion.steps?.length)
+      .map((step) => [step.decision.goalMet, trace.outcome === 'passed' && step === trace.steps.at(-1) ? 1 : 0]),
   )
   add('Runs passed', `${passed.length} of ${traces.length} (${show(passed.length / traces.length, (r) => `${Math.round(r * 100)}%`)})`)
   add('Runs that broke (not counted)', String(all.length - traces.length))

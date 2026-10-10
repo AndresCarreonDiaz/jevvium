@@ -1,19 +1,23 @@
 import { readFileSync } from 'node:fs'
 import { basename, extname } from 'node:path'
 import { parse } from 'yaml'
+import { parsePlan } from './plan.ts'
 import type { Criterion, Expectation } from './types.ts'
 
-const KEYS = ['goal', 'inputs', 'expect', 'id']
-const EXPECT_KEYS = ['id', 'text']
+const KEYS = ['goal', 'steps', 'inputs', 'expect', 'id']
+const EXPECT_KEYS = ['id', 'text', 'contains']
 
 /**
- * Reads one acceptance criterion from a YAML file. Every value is read as the text
- * written, so test data like 0042 or a 17-digit card number stays exactly as typed.
+ * Reads one acceptance criterion: a test plan in Markdown (.md), or a YAML file.
+ * Every value is read as the text written, so test data like 0042 or a 17-digit
+ * card number stays exactly as typed.
  */
 export function loadCriterion(path: string): Criterion {
   try {
-    const raw: unknown = parse(readFileSync(path, 'utf8'), { schema: 'failsafe' })
-    return parseCriterion(raw, basename(path, extname(path)))
+    const text = readFileSync(path, 'utf8')
+    const id = basename(path, extname(path))
+    if (/\.(md|markdown|txt)$/i.test(path)) return parsePlan(text, id)
+    return parseCriterion(parse(text, { schema: 'failsafe' }), id)
   } catch (error) {
     throw new Error(`${path}: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
   }
@@ -23,12 +27,20 @@ export function parseCriterion(raw: unknown, fallbackId: string): Criterion {
   if (!isRecord(raw)) throw new Error('A criterion must be a YAML mapping')
   // A misspelt key would otherwise drop its part silently: `expects:` would leave the run with no checks.
   for (const key of Object.keys(raw)) {
-    if (!KEYS.includes(key)) throw new Error(`Unknown key \`${key}\`${suggestion(key, KEYS)}. A criterion has goal, inputs, expect and id.`)
+    if (!KEYS.includes(key)) throw new Error(`Unknown key \`${key}\`${suggestion(key, KEYS)}. A criterion has goal, steps, inputs, expect and id.`)
   }
 
   const goal = raw.goal
   if (typeof goal !== 'string' || goal.trim() === '') {
     throw new Error('A criterion needs a non-empty `goal`')
+  }
+
+  let steps: string[] | undefined
+  if (raw.steps !== undefined) {
+    if (!Array.isArray(raw.steps) || !raw.steps.every((step) => typeof step === 'string' && step.trim() !== '')) {
+      throw new Error('`steps` must be a list of sentences, one per step')
+    }
+    steps = raw.steps.map((step: string) => step.trim())
   }
 
   const inputs: Record<string, string> = {}
@@ -51,25 +63,29 @@ export function parseCriterion(raw: unknown, fallbackId: string): Criterion {
   if (raw.expect !== undefined) {
     if (!Array.isArray(raw.expect)) throw new Error('`expect` must be a list')
     for (const item of raw.expect) {
-      if (!isRecord(item)) throw new Error('Each `expect` entry needs an `id` or a `text`')
+      if (!isRecord(item)) throw new Error('Each `expect` entry needs an `id`, a `text` or a `contains`')
       for (const key of Object.keys(item)) {
         if (!EXPECT_KEYS.includes(key)) {
-          throw new Error(`Unknown key \`${key}\` in an \`expect\` entry${suggestion(key, EXPECT_KEYS)}. Each entry has an \`id\` or a \`text\`.`)
+          throw new Error(
+            `Unknown key \`${key}\` in an \`expect\` entry${suggestion(key, EXPECT_KEYS)}. Each entry has an \`id\`, a \`text\` or a \`contains\`.`,
+          )
         }
       }
-      if (item.id !== undefined && item.text !== undefined) {
-        throw new Error('An `expect` entry has both `id` and `text`; give each check its own entry')
+      const given = EXPECT_KEYS.filter((key) => item[key] !== undefined)
+      if (given.length > 1) {
+        throw new Error(`An \`expect\` entry has both \`${given[0]}\` and \`${given[1]}\`; give each check its own entry`)
       }
       if (typeof item.id === 'string' && item.id !== '') expect.push({ id: item.id })
       else if (typeof item.text === 'string' && item.text !== '') expect.push({ text: item.text })
-      else throw new Error('Each `expect` entry needs an `id` or a `text`')
+      else if (typeof item.contains === 'string' && item.contains !== '') expect.push({ contains: item.contains })
+      else throw new Error('Each `expect` entry needs an `id`, a `text` or a `contains`')
     }
   }
 
   const id = typeof raw.id === 'string' && raw.id !== '' ? raw.id : fallbackId
   // The id heads the generated spec in a comment, which a line break would end.
   if (/[\p{Cc}\u2028\u2029]/u.test(id)) throw new Error('A criterion `id` must be a single line of text')
-  return { id, goal: goal.trim(), inputs, expect }
+  return { id, goal: goal.trim(), ...(steps && { steps }), inputs, expect }
 }
 
 /** " (did you mean `expect`?)" for a key a typo or two away from a known one, or that starts with it. */

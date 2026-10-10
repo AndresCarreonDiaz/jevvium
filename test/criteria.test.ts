@@ -9,8 +9,8 @@ import { loadCriterion, parseCriterion } from '../src/criteria.ts'
 describe('criteria', () => {
   it('loads every example in criteria/', () => {
     const dir = new URL('../criteria/', import.meta.url)
-    const files = readdirSync(dir, { recursive: true }).map(String).filter((file) => file.endsWith('.yml'))
-    assert.ok(files.length > 0)
+    const files = readdirSync(dir, { recursive: true }).map(String).filter((file) => /\.(yml|md)$/.test(file))
+    assert.ok(files.filter((file) => file.endsWith('.md')).length > 0, 'plans in Markdown')
     for (const file of files) {
       const criterion = loadCriterion(fileURLToPath(new URL(file, dir)))
       assert.ok(criterion.goal.length > 0)

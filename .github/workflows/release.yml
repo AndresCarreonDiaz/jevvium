@@ -1,8 +1,11 @@
 name: Release
 
-# Publishes to npm when a version tag (v0.1.1 and so on) is pushed. npm trusts this
-# workflow (trusted publishing), so no npm token is stored anywhere, and each version
-# gets a provenance statement linking it to this repository and commit.
+# Versions are published to npm by hand, by the maintainer, with npm's two-factor check:
+# nothing in this repository can publish. The package is built from a clean clone of the
+# pushed commit (scripts/pack-release.sh), and the build is reproducible, so when the
+# version tag (v0.2.0 and so on) is pushed after publishing, this checks the release in
+# the open: the checks pass, the tag matches package.json, and the package on npm is byte
+# for byte what this commit builds.
 on:
   push:
     tags: ['v*']
@@ -12,8 +15,7 @@ permissions:
 
 # Third-party actions are pinned to commit SHAs; the comment names the release.
 jobs:
-  # The checks, and every install script they run, go without the permission that publishes.
-  checks:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,33 +36,25 @@ jobs:
             echo "The tag $GITHUB_REF_NAME doesn't match package.json ($version)"
             exit 1
           fi
-
-  publish:
-    needs: checks
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-      # Trusted publishing needs npm 11.5.1 or later.
-      - run: npm install -g npm@11
-      # No dependency's install script runs in the job that can publish.
-      - run: npm ci --ignore-scripts
-      # The first version was published by hand, so its tag finds it already there.
-      - name: Skip a version that is already on npm
-        id: published
+      - name: Check that the package on npm is what this commit builds
         run: |
           version="$(node -p "require('./package.json').version")"
-          if npm view "jevvium@$version" version > /dev/null 2>&1; then
-            echo "jevvium@$version is already on npm"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
+          if ! npm view "jevvium@$version" version > /dev/null 2>&1; then
+            echo "jevvium@$version is not on npm yet: publish it, then re-run this job."
+            exit 1
           fi
-      - if: steps.published.outputs.skip != 'true'
-        run: npm publish
+          mkdir -p "$RUNNER_TEMP/built" "$RUNNER_TEMP/published"
+          npm pack --pack-destination "$RUNNER_TEMP/built"
+          npm pack "jevvium@$version" --pack-destination "$RUNNER_TEMP/published"
+          built="$RUNNER_TEMP/built/jevvium-$version.tgz"
+          published="$RUNNER_TEMP/published/jevvium-$version.tgz"
+          sha256sum "$built" "$published"
+          tar -xzf "$built" -C "$RUNNER_TEMP/built"
+          tar -xzf "$published" -C "$RUNNER_TEMP/published"
+          # The files are what matters; the tarballs themselves have matched byte for byte too.
+          diff -r "$RUNNER_TEMP/built/package" "$RUNNER_TEMP/published/package"
+          if cmp -s "$built" "$published"; then
+            echo "jevvium@$version on npm is byte for byte what $GITHUB_REF_NAME builds."
+          else
+            echo "jevvium@$version on npm has the same files as $GITHUB_REF_NAME builds, in a tarball packed differently."
+          fi

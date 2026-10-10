@@ -1,5 +1,5 @@
+import { describeExpectation } from './expectations.ts'
 import type { Trace } from './explorer.ts'
-import type { Expectation } from './types.ts'
 
 /** How many lines of the last screen's text the report shows. */
 const SCREEN_LINES = 8
@@ -14,7 +14,7 @@ export function stopReport(trace: Trace): string[] {
   const screen = trace.steps.at(-1)?.screenText ?? []
   const lines: string[] = []
   for (const expectation of trace.failedExpectations) {
-    lines.push(`missing: ${describe(expectation)}`)
+    lines.push(`missing: ${describeExpectation(expectation)}`)
     const near = 'text' in expectation ? nearMatch(expectation.text, screen) : undefined
     if (near) lines.push(`  on screen instead: "${near}" (a text check must match the whole text, capitals and punctuation included)`)
   }
@@ -24,10 +24,6 @@ export function stopReport(trace: Trace): string[] {
     lines.push(`last screen: ${shown.join(', ')}${more}`)
   }
   return lines
-}
-
-function describe(expectation: Expectation): string {
-  return 'text' in expectation ? `text "${expectation.text}"` : `id "${expectation.id}"`
 }
 
 /** Text on screen that equals the expected text once case, spacing and punctuation are ignored. */

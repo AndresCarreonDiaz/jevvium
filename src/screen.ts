@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
 import { quoted, xpathLiteral } from './locator.ts'
-import type { ElementKind, Locator, Platform, Screen, ScreenElement } from './types.ts'
+import type { ElementKind, Locator, Platform, Screen, ScreenElement, ScrollDirection } from './types.ts'
 
 type Node = { tag: string; attrs: Record<string, string>; children: Node[] }
 
@@ -17,6 +17,16 @@ const IOS_KINDS: Record<string, ElementKind> = {
 const IOS_OTHER = 'XCUIElementTypeOther'
 const IOS_KEYBOARD = 'XCUIElementTypeKeyboard'
 const IOS_WINDOW = 'XCUIElementTypeWindow'
+/** Containers that scroll. Offered as a `list` when they hold more than they show. */
+const IOS_SCROLLERS = new Set(['XCUIElementTypeScrollView', 'XCUIElementTypeTable', 'XCUIElementTypeCollectionView'])
+/**
+ * UIKit's scroll indicators, "Vertical scroll bar, 3 pages", with the position as
+ * the value ("0%"). The page count isn't trusted: an alert's message reports 2 pages
+ * when it fits. The position says whether the view has been scrolled.
+ */
+const SCROLL_BAR = /^(Vertical|Horizontal) scroll bar, \d+ pages?$/
+/** Content may stick out of its container by this much (a shadow, a separator) without meaning there is more. */
+const OVERFLOW_SLACK = 8
 /** Keyboard buttons worth offering: the return key under its common names. The rest are typing keys. */
 const RETURN_KEY = /^(done|return|go|next|search|send|join|continue)$/i
 const IOS_TEXT = 'XCUIElementTypeStaticText'
@@ -126,6 +136,11 @@ function iosElements(root: Node, all: Node[], height: number): Omit<ScreenElemen
   const keyboard = new Set(keyboardWindows.flatMap(descendants))
   walk(root, (node) => {
     if (node.attrs.visible !== 'true' || node.attrs.enabled === 'false') return
+    if (IOS_SCROLLERS.has(node.tag) && !keyboard.has(node)) {
+      const scrolls = iosScrolls(node)
+      if (scrolls.length > 0) found.push({ node, element: listElement(node, node.attrs.name || node.attrs.label, iosFrame(node), scrolls, height, iosLocator(node, all)) })
+      return
+    }
     let kind: ElementKind | undefined = IOS_KINDS[node.tag] ?? (isIosTouchable(node) ? 'button' : undefined)
     if (keyboard.has(node)) kind = kind === 'button' && RETURN_KEY.test(node.attrs.label ?? '') ? 'key' : undefined
     if (!kind) return
@@ -153,8 +168,8 @@ function iosElements(root: Node, all: Node[], height: number): Omit<ScreenElemen
     })
   })
 
-  // Plain text outside any control can caption a field; a button's own text can't.
-  const inControls = new Set(found.flatMap(({ node }) => [node, ...descendants(node)]))
+  // Plain text outside any control can caption a field; a button's own text can't. A list holds whole screens, so it doesn't count.
+  const inControls = new Set(found.filter(({ element }) => element.kind !== 'list').flatMap(({ node }) => [node, ...descendants(node)]))
   const captions = all
     .filter((n) => n.tag === IOS_TEXT && n.attrs.visible === 'true' && !inControls.has(n) && !keyboard.has(n))
     .map((n) => ({ frame: iosFrame(n), text: (n.attrs.label || n.attrs.value || '').trim() }))
@@ -167,6 +182,42 @@ function iosElements(root: Node, all: Node[], height: number): Omit<ScreenElemen
 
 function iosFrame(node: Node): Frame {
   return { x: Number(node.attrs.x), y: Number(node.attrs.y), w: Number(node.attrs.width), h: Number(node.attrs.height) }
+}
+
+/**
+ * Where a scroll view has more content: content that sticks out past an edge is
+ * reached by scrolling toward it, and a scroll indicator past 0% says the view can
+ * go back. A nested scroller's own content is its own business, so only its frame
+ * counts here. UIKit recycles the cells of a table or collection view that have
+ * scrolled off, so for those only the way down may show; the explorer remembers
+ * which way it scrolled a list and offers the way back itself.
+ */
+function iosScrolls(container: Node): ScrollDirection[] {
+  const frame = iosFrame(container)
+  const found = new Set<ScrollDirection>()
+  const consider = (node: Node) => {
+    const bar = SCROLL_BAR.exec(node.attrs.name ?? '')
+    if (bar) {
+      if (Number(/^(\d+)%$/.exec(node.attrs.value ?? '')?.[1]) > 0) found.add(bar[1] === 'Vertical' ? 'up' : 'left')
+      return
+    }
+    const f = iosFrame(node)
+    if (f.w > 0 && f.h > 0) {
+      if (f.y + f.h > frame.y + frame.h + OVERFLOW_SLACK) found.add('down')
+      if (f.y < frame.y - OVERFLOW_SLACK) found.add('up')
+      if (f.x + f.w > frame.x + frame.w + OVERFLOW_SLACK) found.add('right')
+      if (f.x < frame.x - OVERFLOW_SLACK) found.add('left')
+    }
+    if (!IOS_SCROLLERS.has(node.tag)) node.children.forEach(consider)
+  }
+  container.children.forEach(consider)
+  return (['down', 'up', 'right', 'left'] as const).filter((direction) => found.has(direction))
+}
+
+/** A scrollable container as an element. Without a name of its own it is "the screen". */
+function listElement(node: Node, name: string | undefined, frame: Frame, scrolls: ScrollDirection[], height: number, locator: Locator): Omit<ScreenElement, 'key'> {
+  const centre = { x: frame.x + frame.w / 2, y: frame.y + frame.h / 2 }
+  return { kind: 'list', label: name || 'screen', id: name || undefined, region: region(centre.y, height), centre, scrolls, locator }
 }
 
 /**
@@ -193,6 +244,13 @@ function iosLocator(node: Node, all: Node[]): Locator {
   if (placeholder && all.filter((n) => n.tag === node.tag && n.attrs.placeholderValue === placeholder).length === 1) {
     return { using: '-ios predicate string', value: `type == ${quoted(node.tag)} AND placeholderValue == ${quoted(placeholder)}` }
   }
+  // A cell with no id of its own is the one that shows this text: a list recycles its cells
+  // as it scrolls, so the cell's position in the tree means nothing. The list itself keeps
+  // its position: what it shows changes as it scrolls.
+  const text = !name && !IOS_SCROLLERS.has(node.tag) && firstText(node, IOS_TEXT, 'label')
+  if (text && sameType.filter((n) => firstText(n, IOS_TEXT, 'label') === text).length === 1) {
+    return { using: 'xpath', value: `//${node.tag}[.//${IOS_TEXT}[@label=${xpathLiteral(text)}]]` }
+  }
   const path = name ? `//${node.tag}[@name=${xpathLiteral(name)}]` : `//${node.tag}`
   return { using: 'xpath', value: `(${path})[${sameType.indexOf(node) + 1}]` }
 }
@@ -210,6 +268,13 @@ function androidElements(all: Node[], height: number): Omit<ScreenElement, 'key'
   for (const node of all) {
     const { attrs } = node
     if (attrs.displayed === 'false' || attrs.enabled === 'false') continue
+    if (attrs.scrollable === 'true') {
+      // UiAutomator doesn't say which way there is more, so both are offered.
+      const scrolls: ScrollDirection[] = /Horizontal/.test(attrs.class ?? '') ? ['right', 'left'] : ['down', 'up']
+      const name = attrs['content-desc'] || shortResourceId(attrs['resource-id'])
+      found.push({ node, element: listElement(node, name, androidFrame(node), scrolls, height, androidLocator(node, all)) })
+      continue
+    }
     const kind: ElementKind | undefined = isAndroidInput(node)
       ? 'input'
       : attrs.checkable === 'true'
@@ -240,7 +305,7 @@ function androidElements(all: Node[], height: number): Omit<ScreenElement, 'key'
     })
   }
 
-  const inControls = new Set(found.flatMap(({ node }) => [node, ...descendants(node)]))
+  const inControls = new Set(found.filter(({ element }) => element.kind !== 'list').flatMap(({ node }) => [node, ...descendants(node)]))
   const captions = all
     .filter((n) => n.attrs.text && n.attrs.displayed !== 'false' && !isAndroidInput(n) && !inControls.has(n))
     .map((n) => ({ frame: androidFrame(n), text: n.attrs.text.trim() }))
@@ -275,6 +340,11 @@ function androidLocator(node: Node, all: Node[]): Locator {
     return { using: 'xpath', value: `//${node.tag}[@text=${xpathLiteral(text)}]` }
   }
   const sameType = all.filter((n) => n.tag === node.tag && n.attrs['content-desc'] === desc)
+  // A row with no id or text of its own is the one that shows this text (see the iOS case).
+  const inner = !desc && !text && node.attrs.scrollable !== 'true' && firstText(node, undefined, 'text')
+  if (inner && sameType.filter((n) => firstText(n, undefined, 'text') === inner).length === 1) {
+    return { using: 'xpath', value: `//${node.tag}[.//*[@text=${xpathLiteral(inner)}]]` }
+  }
   const path = desc ? `//${node.tag}[@content-desc=${xpathLiteral(desc)}]` : `//${node.tag}`
   return { using: 'xpath', value: `(${path})[${sameType.indexOf(node) + 1}]` }
 }

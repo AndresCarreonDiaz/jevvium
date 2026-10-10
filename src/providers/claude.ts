@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import { appendFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { actionOptions, fillKey, fillQuestion, GOAL_MET, GOAL_MET_ANSWERS, inputOptions, NEXT_ACTION, stateOf } from './questions.ts'
+import { actionOptions, fillKey, fillQuestion, goalMetQuestion, inputOptions, nextActionQuestion, stateOf } from './questions.ts'
 import type { Decision, DecisionProvider, DecisionRequest } from './types.ts'
 
 /** How Claude is told to answer. The questions it answers are the shared ones. */
@@ -135,9 +135,10 @@ export class ClaudeProvider implements DecisionProvider {
 /** The state and questions Jev gets, in the same words. How to answer is in the system prompt. */
 export function buildPrompt(request: DecisionRequest): string {
   const inputs = inputOptions(request)
+  const goal = goalMetQuestion(request)
   const questions: Record<string, unknown> = {
-    next_action: { type: 'choice', instructions: NEXT_ACTION, options: actionOptions(request) },
-    goal_met: { type: 'probability', instructions: GOAL_MET, yes: GOAL_MET_ANSWERS.true, no: GOAL_MET_ANSWERS.false },
+    next_action: { type: 'choice', instructions: nextActionQuestion(request), options: actionOptions(request) },
+    goal_met: { type: 'probability', instructions: goal.instructions, yes: goal.answers.true, no: goal.answers.false },
   }
   for (const field of request.fields) questions[fillKey(field.key)] = { type: 'choice', instructions: fillQuestion(field), options: inputs }
   return JSON.stringify({ state: stateOf(request), questions })
