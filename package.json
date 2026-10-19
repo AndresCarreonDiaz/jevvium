@@ -1,6 +1,6 @@
 {
   "name": "jevvium",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Turn test plans written in plain words into Appium tests. A decision model follows the plan through the app, tapping, typing and scrolling, then jevvium writes a plain, deterministic test from the path it found.",
   "keywords": [
     "appium",
