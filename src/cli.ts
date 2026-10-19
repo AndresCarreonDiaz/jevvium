@@ -19,6 +19,7 @@ import { OpenAIDecisionsProvider } from './providers/openai.ts'
 import { redactor } from './redact.ts'
 import { replay } from './replay.ts'
 import { stopReport } from './report.ts'
+import { lookSummary, runReport } from './run-report.ts'
 import type { TestSettings } from './wdio.conf.ts'
 import { hasDriver, isAppiumUp, startAppium, type AppiumServer } from './appium.ts'
 import { builtWebDriverAgent, defaultSimulator, findSimulator, hasWebDriverAgent, simulators, simulatorSet } from './simulators.ts'
@@ -67,11 +68,23 @@ Explore options:
                              created the first time and kept)
   --no-verify                don't replay a passing run with plain Appium before writing its
                              test (faster, but the test isn't proven to pass on its own)
+  --vision                   let the model look at the screen where the page source isn't
+                             enough, the steps where its answer from text alone would end the
+                             run: a masked screenshot (typed text, test data and the keyboard
+                             painted grey) goes to TypeSafe with that step's request (Jev and
+                             iOS only; off by default)
+  --vision=always            look at every step, for plans that need what only the screen shows
+                             (prices, colours, icons without labels): a second request per step,
+                             with the screenshot, about twice the input tokens
+  --screenshots <steps|off>  keep each step's masked screenshot in the run folder, for the run
+                             report (default: steps; iOS only). Without --vision they stay on the
+                             machine; with it, those of the steps where the model looks are sent
 
 Environment (also read from .env.jevvium and then .env, if present):
   TYPESAFE_API_KEY           key for the Jev decision model
   TYPESAFE_API_URL           another endpoint that serves TypeSafe's API (optional)
-  JEVVIUM_MODEL              Jev model name (default: jev-latest)
+  JEVVIUM_MODEL              Jev model that decides (default: jev-1.13.0)
+  JEVVIUM_VISION_MODEL       Jev model that looks at screenshots, with --vision (default: jev-1.14.0)
   OPENAI_API_KEY             key for --provider openai
   OPENAI_DECISIONS_MODEL     OpenAI model name (default: gpt-6-luna)
   CLAUDE_MODEL               Claude Code model for --provider claude (default: sonnet)
@@ -89,6 +102,8 @@ async function main(): Promise<number> {
   }
 
   const { positionals, values } = parseArgs({
+    // --vision takes an optional value, which parseArgs can't express: a bare one means auto.
+    args: process.argv.slice(2).map((arg) => (arg === '--vision' ? '--vision=auto' : arg)),
     allowPositionals: true,
     options: {
       platform: { type: 'string' },
@@ -109,6 +124,9 @@ async function main(): Promise<number> {
       'fresh-session': { type: 'boolean', default: false },
       parallel: { type: 'string' },
       verify: { type: 'boolean', default: true },
+      // A bare --vision is --vision=auto (see below).
+      vision: { type: 'string' },
+      screenshots: { type: 'string', default: 'steps' },
       help: { type: 'boolean', short: 'h' },
     },
     allowNegative: true,
@@ -135,7 +153,7 @@ async function main(): Promise<number> {
         const checks = criterion.expect.length
         const warning = checks === 0 ? "; it has no expect checks, so it would pass on the model's word" : ''
         const inputs = Object.keys(criterion.inputs).length
-        const steps = criterion.steps?.length ? `${criterion.steps.length} steps, ` : ''
+        const steps = criterion.steps?.length ? `${criterion.steps.length} ${criterion.steps.length === 1 ? 'step' : 'steps'}, ` : ''
         console.log(`ok     ${file}: ${steps}${checks} ${checks === 1 ? 'check' : 'checks'}, ${inputs} ${inputs === 1 ? 'input' : 'inputs'}${warning}`)
         for (const [name, value] of Object.entries(criterion.inputs)) console.log(`         ${name}: ${value}`)
       } catch (error) {
@@ -166,6 +184,13 @@ async function main(): Promise<number> {
   if (app && platform === 'ios') await checkSimulatorBuild(app)
   if (values.input !== 'auto' && values.input !== 'appium') throw new Error('--input must be auto or appium')
   if (!['jev', 'openai', 'claude'].includes(values.provider)) throw new Error('--provider must be jev, openai or claude')
+  if (values.screenshots !== 'steps' && values.screenshots !== 'off') throw new Error('--screenshots must be steps or off')
+  if (values.vision !== undefined && values.vision !== 'auto' && values.vision !== 'always') {
+    throw new Error(`--vision is on its own (looking where the page source isn't enough) or --vision=always, not --vision=${values.vision}`)
+  }
+  const vision = values.vision === 'always' ? ('always' as const) : values.vision === 'auto'
+  if (vision && values.provider !== 'jev') throw new Error('--vision works with --provider jev only: it needs a model that takes screenshots and box questions')
+  if (vision && platform !== 'ios') throw new Error("--vision works on iOS only for now: an Android page source doesn't show the keyboard, so it can't be painted over")
   const maxSteps = count('--max-steps', values['max-steps'])
   const minConfidence = probability('--min-confidence', values['min-confidence'])
   const goalThreshold = probability('--goal-threshold', values['goal-threshold'])
@@ -195,7 +220,12 @@ async function main(): Promise<number> {
   const provider: DecisionProvider =
     values.provider === 'openai' ? new OpenAIDecisionsProvider() : values.provider === 'claude' ? new ClaudeProvider() : new JevProvider()
   // A missing or refused key shows up now, rather than after a session has started.
-  await provider.check?.()
+  await provider.check?.({ vision: Boolean(vision) })
+  if (vision) {
+    const when = vision === 'always' ? 'At every step' : "Where the page source isn't enough"
+    console.log(`Vision: on. ${when}, a masked screenshot of the screen goes to TypeSafe (${provider.visionModel}) with the request.`)
+  }
+  if (platform !== 'ios' && values.screenshots === 'steps') console.log('(screenshots: kept on iOS only for now)')
 
   // How long the sessions took to start, which the summary shows apart from the criteria.
   let sessionMs = 0
@@ -297,9 +327,24 @@ async function main(): Promise<number> {
     )
   }
 
+  let runNumber = 0
   /** Explores one criterion on a lane, replays a pass and writes the results. */
-  const runOne = async (lane: Lane, criterion: Criterion, out: Out): Promise<Result> => {
+  const runOne = async (lane: Lane, criterion: Criterion, file: string, out: Out): Promise<Result> => {
     out(`\n${lanes.length > 1 ? `[${lane.name}] ` : ''}${criterion.id}: ${criterion.title ?? criterion.goal}`)
+    // The trace is <stem>.json; the frames and the report go in the folder <stem>/. The run number
+    // keeps runs that start in the same millisecond, on parallel lanes, apart.
+    const stem = join(values.runs, `${safeId(criterion.id)}.${platform}.${Date.now()}${++runNumber > 1 ? `-${runNumber}` : ''}`)
+    const kept = new Map<string, Buffer>()
+    const keep = async (name: string, frame: { jpeg: Buffer }) => {
+      mkdirSync(stem, { recursive: true })
+      writeFileSync(join(stem, name), frame.jpeg)
+      kept.set(name, frame.jpeg)
+    }
+    const device = lane.name
+      ? `${lane.name}${simulator ? `, iOS ${simulator.version}` : ''}`
+      : simulator
+        ? `${simulator.name}, iOS ${simulator.version}`
+        : (values.device ?? platform)
     let session: Session
     try {
       session = await lane.ready(values['fresh-session'], out)
@@ -318,7 +363,9 @@ async function main(): Promise<number> {
         // A dead end can go back and try again, since the app can be restarted from here.
         restart: () => restartApp(session),
         maxBacktracks,
-        onStep: (step) => printStep(step, out, goalThreshold),
+        onStep: (step) => printStep(step, out, goalThreshold, minConfidence),
+        ...(values.screenshots === 'steps' && { onFrame: keep }),
+        look: vision,
       })
       if (stopping) return { outcome: 'interrupted' }
       if (trace.outcome === 'passed' && values.verify) {
@@ -336,7 +383,7 @@ async function main(): Promise<number> {
       }
       // Whatever broke may have taken the session with it; the next criterion starts a new one.
       const broken = trace.outcome === 'error' || trace.replay?.outcome === 'error'
-      report(trace, criterion, out)
+      report(trace, criterion, out, { stem, kept, device, file })
       if (broken) await lane.drop()
       return { outcome: trace.outcome, replay: trace.replay?.outcome }
     } catch (error) {
@@ -364,7 +411,7 @@ async function main(): Promise<number> {
           const lines: string[] = []
           const out: Out = lanes.length > 1 ? (line) => lines.push(line) : (line) => console.log(line)
           const [file, criterion] = next
-          const result = await runOne(lane, criterion, out)
+          const result = await runOne(lane, criterion, file, out)
           if (result.startFailed !== undefined) {
             // A lane that can't start a session hands its criteria to the lanes that can.
             if (lanes.some((other) => other !== lane && other.working)) {
@@ -390,10 +437,15 @@ async function main(): Promise<number> {
   console.log(`\n${summary(results, Date.now() - started, sessionMs, lanes.length)}`)
   return results.every(succeeded) ? 0 : 1
 
-  /** Writes the trace and, for a pass, the spec. */
-  function report(trace: Trace, criterion: Criterion, out: Out): void {
+  /** Writes the trace, the run report and, for a pass, the spec. */
+  function report(
+    trace: Trace,
+    criterion: Criterion,
+    out: Out,
+    run: { stem: string; kept: Map<string, Buffer>; device: string; file: string },
+  ): void {
     mkdirSync(values.runs, { recursive: true })
-    const tracePath = join(values.runs, `${safeId(trace.criterion.id)}.${trace.platform}.${Date.now()}.json`)
+    const tracePath = `${run.stem}.json`
     writeFileSync(tracePath, `${JSON.stringify(trace, null, 2)}\n`)
 
     out(`  ${trace.outcome.toUpperCase()} in ${(trace.durationMs / 1000).toFixed(1)}s: ${trace.reason}`)
@@ -404,13 +456,25 @@ async function main(): Promise<number> {
       out(`  replayed with plain Appium in ${(replayed.durationMs / 1000).toFixed(1)}s: ${verdict}`)
     }
     for (const line of stopReport(trace)) out(`  ${line}`)
+    const last = trace.steps.at(-1)?.frame
+    if (trace.outcome !== 'passed' && last) out(`  last screen: ${join(run.stem, last)}`)
     out(`  trace: ${tracePath}`)
-    if (trace.outcome !== 'passed') return
-    try {
-      out(`  test:  ${writeSpec(trace, criterion, values.out)}`)
-    } catch (error) {
-      out(`  test:  not written: ${firstLine(error)}`)
+    let specFile: string | undefined
+    if (trace.outcome === 'passed') {
+      try {
+        specFile = writeSpec(trace, criterion, values.out)
+        out(`  test:  ${specFile}`)
+      } catch (error) {
+        out(`  test:  not written: ${firstLine(error)}`)
+      }
     }
+    const spec = specFile ? readFileSync(specFile, 'utf8') : undefined
+    const report = { planFile: run.file, device: run.device, specFile, spec, inputs: criterion.inputs, frames: run.kept, goalThreshold }
+    const { markdown, html } = runReport(trace, report)
+    mkdirSync(run.stem, { recursive: true })
+    writeFileSync(join(run.stem, 'report.md'), markdown)
+    writeFileSync(join(run.stem, 'report.html'), html)
+    out(`  report: ${join(run.stem, 'report.html')}`)
   }
 }
 
@@ -724,17 +788,35 @@ function probability(flag: string, value: string): number {
 }
 
 /** One line per step: what it did, then the model's confidence and how long it took to answer. */
-function printStep(step: Step, out: Out, goalThreshold: number): void {
-  const { decision } = step
+function printStep(step: Step, out: Out, goalThreshold: number, minConfidence: number): void {
+  const decision = step.look && step.look.used !== 'none' ? step.look.decision : step.decision
   const reached = !step.taken?.length && (step.completed !== undefined || decision.goalMet >= goalThreshold)
   const stats = `${reached ? `goal ${decision.goalMet.toFixed(2)}` : decision.confidence.toFixed(2)} · ${decision.latencyMs} ms`
-  const lines = step.taken?.length
-    ? step.taken.map(describeTaken)
-    : [step.completed ? `step ${step.completed} done` : reached ? 'goal reached' : decision.action === 'STUCK' ? 'no way forward' : 'unsure']
+  // A step that acted on nothing says why; a confident one stopped for a reason the outcome line gives.
+  const verdict = step.covered
+    ? 'its choice was covered'
+    : step.completed
+      ? `step ${step.completed} done`
+      : reached
+        ? 'goal reached'
+        : decision.action === 'STUCK'
+          ? 'no way forward'
+          : decision.confidence < minConfidence
+            ? 'unsure'
+            : 'stopped'
+  const lines = step.taken?.length ? step.taken.map(describeTaken) : [verdict]
   lines.forEach((line, i) => {
     const prefix = i === 0 ? String(step.index).padStart(4) : '    '
     out(`${prefix}  ${i === 0 ? line.padEnd(40) + stats : line}`)
   })
+  // Looking at every step, only a look that changed what the run did is worth a line: another
+  // action, a verdict, or going on where the text answer would have ended the run.
+  const look = step.look
+  const textWouldStop = step.decision.action === 'STUCK' || step.decision.confidence < minConfidence
+  const changed = look !== undefined && look.used !== 'none' && (look.used !== 'action' || look.decision.action !== step.decision.action || textWouldStop)
+  if (look && (look.why !== 'always' || changed)) out(`      (looked at the screen: ${lookSummary(step)})`)
+  if (step.lookError) out(`      (looked at the screen, but got no answer: ${step.lookError})`)
+  if (step.covered) out('      (the element it chose was covered, so it decided again)')
   for (const note of step.notes ?? []) out(`      (${note})`)
   if (step.backtrack) out(`      (dead end: restarting the app and going back to step ${step.backtrack.to} to try "${step.backtrack.instead}" instead)`)
   if (step.retry) out(`      (step ${step.retry.of} again, with the model's runner-up)`)
@@ -744,6 +826,7 @@ function describeTaken(taken: TakenAction): string {
   if (taken.type === 'type') return `type ${taken.input} → "${taken.target}"`
   if (taken.type === 'scroll') return `scroll ${taken.direction} ${taken.target === 'screen' ? 'the screen' : `"${taken.target}"`}`
   if (taken.kind === 'key') return `press "${taken.target}"`
+  if (taken.unlabeled) return `tap an unlabeled ${taken.kind} (${taken.description.match(/\((\w+) of the screen\)/)?.[1] ?? 'found by looking'})`
   return `${taken.kind === 'switch' ? 'toggle' : 'tap'} "${taken.target}"`
 }
 

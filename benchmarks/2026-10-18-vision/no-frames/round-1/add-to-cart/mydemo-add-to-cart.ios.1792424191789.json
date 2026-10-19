@@ -1,0 +1,292 @@
+{
+  "criterion": {
+    "id": "mydemo-add-to-cart",
+    "goal": "From the Catalog, the shopper opens the Sauce Labs Backpack - Black, adds it to the cart and opens the Cart.",
+    "expect": [
+      {
+        "text": "1 Items"
+      },
+      {
+        "id": "ProceedToCheckout"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "jev",
+  "input": "appium",
+  "startedAt": "2026-10-19T15:36:35.127Z",
+  "durationMs": 6699,
+  "outcome": "passed",
+  "reason": "Goal reached and all 2 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 3593,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 30,
+      "decision": {
+        "action": "tap:e28",
+        "confidence": 0.38,
+        "probabilities": {
+          "tap:e28": 0.4,
+          "tap:e3": 0.38,
+          "tap:e27": 0.21000000000000002,
+          "scroll:e2:down": 0.01,
+          "tap:e1": 0
+        },
+        "goalMet": 0.04,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 188,
+        "usage": {
+          "inputTokens": 1512,
+          "outputTokens": 340
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Catalog-tab-item",
+          "description": "Tap the button \"Catalog-tab-item\" (bottom of the screen)",
+          "selector": "~Catalog-tab-item",
+          "frame": {
+            "x": 0,
+            "y": 758,
+            "w": 131,
+            "h": 60
+          }
+        }
+      ],
+      "notes": [
+        "a tap sent straight to the simulator changed nothing, so it was sent again through Appium, and taps go through Appium from now on"
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 4702,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 30,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.89,
+        "probabilities": {
+          "tap:e3": 0.89,
+          "scroll:e2:down": 0.06999999999999999,
+          "tap:e27": 0.04,
+          "tap:e1": 0,
+          "tap:e4": 0
+        },
+        "goalMet": 0.04,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 111,
+        "usage": {
+          "inputTokens": 1528,
+          "outputTokens": 339
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Sauce Labs Backpack - Black",
+          "description": "Tap the button \"Sauce Labs Backpack - Black\" (middle of the screen)",
+          "selector": "//XCUIElementTypeCell[.//XCUIElementTypeStaticText[@label=\"Sauce Labs Backpack - Black\"]]",
+          "frame": {
+            "x": 16,
+            "y": 195,
+            "w": 172,
+            "h": 272
+          }
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 5390,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e13",
+        "confidence": 0.98,
+        "probabilities": {
+          "tap:e13": 0.98,
+          "scroll:e1:down": 0.01,
+          "tap:e15": 0.01,
+          "tap:e2": 0,
+          "tap:e3": 0
+        },
+        "goalMet": 0.08,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 95,
+        "usage": {
+          "inputTokens": 1106,
+          "outputTokens": 200
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Add To Cart",
+          "description": "Tap the button \"Add To Cart\" (id AddToCart, bottom of the screen)",
+          "selector": "~AddToCart",
+          "frame": {
+            "x": 184,
+            "y": 675,
+            "w": 193,
+            "h": 40
+          }
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "atMs": 6403,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e15",
+        "confidence": 1,
+        "probabilities": {
+          "tap:e15": 1,
+          "scroll:e1:down": 0,
+          "tap:e2": 0,
+          "tap:e3": 0,
+          "tap:e4": 0
+        },
+        "goalMet": 0.12,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 125,
+        "usage": {
+          "inputTokens": 1128,
+          "outputTokens": 200
+        }
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Cart-tab-item",
+          "description": "Tap the button \"Cart-tab-item\" (bottom of the screen)",
+          "selector": "~Cart-tab-item",
+          "frame": {
+            "x": 131,
+            "y": 758,
+            "w": 131,
+            "h": 60
+          }
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "atMs": 6534,
+      "screenText": [
+        "My Cart",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "Color:",
+        "Green",
+        "1",
+        "Remove Item",
+        "© 2023 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Total:",
+        "1 Items",
+        "$29.99",
+        "Proceed To Checkout",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 21,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.62,
+        "probabilities": {
+          "STUCK": 0.64,
+          "tap:e18": 0.32,
+          "tap:e20": 0.02,
+          "tap:e10": 0.01,
+          "tap:e17": 0.01
+        },
+        "goalMet": 0.82,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 121,
+        "usage": {
+          "inputTokens": 1355,
+          "outputTokens": 247
+        }
+      }
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 0,
+  "usage": {
+    "requests": 5,
+    "inputTokens": 6629,
+    "outputTokens": 1326
+  },
+  "screen": {
+    "width": 393,
+    "height": 852
+  },
+  "replay": {
+    "outcome": "passed",
+    "reason": "The generated steps pass with plain Appium.",
+    "durationMs": 3251
+  }
+}

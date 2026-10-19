@@ -1,3 +1,4 @@
+import type { PreparedFrame } from '../frames.ts'
 import type { Platform } from '../types.ts'
 
 /** The option a provider picks when nothing on screen moves toward the goal. */
@@ -63,14 +64,38 @@ export type Decision = {
   usage?: { inputTokens: number; outputTokens: number }
 }
 
+/** Where something is in a screenshot: each edge as a fraction of its width or height, from the top left. */
+export type Box = { top: number; bottom: number; left: number; right: number }
+
+/** The answers to a decision's questions asked again with a screenshot of the screen, plus where the next control is. */
+export type Look = {
+  /** The same questions as `decide`, answered with the screenshot in view. */
+  decision: Decision
+  /** Probability that the control the test should use next is visible in the screenshot. */
+  targetShown: number
+  /**
+   * Where that control is. A box question always answers with a box, even when the
+   * control isn't there, so it only counts when `targetShown` says it is.
+   */
+  box?: Box & { confidence: number }
+}
+
 export interface DecisionProvider {
   readonly name: string
   decide(request: DecisionRequest): Promise<Decision>
+  /**
+   * Asks the same questions with a screenshot in view, and where the next control is in it.
+   * The frame must already be masked: what is passed here leaves the machine.
+   */
+  look?(request: DecisionRequest, frame: PreparedFrame): Promise<Look>
+  /** The model `look` asks, for the trace and the run output. */
+  readonly visionModel?: string
   /** Opens a connection ahead of the first decision, so that decision doesn't pay for the handshake. */
   warmUp?(): Promise<void>
   /**
    * Confirms the provider answers and accepts the key, so that a wrong key shows up
-   * before an Appium session starts. Throws an error that says what to fix.
+   * before an Appium session starts. With `vision`, also that it takes a screenshot and
+   * answers a box question. Throws an error that says what to fix.
    */
-  check?(): Promise<void>
+  check?(options?: { vision?: boolean }): Promise<void>
 }

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AndresCarreonDiaz/jevvium/actions/workflows/ci.yml/badge.svg)](https://github.com/AndresCarreonDiaz/jevvium/actions/workflows/ci.yml)
 
-**Turn a test plan written in plain words into an Appium test.** Write the steps the way you'd write them in a PR description or a ticket. A decision model follows them through the app, one tap, one keystroke, one scroll at a time. jevvium writes that path down as a plain WebdriverIO test, with fixed selectors and real assertions, replays it once with plain Appium to prove it passes on its own, and hands it over to run in CI with no AI in the loop.
+**Turn a test plan written in plain words into an Appium test.** Write the steps the way you'd write them in a PR description or a ticket. A decision model follows them through the app, one tap, one keystroke, one scroll at a time. jevvium writes that path down as a plain WebdriverIO test, with fixed selectors and real assertions, replays it once with plain Appium to prove it passes on its own, and hands it over to run in CI with no AI in the loop. Every run leaves a report with the screen at each step, and with `--vision` the model can look at the screen where the page source isn't enough.
 
 ![Four iOS Simulators explore five acceptance criteria of a shop app at once, while the terminal prints the run and a clock counts real seconds](docs/demo.gif)
 
@@ -80,6 +80,14 @@ jevvium splits the job in two:
 2. **Run forever.** The path it found becomes an ordinary test. You review it, commit it, and CI runs it like any other test.
 
 If it can be tapped, typed into or scrolled, it can be in the plan.
+
+## Where jevvium fits in a team
+
+jevvium is not a runner to adopt instead of Appium. It is a way to get the Appium tests you don't have, and what it leaves behind is a plain WebdriverIO spec, so a team with no automation and a team with a suite end up in the same place: ordinary tests that run wherever Appium runs, with no model in the loop.
+
+- **A team with no automation** starts on one Mac. Write the flows you check by hand as plans, explore them against a simulator build, read each run's report, and commit the tests whose replay passed. Those tests are the suite: they need no key and no model, so they run in a macOS CI job like any other test. This path is iOS only today; Android hasn't run on an emulator yet.
+- **A team with an Appium suite** keeps it. Explore a plan from a pull request or a ticket and put the spec next to your own, under your own WebdriverIO config. Nothing needs jevvium at run time.
+- **Next, for both**: a CI job that reads a pull request's "## Test plan" section, explores it, replays it, and proposes the test in one comment, silent when it proved nothing and never pushing to the branch. When a UI change breaks a generated test, it explores the same plan again and proposes the difference instead of patching the test while it runs. It isn't built yet; [the design](docs/teams.md) is.
 
 ## How it works
 
@@ -172,6 +180,35 @@ For scale, the same three plans explored by Claude Sonnet 5.5 through the Claude
 
 **Backtracking.** When the model finds no way forward, or keeps choosing the same action on a screen that doesn't change, the run doesn't have to end there. Going back from the most recent decision, jevvium finds the first one where the model gave another option a real chance (at least 0.1), restarts the app, replays the actions before it, and takes that option instead. The trace keeps the abandoned steps, marked `undone`, and the generated test holds only the path the run ended on. Each backtrack costs a restart and a replay, so `--max-backtracks` is 2 by default; a dead end reached again by another route ends the run, since then the app, not the path, is the problem. On the signup criterion below, that is what happens: the first backtrack tries the Forms tab, arrives at the same validation errors, and the run stops ([trace](examples/ios-plans/signup-backtrack.trace.json)).
 
+## Screenshots, and looking at the screen
+
+![A run report: the plan, what was sent to the model, and a strip of the screens each decision saw, with the element acted on outlined in green and where the model pointed in orange](docs/run-report.jpg)
+
+**Every run keeps the screen each decision saw.** While the model decides a step, jevvium takes a screenshot through the Appium session, scales it to the screen's size in points, and paints grey boxes over what must not be kept: every field with something typed in it, every text that shows test data, and the on-screen keyboard, each labelled with what it hides (`{email}`, `secure text`); empty fields are marked `empty`. A frame is kept only when the screen is read again after the screenshot and hasn't changed, so the masks fit. The frames go in the run's folder next to its trace, with two reports: `report.md`, which reads well in a pull request, and `report.html`, one file with the frames inside it, the element each step acted on outlined ([an example](benchmarks/2026-10-18-vision/hard-vision-always/round-1/price-7-99)). Without `--vision` they never leave the machine. On the six flows of the benchmark, keeping them cost 0.8 s of exploring over 44 decisions, about 1%. `--screenshots off` turns them off. iOS only for now.
+
+**`--vision` lets the model look.** Jev reads text, and the page source is usually enough. Where it isn't, the screen has what the model needs: prices that the page source calls "Product Price", icons with no label, whether a list looks sorted. Jev takes images as a preview feature, so jevvium can ask again with the step's masked frame, in one of two ways:
+
+- **`--vision`** looks where the answer from text alone would end the run: no way forward, too unsure to act, or the same action again on an unchanged screen. The checks run first, as they would without looking; if they hold, the run is over and nothing is sent. A look counts when it sees the step or goal done, or gives an action it is at least 0.5 sure of. On the six flows of the benchmark it never looked.
+- **`--vision=always`** looks at every step the model hasn't already called done, and takes the look's action where it is surer than the text answer. It is for plans whose answer only the screen has, since a model that can't see something doesn't know it can't. On the six flows it passed 18 of 18, like text alone, for about 12% more exploring time and 2.2 times the tokens: a look request carried 2,746 input tokens (the median over 202) and took 151 ms against 128 ms for a decision from text.
+
+The three criteria that text alone can't finish on the demo apps, three rounds each ([benchmark](benchmarks/2026-10-18-vision)):
+
+| Criterion | Text only | `--vision` | `--vision=always` |
+| --- | --- | --- | --- |
+| [Sort by price, low to high](criteria/mydemo-ios/sort-by-price.yml) | stuck 3 of 3, 52.0 s | failed 3 of 3, 31.2 s | failed 3 of 3, 32.0 s |
+| [Sign up](criteria/signup.yml) | stuck 3 of 3 | stuck 3 of 3 | stuck 3 of 3 |
+| [Open the product that costs $7.99](criteria/mydemo-ios/price-7-99.md) | stuck 3 of 3, 85.2 s | stuck 3 of 3, 85.1 s | passed 3 of 3, 20.7 s |
+
+- **Sorting: `failed` is the right answer.** The app sorts prices as text, so the cheapest product isn't first. From text, the model can't tell whether the sort worked and wanders until it is stuck; looking at the prices, it judges the sort done, the check for the cheapest product fails, and the run names the app's bug, in about 60% of the time text alone takes to get stuck.
+- **The $7.99 product: only looking at every step finds it.** From text, the model keeps scrolling (a median confidence of 0.62) past the product, so `--vision` doesn't look until the run is stuck at the bottom of the list. With the product on screen, the answer from text was to scroll on, at 0.41 to 0.46; looking, it was to open it, at 0.96 to 0.99, in all three rounds. All three replays passed, and so did the tests they wrote.
+- **Sign up: looking doesn't help**, because the simulator drops the characters typed into that form (see Status).
+
+A look can also point. Its request asks whether the control to use next is visible and where it is, as a box (a Jev 1.14 question). Where the text answer would end the run and the look gives no clear action, jevvium takes the element under the box's centre, found in the page source, the smallest that holds it, labelled or not. It never taps a point: the step still acts through a selector, so the test is the same kind of test. A control with no label, text or id, such as an icon button an app forgot to label, can only be found this way; its selector goes by position, and the test says so in a comment, with a note that an accessibility id would make the step sturdier. The demo apps label their controls, so the benchmark doesn't measure this path.
+
+What looking can't do yet: act in an app with no accessibility tree (Flutter with semantics off, Unity, a canvas), since a look can only act through an element the page source has; check how the screen looks (`Expected:` lines are still checked against the page source); or run on Android, whose page source doesn't show the keyboard, so frames couldn't be masked.
+
+Jev's image input and its box question are what TypeSafe calls "Danger Zone" features: off unless a request asks for them, and not vouched for in production. jevvium pins the model that looks to `jev-1.14.0` (`JEVVIUM_VISION_MODEL`). Read [what gets sent to the decision model](#what-gets-sent-to-the-decision-model) before turning `--vision` on.
+
 ## Speed
 
 Every step costs a screen read, a decision and an action. On an iOS Simulator jevvium cuts all three:
@@ -219,10 +256,11 @@ All four runs passed the same four criteria and stopped on the sorting bug. With
 What to know about it:
 
 - It relies on Apple's private SimulatorKit, CoreSimulator and libxpc interfaces, which can change with any Xcode or macOS release. It has been tested with Xcode 27.0 and the iOS 26.5 runtime. Its fallback for older Xcodes, where key presses go over the HID port, is untested.
+- **With Xcode 27.1, its touches no longer reach the app** (checked on 18 October 2026 with a screenshot before and after a tap, with the cached helper and a fresh build alike); its typing still works. Runs still work, as described below under "Its input doesn't always arrive": the first lost tap is sent again through Appium, and taps go through Appium from then on (about 400 ms instead of 25 ms). Until a direct tap is seen to change the screen, fields are focused through Appium, so a lost focus tap doesn't cost XCTest's slower typing. The speed numbers in this README were measured with Xcode 27.0, except where they say otherwise.
 - It types US keyboard key codes. On a simulator whose hardware keyboard layout isn't US, other characters come out; use `--input appium` there.
 - It tells the simulator a hardware keyboard is connected, like the Simulator app's Connect Hardware Keyboard option, and types like one, so the on-screen keyboard stays out of the way while exploring, on every simulator alike. The generated tests type through XCTest, which does raise it. The replay check catches an app where that difference matters (see the shop app above).
-- Its touches and key presses reach the app a moment after they are sent, later on a busy machine, and on separate channels. So before typing into a field, jevvium waits until XCTest reports that field has keyboard focus (about 50 ms), and after each action it waits up to 1 s for the screen to change before reading it again, not counting numbers that tick on their own, such as a countdown. An action that changes nothing costs that second.
-- Its input doesn't always arrive. On the iOS 27.0 simulator, the first tap of a session has been lost in every run so far, and twice, after a long day of experiments, an iOS 26.5 simulator stopped reacting to its touches until it was rebooted. So jevvium checks: when the model picks the same tap again on a screen that didn't change, that tap and every later one go through Appium, and typed text is read back and typed again through XCTest if it came out wrong. Each switch is noted under its step.
+- Its touches and key presses reach the app a moment after they are sent, later on a busy machine, and on separate channels. So before typing into a field, jevvium waits until XCTest reports that field has keyboard focus (about 50 ms), and after each action it waits up to 1 s for the screen to change before reading it again, not counting numbers that tick on their own, such as a countdown. An action that changes nothing costs that second; a direct tap that changes nothing before any has been seen to land costs another second and a tap through Appium (see the next point).
+- Its input doesn't always arrive. On the iOS 27.0 simulator, the first tap of a session was lost in every run, and twice, after a long day of experiments, an iOS 26.5 simulator stopped reacting to its touches until it was rebooted. So until a direct tap has been seen to change the screen, jevvium checks each one: a tap that leaves the screen as it was for two seconds, numbers that tick on their own aside, is sent again through Appium, once, within the same step, and every tap after it goes through Appium. If the element is gone by then, the first tap landed after all, and the run goes on. Once a direct tap has landed, a tap that changes nothing is left alone, since its effect may only be slow and a second tap could, say, place a second order; when the model chooses the same tap again on an unchanged screen, it goes through Appium, and so do the taps after it. The one tap that can be made twice is an early one that landed and showed nothing for two seconds. Typed text is read back and typed again through XCTest if it came out wrong. Each switch is noted under its step.
 - Appium still does the input where the helper can't do it safely: an element that has moved off screen or under the keyboard (XCTest scrolls it into view), text that isn't plain ASCII, typing when the simulator's keyboard service didn't answer, and every scroll.
 - On a real device, or when the helper can't be built or can't connect, jevvium uses Appium for all input and says so. `--input appium` turns the helper off.
 
@@ -243,6 +281,12 @@ What to know about it:
 | Keys land in the wrong field | Direct typing starts only once XCTest reports the tapped field has keyboard focus; otherwise XCTest types it |
 | Direct input doesn't reach the app | Typed text is read back and typed again through XCTest if it is wrong. A tap the model has to pick twice on an unchanged screen goes through Appium, and so do the ones after it |
 | Test data leaks | Test data values are replaced with `{name}` in what is sent to the model and what traces store (details under "What gets sent to the decision model") |
+| Screenshots show test data | Every kept or sent frame has its typed fields, the texts showing test data and the on-screen keyboard painted over before it is written or sent, from the positions in the page source read just before it. Empty fields are painted over too and labelled `empty`, since in a screenshot a placeholder looks like a value. A frame is kept only when the screen is read again after it and hasn't changed, so the masks fit. iOS only for now: an Android page source doesn't show the keyboard |
+| The text can't show what the model needs | With `--vision`, the model looks at the step's masked screenshot where its answer from text alone would end the run; with `--vision=always`, at every step (see "Screenshots, and looking at the screen") |
+| A look points at the wrong thing | In either mode, a look's action counts only when it is at least 0.5 sure (or `--min-confidence`, if higher) and surer than the answer from text, unless that answer would end the run; a step the model calls done from text is left to the checks. Its box counts only where the text answer would end the run, when the model also says the control is visible at least as surely, and then only through the element under the box's centre, found in the page source: never a tap at a point, and never on something covering a quarter of the screen |
+| Looking when the run is already done | Where the text answer would end the run, the checks run first, as they would without looking: if they hold, the run passes and no screenshot goes out |
+| A look fails | The answer from text alone stands, as if the model hadn't looked, and the run report still says that step's screenshot went out |
+| A tap doesn't reach the app | Until a direct tap has been seen to land, one that leaves the screen as it was for two seconds is sent again through Appium, once, and taps go through Appium from then on. After that, a tap that changes nothing is never sent twice on jevvium's own |
 
 ## Quick start
 
@@ -256,7 +300,7 @@ npx jevvium explore criteria/example.md --app path/to/YourApp.app
 npx jevvium test --app path/to/YourApp.app
 ```
 
-`explore` writes each passing test to `generated/`, and `test` runs them with WebdriverIO. Both start their own Appium server, so there is nothing else to run. The first session on a simulator builds WebDriverAgent with Xcode, a minute or a few, once per simulator and again when jevvium's Appium driver is updated; jevvium leaves the simulator booted and WebDriverAgent running afterwards, so the next session starts in about 5 s (`xcrun simctl shutdown all` ends both). Done this way from a tarball into an empty project, the first explore of the starter plan took 77 s end to end, 6 s of it exploring, and the test it wrote ran in 11 s ([the run](benchmarks/2026-10-10-fresh-install)). `npm install` reports vulnerabilities and deprecations inside Appium's and WebdriverIO's own dependency trees, the same ones `npm i -D appium webdriverio` reports; none are in jevvium's code. Android is experimental: its parser is unit-tested on a hand-written page source and it hasn't run on an emulator yet, and it needs Appium's Android driver too (`npm i -D appium-uiautomator2-driver`).
+`explore` writes each passing test to `generated/` and a report of every run, with the screen at each step, to `runs/`; `test` runs the tests with WebdriverIO. Both start their own Appium server, so there is nothing else to run. The first session on a simulator builds WebDriverAgent with Xcode, a minute or a few, once per simulator and again when jevvium's Appium driver is updated; jevvium leaves the simulator booted and WebDriverAgent running afterwards, so the next session starts in about 5 s (`xcrun simctl shutdown all` ends both). Done this way from a tarball into an empty project, the first explore of the starter plan took 77 s end to end, 6 s of it exploring, and the test it wrote ran in 11 s ([the run](benchmarks/2026-10-10-fresh-install)). `npm install` reports vulnerabilities and deprecations inside Appium's and WebdriverIO's own dependency trees, the same ones `npm i -D appium webdriverio` reports; none are in jevvium's code. Android is experimental: its parser is unit-tested on a hand-written page source and it hasn't run on an emulator yet, and it needs Appium's Android driver too (`npm i -D appium-uiautomator2-driver`).
 
 The key goes in `.env.jevvium`, a file only jevvium reads, rather than the project's `.env`, which may be committed or built into the app. jevvium also reads `.env` and the shell's environment.
 
@@ -285,7 +329,7 @@ jevvium uses the plain iPhone with the highest number on the newest simulator ru
 
 ### Getting a key
 
-Jev needs a TypeSafe account and an API key from [console.typesafe.ai](https://console.typesafe.ai). Exploring the nine criteria once costs about half a cent: at TypeSafe's published price of $0.042 per million input tokens (output tokens are free), the four demo-app criteria used about 19,000 input tokens (under $0.001) and the five shop-app criteria about 104,000 (about $0.004). A plan costs a little more, since every request carries the plan: the six-step checkout plan used 63,000 tokens over 24 requests (about $0.003). `TYPESAFE_API_URL` points jevvium at another endpoint that serves TypeSafe's API, and `JEVVIUM_MODEL` picks the model.
+Jev needs a TypeSafe account and an API key from [console.typesafe.ai](https://console.typesafe.ai). Exploring the nine criteria once costs about half a cent: at TypeSafe's published price of $0.042 per million input tokens (output tokens are free), the four demo-app criteria used about 19,000 input tokens (under $0.001) and the five shop-app criteria about 104,000 (about $0.004). A plan costs a little more, since every request carries the plan: the six-step checkout plan used 63,000 tokens over 24 requests (about $0.003). `TYPESAFE_API_URL` points jevvium at another endpoint that serves TypeSafe's API. `JEVVIUM_MODEL` picks the model that decides, `jev-1.13.0` by default: a version rather than the `jev-latest` alias, so a model release can't change the paths a plan explores without you choosing it, and the one every run in this README used. `JEVVIUM_VISION_MODEL` picks the one that looks at screenshots with `--vision`, `jev-1.14.0` by default, since box questions need Jev 1.14.
 
 ### Trying it on the demo apps
 
@@ -322,6 +366,7 @@ Every run that gets as far as exploring writes a trace (one whose session or app
 The explorer only needs a small `Device` interface, so it runs inside an existing WebdriverIO session:
 
 ```ts
+import { writeFileSync } from 'node:fs'
 import { explore, webdriverDevice, JevProvider, generateSpec, loadCriterion } from 'jevvium'
 
 const plan = loadCriterion('criteria/checkout.md')
@@ -329,11 +374,15 @@ const trace = await explore(webdriverDevice(browser), plan, {
   provider: new JevProvider(),
   // Optional: lets a dead end go back and try again.
   restart: async () => { await browser.terminateApp('com.example.app'); await browser.activateApp('com.example.app') },
+  // Optional, on iOS: each step's masked screen, for a report (see runReport), and looking
+  // where text isn't enough (or 'always', at every step).
+  onFrame: (name, frame) => writeFileSync(`frames/${name}`, frame.jpeg),
+  look: true,
 })
 if (trace.outcome === 'passed') console.log(generateSpec(trace, plan))
 ```
 
-A different model can be plugged in by implementing `DecisionProvider`. `parsePlan(markdown, id)` reads a plan from a string, for a PR description or a ticket.
+A different model can be plugged in by implementing `DecisionProvider`; one that implements `look` can be asked with a screenshot. `parsePlan(markdown, id)` reads a plan from a string, for a PR description or a ticket.
 
 ## Comparing decision models
 
@@ -405,7 +454,9 @@ The three test plans (log in; add the bike light to the cart; buy a backpack), t
 
 ## What gets sent to the decision model
 
-The same goes to TypeSafe, or with `--provider openai` to OpenAI, or with `--provider claude` to Anthropic, together with what Claude Code adds to every prompt. For each step: the platform, the goal, the plan's steps and which one the test is on, the text on screen (see Reading under Speed for what a fast read can include), the on/off state of switches, a description of each available action (the element's label or caption, its placeholder, its accessibility id and rough position; for a list, which way it can scroll), the steps already taken, the names of the inputs, and one question per empty field asking which input belongs in it. Screenshots, selectors, input values and expectations are never sent.
+The same goes to TypeSafe, or with `--provider openai` to OpenAI, or with `--provider claude` to Anthropic, together with what Claude Code adds to every prompt. For each step: the platform, the goal, the plan's steps and which one the test is on, the text on screen (see Reading under Speed for what a fast read can include), the on/off state of switches, a description of each available action (the element's label or caption, its placeholder, its accessibility id and rough position; for a list, which way it can scroll), the steps already taken, the names of the inputs, and one question per empty field asking which input belongs in it. Selectors, input values and expectations are never sent.
+
+Screenshots are sent only with `--vision`, which works with TypeSafe alone and on iOS only for now: then, at each step where the model looks (every step with `--vision=always`), that step's masked frame goes to TypeSafe with the request, as an image under its preview "Danger Zone" header. Masked means painted over before it leaves memory: every field with something typed in it or a placeholder showing test data, every text that shows test data, and the on-screen keyboard, from their positions in the page source read just before the screenshot (empty fields are painted over as well, labelled `empty`); a frame whose screen changed after that read is dropped, not sent. Anything else on screen is in the picture, which is one more reason to use made-up data. The run report lists which steps' frames were sent, a look that got no answer included. TypeSafe's documentation doesn't say how long it keeps images; check the "Help improve TypeSafe models" setting in your TypeSafe organization, and ask TypeSafe before pointing `--vision` at an app whose screens matter. Without `--vision`, frames are only written to the run's folder, masked the same way, and never sent anywhere. The run report shows the generated test with test data as `{name}`, but the test file itself holds the values, and Appium's own log in the run folder records what was typed, as it always has.
 
 Before anything is sent or stored, each test data value is replaced with `{name}`: matching ignores case, a value written as a number also matches when the app groups its digits with spaces, dots, slashes, dashes or parentheses (the way card numbers, phone numbers and dates are shown), and a value shorter than 3 characters is replaced only where it stands alone and in its exact case. Even so, a short value hides the same word anywhere it appears, goal and steps included (a state `OK` hides an OK button), so prefer longer made-up values. The goal, the steps, the expectations and the reason a run stopped get the same treatment when stored in a trace. In selectors, values are replaced only inside quoted strings, with placeholders that code generation fills back in from the plan, the way the app showed them: `{email}`, `{email|upper}` for capitals, `{phone|mask:(###) ###-####}` for grouped digits. A value shown in some other form becomes `{name|?}`, and code generation refuses that selector rather than guess. Explore again after changing a value that appears in a selector. An app that transforms a value in other ways (masking or truncating it) can still show part of it in a form jevvium doesn't recognize, and selectors keep the app's own names and labels, so use made-up data, and don't point jevvium at screens that show real customer data.
 
@@ -428,7 +479,12 @@ Early, and built in the open. Latest runs, with `jev-1.13.0` on an iOS 26.5 simu
 
 ### Next
 
-- **Run from the PR**: a GitHub Action that reads the `## Test plan` section of a pull request, explores it on a macOS runner, and posts the trace and the generated test as a review comment
+- **Run from the PR**: a CI job that reads the `## Test plan` section of a pull request, explores it on a macOS runner, replays it, and proposes the test in one comment with the run report's frames; and, when a UI change breaks a generated test, explores the plan again and proposes the difference ([design](docs/teams.md))
+- **Visual checks**: `Expected:` lines about how the screen looks ("the cart badge shows 2"), judged by looking while exploring and written into the test as a check that needs no model
+- **Apps without an accessibility tree** (Flutter with semantics off, Unity, canvases): today a look can only act through an element in the page source
+- **Screenshots on Android**, once Android runs on an emulator: its page source doesn't show the keyboard, so frames can't be masked from it yet
+- **A vision probe suite**: saved frames and requests replayed against Jev before each release, so a model update that changes what it sees shows up as a failing check
+- **The native helper's touches with Xcode 27.1**, which no longer reach the app
 - **Preconditions**: a plan that starts where an existing test ends ("Starting from: the login test"), replaying it with plain Appium before exploring the new part
 - **Appium plugin**, so any Appium client (Java, Python, WebdriverIO) can call `driver.execute('jevvium: explore', ...)` in its own flows
 - **Maestro export**, to write the found path as a Maestro YAML flow

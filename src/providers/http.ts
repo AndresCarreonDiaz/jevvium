@@ -9,6 +9,8 @@ export type PostOptions = {
   timeoutMs: number
   fetch: typeof fetch
   sleep: (ms: number) => Promise<void>
+  /** Headers to send along, such as the one that turns on a preview feature. */
+  headers?: Record<string, string>
 }
 
 /** A request the service answered with an error status. */
@@ -27,7 +29,7 @@ export async function postJson<T>(url: string, body: unknown, options: PostOptio
   for (let attempt = 0; ; attempt++) {
     const res = await options.fetch(url, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${options.apiKey}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${options.apiKey}`, 'Content-Type': 'application/json', ...options.headers },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(options.timeoutMs),
     })

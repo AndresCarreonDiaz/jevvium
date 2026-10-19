@@ -82,3 +82,46 @@ export function inputOptions(request: DecisionRequest): Record<string, string> {
 export function fillKey(fieldKey: string): string {
   return `fill_${fieldKey}`
 }
+
+/** The state key the screenshot goes under, and how the questions name it. */
+export const SCREEN_KEY = 'screen'
+
+/** Added to the questions when they come with a screenshot. */
+const WITH_SCREENSHOT =
+  ' The screenshot `screen` shows the current screen. Grey boxes in it hide typed text, test data and the ' +
+  'keyboard; the words in a box say what it hides. A grey box that says empty is an empty field: nothing ' +
+  'is typed in it yet. Use the screenshot for what the visible text leaves out, such as icons, colours, ' +
+  'prices and the order things are shown in.'
+
+/** The next-action question, with a screenshot in view. */
+export function lookNextActionQuestion(request: DecisionRequest): string {
+  return nextActionQuestion(request) + WITH_SCREENSHOT
+}
+
+/** The "goal reached" question, with a screenshot in view. */
+export function lookGoalMetQuestion(request: DecisionRequest): { instructions: string; answers: { true: string; false: string } } {
+  const goal = goalMetQuestion(request)
+  return { instructions: goal.instructions + ' Judge it from the screenshot `screen` as well as the visible text.', answers: goal.answers }
+}
+
+/** What the next control is for: the plan's current step, or the goal. */
+function nextFor(request: DecisionRequest): string {
+  const step = request.plan && request.plan.steps[request.plan.current - 1]
+  return step ? `to carry out this step of the test plan: "${step}"` : `to move toward this goal: "${request.goal}"`
+}
+
+/** Whether the control to use next can be seen at all. Asked with the box, which always answers. */
+export function targetShownQuestion(request: DecisionRequest): { instructions: string; answers: { true: string; false: string } } {
+  return {
+    instructions: `Is the control a tester would use next ${nextFor(request)} visible in the screenshot \`screen\`?`,
+    answers: {
+      true: 'That control is visible in the screenshot. An empty field under a grey box that says empty counts as visible.',
+      false: 'No such control is visible: it is on another screen, scrolled away, or not there at all.',
+    },
+  }
+}
+
+/** Where the control to use next is. */
+export function targetBoxQuestion(request: DecisionRequest): string {
+  return `In the screenshot \`screen\`, the control a tester would use next ${nextFor(request)}`
+}

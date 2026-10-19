@@ -3,7 +3,7 @@ import { promisify } from 'node:util'
 import type { Browser } from 'webdriverio'
 import { canTypeDirectly, IosHid } from './ios-hid.ts'
 import { toSelector } from './locator.ts'
-import { parseScreen } from './screen.ts'
+import { parseScreen, withoutTicking } from './screen.ts'
 import { SWIPE, swipeDirection } from './scroll.ts'
 import type { Locator, Platform, ScreenElement, ScrollDirection } from './types.ts'
 
@@ -32,6 +32,11 @@ export interface Device {
   isDisplayed(locator: Locator, timeoutMs: number): Promise<boolean>
   /** Whether the element is on screen and not covered, right now. */
   isVisible?(locator: Locator): Promise<boolean>
+  /**
+   * A screenshot of the whole screen, as PNG or JPEG bytes. Taken through Appium, so it
+   * works on simulators, emulators and real devices alike (about 75 ms on an iOS Simulator).
+   */
+  screenshot?(): Promise<Buffer>
   /**
    * Sends taps through Appium from now on, for a device whose direct taps may not
    * reach the app. `reason` becomes a note.
@@ -69,6 +74,7 @@ export function webdriverDevice(browser: Browser): Device {
       await browser.swipe({ ...SWIPE, direction: swipeDirection(direction), scrollableElement: browser.$(toSelector(element.locator)) })
     },
     isVisible: (locator) => browser.$(toSelector(locator)).isDisplayed(),
+    screenshot: async () => Buffer.from(await browser.takeScreenshot(), 'base64'),
     isDisplayed: (locator, timeoutMs) =>
       browser
         .$(toSelector(locator))
@@ -82,6 +88,8 @@ export function webdriverDevice(browser: Browser): Device {
 
 /** How long a tapped field may take to get keyboard focus before XCTest types into it instead. */
 const FOCUS_TIMEOUT_MS = 1_500
+/** How long to watch for a direct tap's effect while direct taps are unproven. */
+const TAP_LANDED_MS = 1_000
 /** How long typed keys may keep arriving before the field is read back. */
 const TYPED_SETTLE_MS = 1_000
 
@@ -121,10 +129,8 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
   const centreOf = async (element: ScreenElement) => {
     if (!movedSinceRead && element.centre) return element.centre
     const selector = toSelector(element.locator)
-    const now = parseScreen(await appium.fingerprint!(), 'ios', { visibility: 'geometry' }).elements.find(
-      (candidate) => toSelector(candidate.locator) === selector,
-    )
-    return now?.centre
+    const now = parseScreen(await appium.fingerprint!(), 'ios', { visibility: 'geometry' })
+    return [...now.elements, ...(now.unlabeled ?? [])].find((candidate) => toSelector(candidate.locator) === selector)?.centre
   }
   /** Taps directly, or hands the tap to Appium. Returns where it tapped, or undefined when Appium did. */
   const tap = async (element: ScreenElement): Promise<{ x: number; y: number } | undefined> => {
@@ -171,6 +177,30 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
   }
   let directTaps = true
   const notes: string[] = []
+  /**
+   * A tap sent straight to the simulator can be reported sent and never reach the app: the
+   * first of a session on iOS 27.0 simulators, and every one with Xcode 27.1, which changed the
+   * private interfaces the helper uses (its typing still works). So until a direct tap is seen
+   * to change the screen, fields are focused through Appium: a lost focus tap would otherwise
+   * cost XCTest's much slower typing. A lost tap is never sent again here, since one that did
+   * land with no visible effect would then happen twice; the explorer sends a tap through Appium
+   * when the model picks it again on a screen that didn't change.
+   */
+  let tapsLanded = false
+  /** Watches, off the tap's path, for the screen to change after a direct tap. */
+  const watchLanding = (before: string): void => {
+    const deadline = Date.now() + TAP_LANDED_MS
+    void (async () => {
+      do {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        const now = await appium.fingerprint!().catch(() => undefined)
+        if (now !== undefined && withoutTicking(now) !== before) {
+          tapsLanded = true
+          return
+        }
+      } while (Date.now() < deadline && !tapsLanded)
+    })()
+  }
 
   return {
     ...appium,
@@ -184,15 +214,22 @@ export async function simulatorDevice(browser: Browser): Promise<Device> {
         movedSinceRead = true
         return appium.tap(element)
       }
-      await tap(element)
+      if (tapsLanded) {
+        await tap(element)
+        return
+      }
+      const before = withoutTicking(await appium.fingerprint!())
+      // Appium tapped it when it had to be scrolled into view: that proves nothing about direct taps.
+      if (await tap(element)) watchLanding(before)
     },
     type: async (element, value) => {
       if (!directTyping || !canTypeDirectly(value)) {
         movedSinceRead = true
         return appium.type(element, value)
       }
-      // Once taps go through Appium, so does the one that focuses the field; the keys still go direct.
-      if (!directTaps) {
+      // While direct taps are unproven, or once they go through Appium, so does the one that
+      // focuses the field; the keys still go direct.
+      if (!directTaps || !tapsLanded) {
         movedSinceRead = true
         await appium.tap(element)
       } else if (!(await tap(element))) {

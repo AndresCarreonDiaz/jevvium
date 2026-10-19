@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
 import { quoted, xpathLiteral } from './locator.ts'
-import type { ElementKind, Locator, Platform, Screen, ScreenElement, ScrollDirection } from './types.ts'
+import type { ElementKind, Locator, Platform, Rect, Screen, ScreenElement, ScrollDirection } from './types.ts'
 
 type Node = { tag: string; attrs: Record<string, string>; children: Node[] }
 
@@ -51,11 +51,113 @@ export function parseScreen(xml: string, platform: Platform, options: ParseOptio
   const all = flatten(root)
   if (platform === 'ios' && options.visibility === 'geometry') markVisibleByGeometry(all)
   if (platform === 'ios' && options.visibility === 'all') for (const node of all) node.attrs.visible = 'true'
-  const height = screenHeight(all, platform)
+  const size = screenSize(all, platform)
+  const height = size?.height ?? NaN
   const found = platform === 'ios' ? iosElements(root, all, height) : androidElements(all, height)
-  const elements = found.map((element, i) => ({ ...element, key: `e${i + 1}` }))
+  const labelled = found.filter((element) => !element.unlabeled)
+  const elements = labelled.map((element, i) => ({ ...element, key: `e${i + 1}` }))
+  const unlabeled = found.filter((element) => element.unlabeled).map((element, i) => ({ ...element, key: `u${i + 1}` }))
   const texts = unique(platform === 'ios' ? iosTexts(all) : androidTexts(all))
-  return { platform, elements, texts }
+  return { platform, elements, texts, ...(size && { size }), ...(unlabeled.length > 0 && { unlabeled }) }
+}
+
+/** The page source without the numbers that change on their own: in names, labels, text and progress values. */
+export function withoutTicking(source: string): string {
+  return source
+    .replace(/ (?:name|label|text|content-desc)="[^"]*"/g, (attribute) => attribute.replace(/\d/g, '#'))
+    .replace(/<XCUIElementType(?:StaticText|ProgressIndicator)\b[^>]*/g, (tag) =>
+      tag.replace(/ value="[^"]*"/, (attribute) => attribute.replace(/\d/g, '#')),
+    )
+}
+
+/** A part of a screenshot to paint over before it is stored or sent, and what to write on it. */
+export type MaskRegion = { frame: Rect; label: string }
+
+/** What a painted-over empty field says. */
+export const EMPTY = 'empty'
+
+/**
+ * What a screenshot of this page source must not show: every field with something typed
+ * in it, every text that holds test data (where `redact` changes it), and, on iOS, the
+ * on-screen keyboard, whose suggestion bar can repeat what was typed. Empty fields that are
+ * shown, and hold no control of their own, are painted over too, labelled `empty`: in a
+ * screenshot a placeholder looks like a value. Unlike the masks for test data, those marks
+ * follow visibility: one must never hide an alert in front of the field. An Android page source
+ * doesn't show the keyboard, so on Android it is not covered: jevvium keeps and sends no
+ * screenshots there. Each region is labelled with
+ * what it hides, in the redacted form (`{email}`), so a model looking at the screenshot
+ * still knows what is there. Regions are in the page source's units (`Screen.size`).
+ * Masks for test data ignore visibility because painting over a hidden element costs little,
+ * and missing a shown one would leak.
+ */
+export function maskRegions(xml: string, platform: Platform, redact: (text: string) => string): MaskRegion[] {
+  const all = flatten(parseTree(xml))
+  // Whether an empty field is shown, for marking it: a fast read has no `visible`, so it is worked out from positions.
+  if (platform === 'ios' && !xml.includes(' visible="')) markVisibleByGeometry(all)
+  /** An empty field is marked only where it shows, and not over a control inside it (a search field's scan icon). */
+  const markable = (node: Node, shown: boolean) =>
+    shown && !descendants(node).some((d) => (platform === 'ios' ? IOS_KINDS[d.tag] === 'button' || IOS_KINDS[d.tag] === 'switch' : d.attrs.clickable === 'true'))
+  const regions: MaskRegion[] = []
+  const add = (frame: Rect, label: string) => {
+    if (Number.isFinite(frame.x) && Number.isFinite(frame.y) && frame.w > 0 && frame.h > 0) regions.push({ frame, label })
+  }
+  if (platform === 'ios') {
+    const keyboardWindows = all.filter((n) => n.tag === IOS_WINDOW && descendants(n).some((d) => d.tag === IOS_KEYBOARD))
+    const inKeyboard = new Set(keyboardWindows.flatMap(descendants))
+    const screen = screenSize(all, platform)
+    for (const window of keyboardWindows) {
+      // The keyboard's area starts at its highest part, the suggestion bar above the keys.
+      const parts = descendants(window).filter((n) => Number(n.attrs.height) > 0 && Number(n.attrs.height) < (screen?.height ?? Infinity))
+      const top = Math.min(...parts.map((n) => Number(n.attrs.y)))
+      if (screen && Number.isFinite(top)) add({ x: 0, y: top, w: screen.width, h: screen.height - top }, 'keyboard')
+    }
+    for (const node of all) {
+      if (inKeyboard.has(node)) continue
+      const frame = iosFrame(node)
+      if (IOS_KINDS[node.tag] === 'input') {
+        const value = node.attrs.value ?? ''
+        // A field showing its placeholder is empty, unless what shows is test data (typed, or offered as a hint).
+        if (value !== '' && (value !== node.attrs.placeholderValue || redact(value) !== value)) add(frame, hiddenLabel(value, redact))
+        else {
+          const shown = [node.attrs.placeholderValue, node.attrs.label, node.attrs.name].find((t) => t && redact(t) !== t)
+          if (shown) add(frame, redact(shown))
+          // A placeholder looks like a value in a screenshot ("Rebecca Winter"), so an empty field says so.
+          else if (markable(node, node.attrs.visible === 'true')) add(frame, EMPTY)
+        }
+        continue
+      }
+      const text = [node.attrs.label, node.attrs.value, node.attrs.name].find((t) => t && redact(t) !== t)
+      if (text) add(frame, redact(text))
+    }
+  } else {
+    for (const node of all) {
+      const frame = androidFrame(node)
+      if (isAndroidInput(node)) {
+        const value = node.attrs.text ?? ''
+        if (value !== '' && (value !== node.attrs.hint || redact(value) !== value)) add(frame, hiddenLabel(value, redact))
+        else {
+          const shown = [node.attrs.hint, node.attrs['content-desc']].find((t) => t && redact(t) !== t)
+          if (shown) add(frame, redact(shown))
+          else if (markable(node, node.attrs.displayed !== 'false')) add(frame, EMPTY)
+        }
+        continue
+      }
+      const text = [node.attrs.text, node.attrs['content-desc']].find((t) => t && redact(t) !== t)
+      if (text) add(frame, redact(text))
+    }
+  }
+  // An element inside another masked one adds nothing.
+  return regions.filter((region, i) => !regions.some((other, j) => j !== i && contains(other.frame, region.frame) && (j < i || !contains(region.frame, other.frame))))
+}
+
+/** What a mask over a typed field says: the redacted value when it is test data, or that something is typed there. */
+function hiddenLabel(value: string, redact: (text: string) => string): string {
+  const redacted = redact(value)
+  return redacted !== value ? redacted : /^[•●]+$/.test(value) ? 'secure text' : 'typed text'
+}
+
+function contains(outer: Rect, inner: Rect): boolean {
+  return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.w <= outer.x + outer.w && inner.y + inner.h <= outer.y + outer.h
 }
 
 /**
@@ -147,10 +249,14 @@ function iosElements(root: Node, all: Node[], height: number): Omit<ScreenElemen
     const label = kind === 'input'
       ? node.attrs.placeholderValue || node.attrs.label || node.attrs.name
       : node.attrs.label || firstText(node, IOS_TEXT, 'label') || node.attrs.name
-    if (!label || ICON_ONLY.test(label)) return
-    const centre = {
-      x: Number(node.attrs.x) + Number(node.attrs.width) / 2,
-      y: Number(node.attrs.y) + Number(node.attrs.height) / 2,
+    const frame = iosFrame(node)
+    const centre = { x: frame.x + frame.w / 2, y: frame.y + frame.h / 2 }
+    if (!label || ICON_ONLY.test(label)) {
+      // An icon button with no label: kept aside, since only a look at the screen can tell what it is.
+      if (kind === 'button' && IOS_KINDS[node.tag] === 'button') {
+        found.push({ node, element: { kind, label: 'unlabeled', unlabeled: true, region: region(centre.y, height), centre, frame, locator: iosLocator(node, all) } })
+      }
+      return
     }
     found.push({
       node,
@@ -160,6 +266,7 @@ function iosElements(root: Node, all: Node[], height: number): Omit<ScreenElemen
         id: node.attrs.name || undefined,
         region: region(centre.y, height),
         centre,
+        frame,
         ...(kind === 'switch' && { checked: node.attrs.value === '1' }),
         // An empty field reports its placeholder as its value.
         ...(kind === 'input' && { empty: !node.attrs.value || node.attrs.value === node.attrs.placeholderValue }),
@@ -169,7 +276,7 @@ function iosElements(root: Node, all: Node[], height: number): Omit<ScreenElemen
   })
 
   // Plain text outside any control can caption a field; a button's own text can't. A list holds whole screens, so it doesn't count.
-  const inControls = new Set(found.filter(({ element }) => element.kind !== 'list').flatMap(({ node }) => [node, ...descendants(node)]))
+  const inControls = new Set(found.filter(({ element }) => element.kind !== 'list' && !element.unlabeled).flatMap(({ node }) => [node, ...descendants(node)]))
   const captions = all
     .filter((n) => n.tag === IOS_TEXT && n.attrs.visible === 'true' && !inControls.has(n) && !keyboard.has(n))
     .map((n) => ({ frame: iosFrame(n), text: (n.attrs.label || n.attrs.value || '').trim() }))
@@ -217,7 +324,7 @@ function iosScrolls(container: Node): ScrollDirection[] {
 /** A scrollable container as an element. Without a name of its own it is "the screen". */
 function listElement(node: Node, name: string | undefined, frame: Frame, scrolls: ScrollDirection[], height: number, locator: Locator): Omit<ScreenElement, 'key'> {
   const centre = { x: frame.x + frame.w / 2, y: frame.y + frame.h / 2 }
-  return { kind: 'list', label: name || 'screen', id: name || undefined, region: region(centre.y, height), centre, scrolls, locator }
+  return { kind: 'list', label: name || 'screen', id: name || undefined, region: region(centre.y, height), centre, frame, scrolls, locator }
 }
 
 /**
@@ -248,11 +355,15 @@ function iosLocator(node: Node, all: Node[]): Locator {
   // as it scrolls, so the cell's position in the tree means nothing. The list itself keeps
   // its position: what it shows changes as it scrolls.
   const text = !name && !IOS_SCROLLERS.has(node.tag) && firstText(node, IOS_TEXT, 'label')
-  if (text && sameType.filter((n) => firstText(n, IOS_TEXT, 'label') === text).length === 1) {
+  // Unique among everything the path matches: any element of the type with that text anywhere inside it.
+  const showing = (n: Node) => n.tag === node.tag && descendants(n).some((d) => d.tag === IOS_TEXT && d.attrs.label === text)
+  if (text && all.filter(showing).length === 1) {
     return { using: 'xpath', value: `//${node.tag}[.//${IOS_TEXT}[@label=${xpathLiteral(text)}]]` }
   }
+  // The position counts what the path matches: without a name, every element of the type.
   const path = name ? `//${node.tag}[@name=${xpathLiteral(name)}]` : `//${node.tag}`
-  return { using: 'xpath', value: `(${path})[${sameType.indexOf(node) + 1}]` }
+  const matched = name ? sameType : all.filter((n) => n.tag === node.tag)
+  return { using: 'xpath', value: `(${path})[${matched.indexOf(node) + 1}]` }
 }
 
 function iosTexts(all: Node[]): string[] {
@@ -288,8 +399,14 @@ function androidElements(all: Node[], height: number): Omit<ScreenElement, 'key'
     const label = kind === 'input'
       ? attrs.hint || attrs['content-desc'] || id
       : attrs.text || firstText(node, undefined, 'text') || attrs['content-desc'] || id
-    if (!label || ICON_ONLY.test(label)) continue
     const frame = androidFrame(node)
+    const centre = { x: frame.x + frame.w / 2, y: frame.y + frame.h / 2 }
+    if (!label || ICON_ONLY.test(label)) {
+      if (kind === 'button') {
+        found.push({ node, element: { kind, label: 'unlabeled', unlabeled: true, region: region(centre.y, height), centre, frame, locator: androidLocator(node, all) } })
+      }
+      continue
+    }
     found.push({
       node,
       element: {
@@ -297,7 +414,8 @@ function androidElements(all: Node[], height: number): Omit<ScreenElement, 'key'
         label,
         id: attrs['content-desc'] || id || undefined,
         region: region(frame.y + frame.h / 2, height),
-        centre: { x: frame.x + frame.w / 2, y: frame.y + frame.h / 2 },
+        centre,
+        frame,
         ...(kind === 'switch' && { checked: attrs.checked === 'true' }),
         ...(kind === 'input' && { empty: !attrs.text || attrs.text === attrs.hint }),
         locator: androidLocator(node, all),
@@ -305,7 +423,7 @@ function androidElements(all: Node[], height: number): Omit<ScreenElement, 'key'
     })
   }
 
-  const inControls = new Set(found.filter(({ element }) => element.kind !== 'list').flatMap(({ node }) => [node, ...descendants(node)]))
+  const inControls = new Set(found.filter(({ element }) => element.kind !== 'list' && !element.unlabeled).flatMap(({ node }) => [node, ...descendants(node)]))
   const captions = all
     .filter((n) => n.attrs.text && n.attrs.displayed !== 'false' && !isAndroidInput(n) && !inControls.has(n))
     .map((n) => ({ frame: androidFrame(n), text: n.attrs.text.trim() }))
@@ -342,11 +460,13 @@ function androidLocator(node: Node, all: Node[]): Locator {
   const sameType = all.filter((n) => n.tag === node.tag && n.attrs['content-desc'] === desc)
   // A row with no id or text of its own is the one that shows this text (see the iOS case).
   const inner = !desc && !text && node.attrs.scrollable !== 'true' && firstText(node, undefined, 'text')
-  if (inner && sameType.filter((n) => firstText(n, undefined, 'text') === inner).length === 1) {
+  const showing = (n: Node) => n.tag === node.tag && descendants(n).some((d) => d.attrs.text === inner)
+  if (inner && all.filter(showing).length === 1) {
     return { using: 'xpath', value: `//${node.tag}[.//*[@text=${xpathLiteral(inner)}]]` }
   }
   const path = desc ? `//${node.tag}[@content-desc=${xpathLiteral(desc)}]` : `//${node.tag}`
-  return { using: 'xpath', value: `(${path})[${sameType.indexOf(node) + 1}]` }
+  const matched = desc ? sameType : all.filter((n) => n.tag === node.tag)
+  return { using: 'xpath', value: `(${path})[${matched.indexOf(node) + 1}]` }
 }
 
 function androidTexts(all: Node[]): string[] {
@@ -373,7 +493,7 @@ function shortResourceId(resourceId: string | undefined): string | undefined {
 
 // Captions ------------------------------------------------------------------
 
-type Frame = { x: number; y: number; w: number; h: number }
+type Frame = Rect
 
 /**
  * The text a person reads as a field's name: the nearest plain text just above
@@ -414,12 +534,20 @@ function withCaption(element: Omit<ScreenElement, 'key'>, caption: string | unde
 
 // Layout --------------------------------------------------------------------
 
-function screenHeight(all: Node[], platform: Platform): number {
+/** The screen's size in the page source's units, when the source says. */
+function screenSize(all: Node[], platform: Platform): { width: number; height: number } | undefined {
+  let width: number
+  let height: number
   if (platform === 'ios') {
-    return Number(all.find((n) => n.tag === 'XCUIElementTypeApplication')?.attrs.height)
+    const app = all.find((n) => n.tag === 'XCUIElementTypeApplication')
+    width = Number(app?.attrs.width)
+    height = Number(app?.attrs.height)
+  } else {
+    const hierarchy = all.find((n) => n.tag === 'hierarchy')
+    width = Number(hierarchy?.attrs.width) || androidHorizontalBounds(hierarchy?.children[0]?.attrs.bounds)[1]
+    height = Number(hierarchy?.attrs.height) || androidVerticalBounds(hierarchy?.children[0]?.attrs.bounds)[1]
   }
-  const hierarchy = all.find((n) => n.tag === 'hierarchy')
-  return Number(hierarchy?.attrs.height) || androidVerticalBounds(hierarchy?.children[0]?.attrs.bounds)[1]
+  return width > 0 && height > 0 ? { width, height } : undefined
 }
 
 function region(centre: number, height: number): ScreenElement['region'] {

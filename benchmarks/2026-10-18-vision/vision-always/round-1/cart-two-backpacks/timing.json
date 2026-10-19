@@ -1,0 +1,14 @@
+{
+  "flow": "cart-two-backpacks",
+  "round": 1,
+  "explore": {
+    "wallMs": 24684,
+    "status": 0
+  },
+  "test": {
+    "wallMs": 10752,
+    "status": 0,
+    "inSessionMs": 5300,
+    "passed": 1
+  }
+}

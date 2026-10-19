@@ -29,6 +29,10 @@ export function generateSpec(trace: Trace, criterion: Criterion): string {
     }
     for (const taken of step.taken) {
       const selector = restoreSelector(taken.selector, criterion.inputs)
+      if (taken.unlabeled) {
+        lines.push('// No label, text or id in the page source: found by looking at the screen, and located by position.')
+        lines.push('// An accessibility id on this control would make the step sturdier.')
+      }
       if (taken.type === 'type') {
         const value = criterion.inputs[taken.input!]
         if (value === undefined) throw new Error(`The criterion has no input named "${taken.input}"`)
@@ -53,7 +57,9 @@ export function generateSpec(trace: Trace, criterion: Criterion): string {
     lines.push(`await expect($(${literal(selector)})).toBeDisplayed()`)
   }
 
-  const model = trace.steps.at(-1)?.decision.model ?? trace.provider
+  const decided = trace.steps.at(-1)?.decision.model ?? trace.provider
+  const looked = [...new Set(trace.steps.flatMap((step) => (step.look ? [step.look.decision.model] : [])))]
+  const model = looked.length > 0 ? `${decided}, looking with ${looked.join(', ')}` : decided
   const replayed = trace.replay
   const warning =
     replayed?.outcome === 'failed'
@@ -123,12 +129,16 @@ function oneLine(value: string): string {
 
 /** A single-quoted TypeScript string literal. */
 function literal(value: string): string {
-  const escaped = value
+  return `'${literalBody(value)}'`
+}
+
+/** What a value looks like inside a single-quoted TypeScript string literal. */
+export function literalBody(value: string): string {
+  return value
     .replace(/\\/g, '\\\\')
     .replace(/'/g, "\\'")
     .replace(/\n/g, '\\n')
     .replace(/\r/g, '\\r')
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029')
-  return `'${escaped}'`
 }

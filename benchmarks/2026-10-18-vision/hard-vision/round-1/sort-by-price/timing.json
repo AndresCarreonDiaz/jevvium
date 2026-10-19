@@ -1,0 +1,8 @@
+{
+  "flow": "sort-by-price",
+  "round": 1,
+  "explore": {
+    "wallMs": 40980,
+    "status": 1
+  }
+}

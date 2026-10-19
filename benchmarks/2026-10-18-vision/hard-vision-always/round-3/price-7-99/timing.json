@@ -1,0 +1,14 @@
+{
+  "flow": "price-7-99",
+  "round": 3,
+  "explore": {
+    "wallMs": 45654,
+    "status": 0
+  },
+  "test": {
+    "wallMs": 22897,
+    "status": 0,
+    "inSessionMs": 15900,
+    "passed": 1
+  }
+}

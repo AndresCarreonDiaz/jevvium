@@ -1,11 +1,12 @@
 import { buildActions, controlStates, describeAction, describeElement, redactScreen } from './actions.ts'
 import { fingerprintOf, type Device } from './device.ts'
 import { redactExpectation } from './expectations.ts'
+import { prepareFrame, type PreparedFrame } from './frames.ts'
 import { expectationLocator, toSelector } from './locator.ts'
-import { LEAVE_EMPTY, STUCK, type Decision, type DecisionProvider, type DecisionRequest } from './providers/types.ts'
+import { LEAVE_EMPTY, STUCK, type Box, type Decision, type DecisionProvider, type DecisionRequest, type Look } from './providers/types.ts'
 import { placeholderSelector, redactor } from './redact.ts'
-import { isBusy, needsFullRead, parseScreen } from './screen.ts'
-import type { Action, Criterion, ElementKind, Expectation, Platform, Screen, ScreenElement, ScrollDirection } from './types.ts'
+import { isBusy, maskRegions, needsFullRead, parseScreen, withoutTicking } from './screen.ts'
+import type { Action, Criterion, ElementKind, Expectation, Platform, Rect, Screen, ScreenElement, ScrollDirection } from './types.ts'
 
 export type ExploreOptions = {
   provider: DecisionProvider
@@ -43,6 +44,25 @@ export type ExploreOptions = {
   /** How many times a run may backtrack (default 2). Each costs a restart and a replay. */
   maxBacktracks?: number
   onStep?: (step: Step) => void
+  /**
+   * Gets the screen each kept decision saw, as a masked frame (see `prepareFrame`): typed
+   * fields, test data and the keyboard painted over. `name` is what the step records as its
+   * `frame` (`03.jpg`). Called once the run has ended, in step order. Needs `device.screenshot`,
+   * and an iOS device for now: an Android page source doesn't show the keyboard, so it couldn't
+   * be painted over.
+   */
+  onFrame?: (name: string, frame: PreparedFrame) => void | Promise<void>
+  /**
+   * Lets the model look at the screen, as a masked frame that leaves the machine with the
+   * request. `true` looks where the page source isn't enough: where the answer from text alone
+   * would stop the run (no way forward, a confidence below `minConfidence`, the same action
+   * again on an unchanged screen). That can't catch a model that is sure of the wrong thing
+   * because the text lacks what matters (prices that only show on screen, so it scrolls past
+   * the one it wants): `'always'` looks at every step, and the look's answer wins where it is
+   * surer than the text answer. Needs
+   * `device.screenshot`, a provider with `look`, and an iOS device (see `onFrame`).
+   */
+  look?: boolean | 'always'
 }
 
 /**
@@ -69,6 +89,32 @@ export type TakenAction = {
   input?: string
   /** Which way the list was scrolled, for `scroll` actions. */
   direction?: ScrollDirection
+  /** Where the element was on screen, in the units of `Trace.screen`, for drawing it on the step's frame. */
+  frame?: Rect
+  /** The element had no label, text or id: a look at the screen found it, and its selector goes by position. */
+  unlabeled?: true
+}
+
+/** What the model said when it looked at a screenshot at a step (see `ExploreOptions.look`). */
+export type StepLook = {
+  /**
+   * Why it looked: the answer from text alone was no way forward, too unsure to act, or the same
+   * action again on an unchanged screen; or the run looks at every step.
+   */
+  why: 'stuck' | 'unsure' | 'repeating' | 'always'
+  /**
+   * Its answers with the screenshot in view. When the run took the element under its box, the
+   * action is that tap and the confidence is how sure it was the control is visible.
+   */
+  decision: Decision
+  /** Probability that the control to use next was visible. */
+  targetShown: number
+  /** Where it said that control is, as fractions of the frame. */
+  box?: Box & { confidence: number }
+  /** The element the box's centre fell on, described as the model saw it. */
+  pointedAt?: string
+  /** What the run took from the look: its verdict on the step or goal, its action, the element the box fell on, or nothing. */
+  used: 'goal' | 'action' | 'box' | 'none'
 }
 
 export type Step = {
@@ -95,6 +141,18 @@ export type Step = {
   retry?: { of: number }
   /** A backtrack undid this step: its actions aren't part of the path the run ended on. */
   undone?: true
+  /** The masked screenshot of the screen this decision saw, when frames were kept (see `ExploreOptions.onFrame`). */
+  frame?: string
+  /** The model looked at the screen at this step (see `ExploreOptions.look`). */
+  look?: StepLook
+  /** A look was asked for, so its screenshot went out, but no answer came back: the text answer stood. */
+  lookError?: string
+  /**
+   * The element this decision chose turned out covered, so the model decided again on the same
+   * screen. Such a decision is dropped from the trace, unless it looked: then it stays, marked,
+   * since its screenshot went out.
+   */
+  covered?: true
 }
 
 /**
@@ -119,8 +177,13 @@ export type Trace = {
    * element turned out to be covered. Their requests are counted in `usage`.
    */
   discardedDecisions: number
-  /** Totals for every request made to the provider, including those whose answers were thrown away. */
-  usage: { requests: number; inputTokens: number; outputTokens: number }
+  /**
+   * Totals for every request made to the provider, including those whose answers were thrown
+   * away. `looks` counts the requests that carried a screenshot (included in `requests`).
+   */
+  usage: { requests: number; inputTokens: number; outputTokens: number; looks?: number }
+  /** The screen's size in the page source's units (points on iOS), for drawing on the frames. */
+  screen?: { width: number; height: number }
   /** Set by the CLI after a pass: the generated steps replayed with plain Appium. */
   replay?: Replay
 }
@@ -141,10 +204,25 @@ const POLL_MS = 50
  * Input through Appium is done by the time the command returns.
  */
 const EFFECT_WAIT_MS = 1_000
+/** The least probability, looking, that the control to use next is visible for its box to count. */
+const TARGET_SHOWN_MIN = 0.5
+/**
+ * How sure a look must be of an action to take it instead of the answer from text alone. A
+ * look comes where the run would otherwise stop, so it has to give a clear way forward:
+ * taking unsure looks kept a run scrolling a list it had already seen.
+ */
+const LOOK_ACTION_MIN = 0.5
+/**
+ * How long a tap sent straight to the simulator may leave the page source exactly as it was,
+ * on top of the effect wait, before it is taken as lost and sent again through Appium.
+ */
+const LOST_TAP_MS = 1_000
 
 /** A page source, and whether visibility in it has to be worked out from positions. */
 type Read = { source: string; geometric: boolean }
 type View = { read: Read; screen: Screen; actions: Action[]; request: DecisionRequest }
+/** A view and the decision on it, with a screenshot taken while the decision was being made. */
+type Observed = View & { decision: Decision; shot?: Buffer; shotError?: string }
 /** A step that acted, with what a backtrack needs to replay it or try something else there. */
 type Performed = {
   step: Step
@@ -171,7 +249,11 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
   const fillConfidence = options.fillConfidence ?? 0.5
   const expectTimeoutMs = options.expectTimeoutMs ?? 5_000
   const settleTimeoutMs = options.settleTimeoutMs ?? 15_000
+  const lookAlways = options.look === 'always'
   const { platform } = device
+  if (options.look && platform !== 'ios') throw new Error('Looking at screenshots works on iOS only for now: an Android page source does not show the keyboard to paint over')
+  const looking = Boolean(options.look) && options.provider.look !== undefined && device.screenshot !== undefined
+  const shooting = (looking || options.onFrame !== undefined) && device.screenshot !== undefined && platform === 'ios'
 
   const started = Date.now()
   const redact = redactor(criterion.inputs)
@@ -185,9 +267,19 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
   /** The screens the run dead-ended on. Reaching one again another way means the app, not the path, is the problem. */
   const deadEnds = new Set<string>()
   let next: Read
-  const repeats = new Map<string, number>()
-  const usage = { requests: 0, inputTokens: 0, outputTokens: 0 }
+  /** How often each action was chosen on a screen, and the screen as it was the last time, to count only repeats on an unchanged screen. */
+  const repeats = new Map<string, { count: number; print: string }>()
+
+  const usage = { requests: 0, inputTokens: 0, outputTokens: 0, ...(looking && { looks: 0 }) }
   let failedExpectations: Expectation[] = []
+  /**
+   * Each step's frame, prepared on first use: right away when frames are kept, so it happens
+   * off the decision's critical path, and only when the model looks otherwise.
+   */
+  const frames = new Map<Step, () => Promise<PreparedFrame | undefined>>()
+  /** Why a step's frame couldn't be prepared, noted on the step once the run is over. */
+  const frameErrors = new Map<Step, string>()
+  let screenSize: Trace['screen']
   let discardedDecisions = 0
   // A plan is worked through one step at a time; a criterion without one is a single step, its goal.
   const plan = criterion.steps?.map(redact) ?? []
@@ -212,6 +304,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     failedExpectations: failedExpectations.map(redacted),
     discardedDecisions,
     usage,
+    ...(screenSize && { screen: screenSize }),
   })
 
   const decide = async (request: DecisionRequest): Promise<Decision> => {
@@ -252,7 +345,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     const parsed = parseScreen(read.source, platform, { visibility: read.geometric ? 'geometry' : 'attribute' })
     if (hidden.size > 0) {
       const screenPrint = fingerprintOf(read.source, platform)
-      for (const element of parsed.elements) {
+      for (const element of [...parsed.elements, ...(parsed.unlabeled ?? [])]) {
         const selector = toSelector(element.locator)
         const checkedOn = hidden.get(selector)
         if (checkedOn === undefined || checkedOn === screenPrint) continue
@@ -260,6 +353,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
         else hidden.set(selector, screenPrint)
       }
       parsed.elements = parsed.elements.filter((element) => !hidden.has(toSelector(element.locator)))
+      if (parsed.unlabeled) parsed.unlabeled = parsed.unlabeled.filter((element) => !hidden.has(toSelector(element.locator)))
     }
     for (const element of parsed.elements) {
       const back = element.kind === 'list' ? scrolled.get(toSelector(element.locator)) : undefined
@@ -287,9 +381,17 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
   }
 
   /** True if the screen still matches `source` a moment later, read the cheap way. */
-  const isStable = async ({ source }: Read, deadline: number): Promise<boolean> => {
+  const isStable = async (read: Read, deadline: number, pause = POLL_MS): Promise<boolean> => {
     if (Date.now() >= deadline) return true
-    await sleep(POLL_MS)
+    if (pause > 0) await sleep(pause)
+    return stillShows(read)
+  }
+
+  /** A screen as the repeat count compares it: its page source without what ticks on its own. */
+  const printOf = (read: Read): string => withoutTicking(fingerprintOf(read.source, platform))
+
+  /** Whether the screen shows `source` right now. */
+  const stillShows = async ({ source }: Read): Promise<boolean> => {
     const now = device.fingerprint ? await device.fingerprint() : await device.pageSource()
     return now === (device.fingerprint ? fingerprintOf(source, platform) : source)
   }
@@ -309,6 +411,54 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     return current
   }
 
+  /**
+   * Whether the screen still shows `before`, as `now` does, and goes on showing it for `ms` more,
+   * not counting the numbers that change on their own (a countdown, a clock). Returns the last read.
+   */
+  const unchangedFor = async (before: Read, now: Read, ms: number): Promise<{ unchanged: boolean; read: Read }> => {
+    const was = printOf(before)
+    if (printOf(now) !== was) return { unchanged: false, read: now }
+    const deadline = Date.now() + ms
+    let last = now
+    while (Date.now() < deadline) {
+      await sleep(POLL_MS * 2)
+      last = await read()
+      if (printOf(last) !== was) return { unchanged: false, read: last }
+    }
+    return { unchanged: true, read: last }
+  }
+
+  /** Whether a direct tap has been seen to change the screen this session: after that, none is taken as lost. */
+  let directTapLanded = false
+
+  /**
+   * After a tap sent straight to the simulator: a tap that leaves the screen as it was for the
+   * effect wait and a second more most likely never reached the app (the first tap of a session on
+   * iOS 27.0, every tap with Xcode 27.1). Until a direct tap has been seen to land, such a tap is
+   * sent again through Appium, once, and every tap after it goes through Appium. Once one has
+   * landed, a tap that changes nothing is left alone: it may be one whose effect is slow, and a
+   * second tap could place a second order. A re-sent tap whose element has gone landed after all.
+   */
+  const afterDirectTap = async (element: ScreenElement, before: Read, now: Read): Promise<Read> => {
+    if (printOf(now) !== printOf(before)) {
+      directTapLanded = true
+      return now
+    }
+    if (directTapLanded || !device.fallBackToAppium) return now
+    const waited = await unchangedFor(before, now, LOST_TAP_MS)
+    if (!waited.unchanged) {
+      directTapLanded = true
+      return waited.read
+    }
+    device.fallBackToAppium("a tap sent straight to the simulator changed nothing, so it was sent again through Appium, and taps go through Appium from now on")
+    try {
+      await device.tap(element)
+    } catch {
+      // The element is gone: the first tap did land, and its effect was slow.
+    }
+    return read()
+  }
+
   /** Reads until the screen has stopped changing and shows no spinner, or the deadline passes. */
   const settle = async (deadline: number): Promise<Read> => {
     let current = await read()
@@ -326,7 +476,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
    * If the screen turns out to be still changing, that answer is thrown away,
    * the screen is left to settle without asking, and the model is asked once more.
    */
-  const observe = async (candidate: Read): Promise<View & { decision: Decision }> => {
+  const observe = async (candidate: Read): Promise<Observed> => {
     const deadline = Date.now() + settleTimeoutMs
     let current = candidate
     while (isBusy(current.source, platform) && Date.now() < deadline) {
@@ -334,18 +484,131 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
       current = await read()
     }
     const view = await prepare(current)
-    const [decision, stable] = await Promise.all([decide(view.request), isStable(current, deadline)])
-    if (stable) return { ...view, decision }
+    // The decision and the screenshot are asked for together. The stability check reads the
+    // screen once the screenshot is taken, so a stable screen proves the screenshot shows the
+    // page source its masks come from; one the check couldn't read (the deadline passed) isn't kept.
+    const shot = shoot()
+    const check = shooting
+      ? shot.then(async () => {
+          // One read after the screenshot, whatever the deadline: it is what proves the frame's masks fit.
+          const late = Date.now() >= deadline
+          const same = await stillShows(current)
+          return { stable: late || same, fits: same }
+        })
+      : isStable(current, deadline).then((stable) => ({ stable, fits: false }))
+    const [decision, { stable, fits }, taken] = await Promise.all([decide(view.request), check, shot])
+    if (stable) return { ...view, decision, ...framed(taken, fits) }
     discardedDecisions++
     const settledView = await prepare(await settle(deadline))
-    return { ...settledView, decision: await decide(settledView.request) }
+    const [settledDecision, settledShot] = await Promise.all([decide(settledView.request), shoot()])
+    // Nothing has read the screen since this screenshot: check it still shows what the masks come from.
+    const settledFits = settledShot.png !== undefined && (await stillShows(settledView.read))
+    return { ...settledView, decision: settledDecision, ...framed(settledShot, settledFits) }
+  }
+
+  /** A screenshot, when frames are kept or the model may look; a failure only costs the frame. */
+  const shoot = async (): Promise<{ png?: Buffer; error?: string }> => {
+    if (!shooting) return {}
+    try {
+      return { png: await device.screenshot!() }
+    } catch (error) {
+      return { error: `a screenshot failed, so this step has no frame: ${firstLine(error)}` }
+    }
+  }
+
+  /** The screenshot to keep, if its masks can be trusted to fit it, or why there is none. */
+  const framed = (taken: { png?: Buffer; error?: string }, fits: boolean): { shot?: Buffer; shotError?: string } => {
+    if (taken.error) return { shotError: taken.error }
+    if (!taken.png) return {}
+    if (!fits) return { shotError: "the screen changed around its screenshot, so this step's frame wasn't kept" }
+    return { shot: taken.png }
+  }
+
+  /**
+   * The step's frame: scaled, with typed fields, test data and the keyboard painted over,
+   * from the same page source the decision was made on.
+   */
+  const keepFrame = (step: Step, png: Buffer, source: string, screen: Screen): void => {
+    let prepared: Promise<PreparedFrame | undefined> | undefined
+    const get = () =>
+      // On iOS the page source is in points; on Android in the screenshot's own pixels.
+      (prepared ??= prepareFrame(png, { screen: screen.size, regions: maskRegions(source, platform, redact) }).catch((error: unknown) => {
+        frameErrors.set(step, `its screenshot couldn't be prepared, so it has no frame: ${firstLine(error)}`)
+        return undefined
+      }))
+    frames.set(step, get)
+    step.frame = `${String(step.index).padStart(2, '0')}.jpg`
+    if (options.onFrame) void get()
+  }
+
+  /**
+   * Why the answer from text alone would end the run here, if it would: no way forward, too
+   * unsure to act, or the same action again on an unchanged screen. A step or goal it calls
+   * done ends nothing: the checks decide that.
+   */
+  const wouldStop = (decision: Decision, screen: Screen, actions: Action[], doneAt: number, print: string): 'stuck' | 'unsure' | 'repeating' | undefined => {
+    if (decision.goalMet >= doneAt) return undefined
+    if (decision.action === STUCK) return 'stuck'
+    const action = actions.find((a) => a.key === decision.action)
+    if (action && timesChosen(screen, action, print) + 1 >= REPEAT_LIMIT) return 'repeating'
+    if (decision.confidence < minConfidence) return 'unsure'
+    return undefined
+  }
+
+  /** How often this action has been chosen on this screen while it stayed as it is now. */
+  const timesChosen = (screen: Screen, action: Action, print: string): number => {
+    const before = repeats.get(`${screen.texts.join('|')}#${action.key}`)
+    return before && before.print === print ? before.count : 0
+  }
+
+  /** Asks the model again with the step's frame in view, and works out what to take from its answer. */
+  const lookAgain = async (
+    step: Step,
+    view: Observed,
+    why: StepLook['why'],
+    doneAt: number,
+  ): Promise<{ decision: Decision; action?: Action; used: StepLook['used'] } | undefined> => {
+    const frame = await frames.get(step)?.()
+    if (!frame) return undefined
+    // Counted before it is sent: the screenshot leaves the machine whatever comes back.
+    usage.requests++
+    usage.looks = (usage.looks ?? 0) + 1
+    let seen: Look
+    try {
+      seen = await options.provider.look!(view.request, frame)
+    } catch (error) {
+      // The answer from text alone stands, as if the model hadn't looked.
+      step.lookError = redact(firstLine(error))
+      return undefined
+    }
+    usage.inputTokens += seen.decision.usage?.inputTokens ?? 0
+    usage.outputTokens += seen.decision.usage?.outputTokens ?? 0
+    const textWouldStop = wouldStop(view.decision, view.screen, view.actions, doneAt, printOf(view.read)) !== undefined
+    const result = useLook(
+      view.decision,
+      seen,
+      { doneAt, minConfidence: Math.max(minConfidence, LOOK_ACTION_MIN), textWouldStop, always: lookAlways },
+      (box) => pointedAt(box, view.screen, view.actions),
+    )
+    step.look = {
+      why,
+      decision: trim(result.used === 'none' ? seen.decision : result.decision),
+      targetShown: seen.targetShown,
+      ...(seen.box && { box: seen.box }),
+      ...(result.pointed && { pointedAt: describeAction(result.pointed) }),
+      used: result.used,
+    }
+    if (result.used === 'none') return undefined
+    return { decision: result.decision, used: result.used, ...(result.pointed && { action: result.pointed }) }
   }
 
   /** The element on the current screen that this selector finds, by the same reading the run uses. */
   const findOnScreen = async (selector: string, deadline: number): Promise<{ read: Read; element: ScreenElement } | undefined> => {
     const current = await settle(deadline)
-    const search = (visibility: 'attribute' | 'geometry' | 'all') =>
-      parseScreen(current.source, platform, { visibility }).elements.find((element) => toSelector(element.locator) === selector)
+    const search = (visibility: 'attribute' | 'geometry' | 'all') => {
+      const parsed = parseScreen(current.source, platform, { visibility })
+      return [...parsed.elements, ...(parsed.unlabeled ?? [])].find((element) => toSelector(element.locator) === selector)
+    }
     const element = search(current.geometric ? 'geometry' : 'attribute') ?? search('all')
     return element && { read: current, element }
   }
@@ -355,10 +618,12 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     const found = await findOnScreen(toSelector(action.element.locator), deadline)
     if (!found) return false
     const { element } = found
+    const direct = device.input === 'simulator'
     if (action.type === 'type') await device.type(element, criterion.inputs[action.input])
     else if (action.type === 'scroll') await device.scroll!(element, action.direction)
     else await device.tap(element)
-    next = device.input === 'simulator' ? await changedFrom(found.read) : await read()
+    next = direct ? await changedFrom(found.read) : await read()
+    if (direct && action.type === 'tap') next = await afterDirectTap(element, found.read, next)
     return true
   }
 
@@ -440,195 +705,329 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
     selector: placeholderSelector(toSelector(item.element.locator), criterion.inputs),
     ...(item.type === 'type' && { input: item.input }),
     ...(item.type === 'scroll' && { direction: item.direction }),
+    ...(item.element.frame && { frame: item.element.frame }),
+    ...(item.element.unlabeled && { unlabeled: true as const }),
   })
 
-  try {
-    // Idle connections close after a few seconds, so open one now, while the first screen is read.
-    void Promise.resolve()
-      .then(() => options.provider.warmUp?.())
-      .catch(() => {})
-    next = await read()
-    // Decisions that acted. Those that only moved the plan on to its next step don't count.
-    let acted = 0
-    for (let index = 1; ; index++) {
-      const { read: settled, screen, actions, request, decision } = await observe(next)
-      const step: Step = {
-        index: steps.length + 1,
-        atMs: Date.now() - started,
-        screenText: screen.texts,
-        actionCount: actions.length,
-        decision: trim(decision),
-        ...(plan.length > 0 && { planStep }),
-      }
-      steps.push(step)
+  const trace = await run()
+  // The frames go out once the run is over, so writing them never slows a decision down. A frame
+  // that can't be prepared or handed over costs that frame, never the trace.
+  for (const step of trace.steps) {
+    const get = frames.get(step)
+    const frame = get && options.onFrame ? await get() : undefined
+    const failed = frameErrors.get(step)
+    if (failed && options.onFrame) step.notes = [...(step.notes ?? []), failed]
+    if (!frame) {
+      delete step.frame
+      continue
+    }
+    try {
+      await options.onFrame!(step.frame!, frame)
+    } catch (error) {
+      step.notes = [...(step.notes ?? []), `its frame couldn't be kept: ${redact(firstLine(error))}`]
+      delete step.frame
+    }
+  }
+  return trace
 
-      // A plan step done, with more to come: the test moves on to the next step. The action the
-      // model picked was for the step just finished, so it is asked again about the new one.
-      if (decision.goalMet >= stepThreshold && planStep < plan.length) {
-        step.completed = planStep
-        planStep++
-        options.onStep?.(step)
-        next = settled
-        continue
-      }
+  async function run(): Promise<Trace> {
+    try {
+      // Idle connections close after a few seconds, so open one now, while the first screen is read.
+      void Promise.resolve()
+        .then(() => options.provider.warmUp?.())
+        .catch(() => {})
+      next = await read()
+      // Decisions that acted. Those that only moved the plan on to its next step don't count.
+      let acted = 0
+      for (let index = 1; ; index++) {
+        const view = await observe(next)
+        const { read: settled, screen, actions, request } = view
+        let { decision } = view
+        screenSize ??= screen.size
+        const step: Step = {
+          index: steps.length + 1,
+          atMs: Date.now() - started,
+          screenText: screen.texts,
+          actionCount: actions.length,
+          decision: trim(decision),
+          ...(plan.length > 0 && { planStep }),
+        }
+        steps.push(step)
+        if (view.shot) keepFrame(step, view.shot, settled.source, screen)
+        if (view.shotError) step.notes = [view.shotError]
 
-      if (decision.goalMet >= goalThreshold) {
-        options.onStep?.(step)
-        if (criterion.expect.length === 0) {
-          return finish('passed', 'The model judged the goal reached. There are no expectations to confirm it.')
-        }
-        failedExpectations = await failing(device, criterion.expect, expectTimeoutMs)
-        if (failedExpectations.length === 0) {
-          return finish('passed', `Goal reached and all ${criterion.expect.length} expectations hold.`)
-        }
-        // A fast read can include text XCTest considers hidden (a view kept on screen but not
-        // shown), which can look like success. Before calling it a failure, the model judges a
-        // full read, with XCTest's own visibility, and carries on from there if it disagrees.
-        if (settled.geometric) {
-          failedExpectations = []
-          next = { source: await device.pageSource(), geometric: false }
-          continue
-        }
-        return finish('failed', `The model judged the goal reached, but ${failedExpectations.length} expectations do not hold.`)
-      }
-
-      /**
-       * Before giving up, check the expectations anyway: the model can be unsure
-       * the goal is reached when it is. They decide pass or fail, not the model.
-       * A run that took no action can't pass this way, or a criterion whose
-       * expectations already hold on the first screen would pass untested.
-       */
-      const stop = async (outcome: Outcome, reason: string): Promise<Trace | undefined> => {
-        const acted = performed.length > 0
-        if (acted && criterion.expect.length > 0) {
-          const failed = await failing(device, criterion.expect, STOP_CHECK_MS)
-          if (failed.length === 0) {
+        // The page source isn't always enough: when the answer from text alone would stop the
+        // run, or is unsure, the model looks at the screen before anything is done.
+        const doneAt = planStep < plan.length ? stepThreshold : goalThreshold
+        const screenPrint = printOf(settled)
+        const stopping = wouldStop(decision, screen, actions, doneAt, screenPrint)
+        // Looking at every step, a step the model calls done from text is left to the checks.
+        const lookNow = lookAlways ? decision.goalMet < doneAt : stopping !== undefined
+        const why = looking && view.shot && acted < maxSteps && lookNow ? (lookAlways ? 'always' : stopping) : undefined
+        // Where the run would stop, the checks come first, as without looking: if they hold, the
+        // run is over, and no screenshot needs to go out.
+        let checked: Expectation[] | undefined
+        if (why && stopping && performed.length > 0 && criterion.expect.length > 0) {
+          checked = await failing(device, criterion.expect, STOP_CHECK_MS)
+          if (checked.length === 0) {
             options.onStep?.(step)
             return finish('passed', `All ${criterion.expect.length} expectations hold, although the model was unsure the goal was reached.`)
           }
-          failedExpectations = failed
-          reason = `${reason} ${failed.length} of ${criterion.expect.length} expectations do not hold.`
         }
-        // A dead end after a wrong turn: go back and try the model's runner-up there, when there is one.
-        if (outcome === 'stuck' && acted && (await backtrack(step))) {
-          failedExpectations = []
-          return undefined
+        let sawGoal = false
+        if (why) {
+          const looked = await lookAgain(step, view, why, doneAt)
+          if (looked) {
+            decision = looked.decision
+            sawGoal = looked.used === 'goal'
+            if (looked.action && !actions.includes(looked.action)) actions.push(looked.action)
+          }
         }
+
+        // A plan step done, with more to come: the test moves on to the next step. The action the
+        // model picked was for the step just finished, so it is asked again about the new one.
+        if (decision.goalMet >= stepThreshold && planStep < plan.length) {
+          step.completed = planStep
+          planStep++
+          options.onStep?.(step)
+          next = settled
+          continue
+        }
+
+        if (decision.goalMet >= goalThreshold) {
+          options.onStep?.(step)
+          if (criterion.expect.length === 0) {
+            return finish('passed', 'The model judged the goal reached. There are no expectations to confirm it.')
+          }
+          failedExpectations = await failing(device, criterion.expect, expectTimeoutMs)
+          if (failedExpectations.length === 0) {
+            return finish('passed', `Goal reached and all ${criterion.expect.length} expectations hold.`)
+          }
+          // A fast read can include text XCTest considers hidden (a view kept on screen but not
+          // shown), which can look like success. Before calling it a failure, the model judges a
+          // full read, with XCTest's own visibility, and carries on from there if it disagrees.
+          // A verdict reached by looking at the screenshot saw what was shown, so it stands.
+          if (settled.geometric && !sawGoal) {
+            failedExpectations = []
+            next = { source: await device.pageSource(), geometric: false }
+            continue
+          }
+          return finish('failed', `The model judged the goal reached, but ${failedExpectations.length} expectations do not hold.`)
+        }
+
+        /**
+         * Before giving up, check the expectations anyway: the model can be unsure
+         * the goal is reached when it is. They decide pass or fail, not the model.
+         * A run that took no action can't pass this way, or a criterion whose
+         * expectations already hold on the first screen would pass untested.
+         */
+        const stop = async (outcome: Outcome, reason: string): Promise<Trace | undefined> => {
+          const acted = performed.length > 0
+          if (acted && criterion.expect.length > 0) {
+            const failed = checked ?? (await failing(device, criterion.expect, STOP_CHECK_MS))
+            if (failed.length === 0) {
+              options.onStep?.(step)
+              return finish('passed', `All ${criterion.expect.length} expectations hold, although the model was unsure the goal was reached.`)
+            }
+            failedExpectations = failed
+            reason = `${reason} ${failed.length} of ${criterion.expect.length} expectations do not hold.`
+          }
+          // A dead end after a wrong turn: go back and try the model's runner-up there, when there is one.
+          if (outcome === 'stuck' && acted && (await backtrack(step))) {
+            failedExpectations = []
+            return undefined
+          }
+          options.onStep?.(step)
+          return finish(outcome, reason)
+        }
+
+        if (acted >= maxSteps) return (await stop('gave-up', `The goal was not reached within ${maxSteps} steps.`))!
+        if (decision.action === STUCK) {
+          const trace = await stop('stuck', 'The model found no action on this screen that moves toward the goal.')
+          if (trace) return trace
+          continue
+        }
+        if (decision.confidence < minConfidence) {
+          return (await stop(
+            'escalated',
+            `Confidence ${decision.confidence.toFixed(2)} is below ${minConfidence}. A person should decide this step.`,
+          ))!
+        }
+
+        const action = actions.find((a) => a.key === decision.action)
+        if (!action) throw new Error(`The provider picked "${decision.action}", which is not an option on this screen`)
+
+        // Positions can't show what covers an element, so XCTest confirms the one about to be
+        // used. If it's covered, it is left out and the model decides again on a fresh read.
+        if (settled.geometric && !(await visible(device, action))) {
+          const selector = toSelector(action.element.locator)
+          const times = (covered.get(selector) ?? 0) + 1
+          covered.set(selector, times)
+          coveredSinceAction++
+          // It came back as visible and was covered again: whatever covers it keeps coming back.
+          if (times >= REPEAT_LIMIT) {
+            const trace = await stop('stuck', `"${describeAction(action)}" was chosen ${times} times, but the element stays covered.`)
+            if (trace) return trace
+            continue
+          }
+          // Different covered elements, one after another (their names can change as they tick).
+          if (coveredSinceAction >= COVERED_LIMIT) {
+            const trace = await stop('stuck', `The model chose ${coveredSinceAction} covered elements in a row.`)
+            if (trace) return trace
+            continue
+          }
+          hidden.set(selector, fingerprintOf(settled.source, platform))
+          discardedDecisions++
+          if (step.look || step.lookError) {
+            // Its screenshot went out with the look, so the decision stays in the trace, marked.
+            step.covered = true
+            options.onStep?.(step)
+          } else {
+            steps.pop()
+            index--
+          }
+          next = await read()
+          continue
+        }
+
+        // The same action on the same screen, again and again, means the app isn't responding to it.
+        const loopKey = `${screen.texts.join('|')}#${action.key}`
+        const seen = timesChosen(screen, action, screenPrint) + 1
+        repeats.set(loopKey, { count: seen, print: screenPrint })
+        if (seen >= REPEAT_LIMIT) {
+          const trace = await stop('stuck', `"${describeAction(action)}" was chosen ${seen} times on the same screen.`)
+          if (trace) return trace
+          continue
+        }
+        // A direct tap that changed nothing may never have reached the app. The second try goes
+        // through Appium, and so does every tap after it: retrying sooner could tap twice.
+        if (seen === 2 && action.type === 'tap' && device.input === 'simulator') {
+          device.fallBackToAppium?.('a tap sent straight to the simulator changed nothing, so taps go through Appium from now on')
+        }
+
+        const batch = action.type === 'type' ? formFill(action, screen, actions, decision, fillConfidence) : [action]
+        const direct = device.input === 'simulator'
+        step.taken = []
+        acted++
+        const done: Action[] = []
+        const entry: Performed = {
+          step,
+          batch: done,
+          options: new Map(actions.map((a) => [a.key, a])),
+          probabilities: decision.probabilities,
+          tried: new Set([action.key]),
+          planStep,
+          historyLength: history.length,
+        }
+        for (const item of batch) {
+          // The other fields of a form are checked right before each is used, after the
+          // earlier ones have opened the keyboard. A covered one is left for a later decision.
+          if (item !== action && settled.geometric && !(await visible(device, item))) continue
+          if (item.type === 'type') await device.type(item.element, criterion.inputs[item.input])
+          else if (item.type === 'scroll') {
+            await device.scroll!(item.element, item.direction)
+            const selector = toSelector(item.element.locator)
+            scrolled.set(selector, (scrolled.get(selector) ?? new Set()).add(item.direction))
+          } else await device.tap(item.element)
+          const description = request.actions.find((d) => d.key === item.key)?.description ?? describeAction(item)
+          step.taken.push(takenFrom(item, description))
+          done.push(item)
+          history.push(description)
+        }
+        performed.push(entry)
+        next = direct && step.taken.length > 0 ? await changedFrom(settled) : await read()
+        if (direct && action.type === 'tap' && step.taken.length === 1) next = await afterDirectTap(action.element, settled, next)
+        step.atMs = Date.now() - started
+        const notes = device.drainNotes?.() ?? []
+        if (notes.length > 0) step.notes = [...(step.notes ?? []), ...notes]
         options.onStep?.(step)
-        return finish(outcome, reason)
-      }
 
-      if (acted >= maxSteps) return (await stop('gave-up', `The goal was not reached within ${maxSteps} steps.`))!
-      if (decision.action === STUCK) {
-        const trace = await stop('stuck', 'The model found no action on this screen that moves toward the goal.')
-        if (trace) return trace
-        continue
+        hidden.clear()
+        covered.clear()
+        coveredSinceAction = 0
       }
-      if (decision.confidence < minConfidence) {
-        return (await stop(
-          'escalated',
-          `Confidence ${decision.confidence.toFixed(2)} is below ${minConfidence}. A person should decide this step.`,
-        ))!
-      }
-
-      const action = actions.find((a) => a.key === decision.action)
-      if (!action) throw new Error(`The provider picked "${decision.action}", which is not an option on this screen`)
-
-      // Positions can't show what covers an element, so XCTest confirms the one about to be
-      // used. If it's covered, it is left out and the model decides again on a fresh read.
-      if (settled.geometric && !(await visible(device, action))) {
-        const selector = toSelector(action.element.locator)
-        const times = (covered.get(selector) ?? 0) + 1
-        covered.set(selector, times)
-        coveredSinceAction++
-        // It came back as visible and was covered again: whatever covers it keeps coming back.
-        if (times >= REPEAT_LIMIT) {
-          const trace = await stop('stuck', `"${describeAction(action)}" was chosen ${times} times, but the element stays covered.`)
-          if (trace) return trace
-          continue
-        }
-        // Different covered elements, one after another (their names can change as they tick).
-        if (coveredSinceAction >= COVERED_LIMIT) {
-          const trace = await stop('stuck', `The model chose ${coveredSinceAction} covered elements in a row.`)
-          if (trace) return trace
-          continue
-        }
-        hidden.set(selector, fingerprintOf(settled.source, platform))
-        steps.pop()
-        discardedDecisions++
-        next = await read()
-        index--
-        continue
-      }
-
-      // The same action on the same screen, again and again, means the app isn't responding to it.
-      const loopKey = `${screen.texts.join('|')}#${action.key}`
-      const seen = (repeats.get(loopKey) ?? 0) + 1
-      repeats.set(loopKey, seen)
-      if (seen >= REPEAT_LIMIT) {
-        const trace = await stop('stuck', `"${describeAction(action)}" was chosen ${seen} times on the same screen.`)
-        if (trace) return trace
-        continue
-      }
-      // A direct tap that changed nothing may never have reached the app. The second try goes
-      // through Appium, and so does every tap after it: retrying sooner could tap twice.
-      if (seen === 2 && action.type === 'tap' && device.input === 'simulator') {
-        device.fallBackToAppium?.('a tap sent straight to the simulator changed nothing, so taps go through Appium from now on')
-      }
-
-      const batch = action.type === 'type' ? formFill(action, screen, actions, decision, fillConfidence) : [action]
-      step.taken = []
-      acted++
-      const done: Action[] = []
-      const entry: Performed = {
-        step,
-        batch: done,
-        options: new Map(actions.map((a) => [a.key, a])),
-        probabilities: decision.probabilities,
-        tried: new Set([action.key]),
-        planStep,
-        historyLength: history.length,
-      }
-      for (const item of batch) {
-        // The other fields of a form are checked right before each is used, after the
-        // earlier ones have opened the keyboard. A covered one is left for a later decision.
-        if (item !== action && settled.geometric && !(await visible(device, item))) continue
-        if (item.type === 'type') await device.type(item.element, criterion.inputs[item.input])
-        else if (item.type === 'scroll') {
-          await device.scroll!(item.element, item.direction)
-          const selector = toSelector(item.element.locator)
-          scrolled.set(selector, (scrolled.get(selector) ?? new Set()).add(item.direction))
-        } else await device.tap(item.element)
-        const description = request.actions.find((d) => d.key === item.key)!.description
-        step.taken.push(takenFrom(item, description))
-        done.push(item)
-        history.push(description)
-      }
-      performed.push(entry)
-      step.atMs = Date.now() - started
-      const notes = device.drainNotes?.() ?? []
-      if (notes.length > 0) step.notes = notes
-      options.onStep?.(step)
-
-      hidden.clear()
-      covered.clear()
-      coveredSinceAction = 0
-      next = device.input === 'simulator' && step.taken.length > 0 ? await changedFrom(settled) : await read()
+    } catch (error) {
+      // WebdriverIO quotes the selector in its errors, and a selector can hold test data.
+      const message = error instanceof Error ? error.message : String(error)
+      return finish('error', redact(message.split('\n')[0]))
     }
-  } catch (error) {
-    // WebdriverIO quotes the selector in its errors, and a selector can hold test data.
-    const message = error instanceof Error ? error.message : String(error)
-    return finish('error', redact(message.split('\n')[0]))
   }
 }
 
-/** The page source without the numbers that change on their own: in names, labels, text and progress values. */
-function withoutTicking(source: string): string {
-  return source
-    .replace(/ (?:name|label|text|content-desc)="[^"]*"/g, (attribute) => attribute.replace(/\d/g, '#'))
-    .replace(/<XCUIElementType(?:StaticText|ProgressIndicator)\b[^>]*/g, (tag) =>
-      tag.replace(/ value="[^"]*"/, (attribute) => attribute.replace(/\d/g, '#')),
-    )
+/**
+ * What to take from a look at the screen (see `ExploreOptions.look`), given the answer from
+ * text alone. In order:
+ *
+ * - a step or goal the model now sees done: its whole answer, so the checks run;
+ * - a usable action (at least `minConfidence` sure) that it is surer of than the text answer,
+ *   or a different one where the text answer would end the run;
+ * - when the text answer would end the run: the element under the centre of the box it drew
+ *   around the control to use next, if it says that control is visible. The element is taken
+ *   from the page source, so the step still acts through a selector, never a point.
+ *
+ * Otherwise nothing: the text answer stands, and the run goes on or stops as it would have.
+ */
+export function useLook(
+  text: Decision,
+  seen: Look,
+  context: { doneAt: number; minConfidence: number; textWouldStop: boolean; always?: boolean },
+  pointAt: (box: Box) => Action | undefined,
+): { decision: Decision; used: StepLook['used']; pointed?: Action } {
+  const { decision } = seen
+  if (decision.goalMet >= context.doneAt) return { decision, used: 'goal' }
+  const usable = decision.action !== STUCK && decision.confidence >= context.minConfidence
+  // Where the text answer would end the run, any other clear way forward is worth taking. Otherwise,
+  // looking at every step or not, the look has to be surer: it can be wrong where the text is right
+  // (a placeholder in a screenshot looks like a value).
+  const better = text.action === STUCK || decision.confidence > text.confidence || (context.textWouldStop && decision.action !== text.action)
+  if (usable && better) return { decision, used: 'action' }
+  if (context.textWouldStop && seen.box && seen.targetShown >= Math.max(TARGET_SHOWN_MIN, context.minConfidence)) {
+    const pointed = pointAt(seen.box)
+    if (pointed) {
+      return {
+        decision: {
+          ...decision,
+          action: pointed.key,
+          confidence: seen.targetShown,
+          probabilities: { ...decision.probabilities, [pointed.key]: Math.max(decision.probabilities[pointed.key] ?? 0, seen.targetShown) },
+        },
+        used: 'box',
+        pointed,
+      }
+    }
+  }
+  return { decision: text, used: 'none' }
+}
+
+/**
+ * The tap on the element under the centre of a box drawn on a screenshot of this screen: the
+ * smallest button, switch or key whose frame holds that point, labelled or not. A box that
+ * falls on no such element, on a field or a list, or only on something covering more than a
+ * quarter of the screen, points at nothing.
+ */
+export function pointedAt(box: Box, screen: Screen, actions: Action[]): Action | undefined {
+  if (!screen.size) return undefined
+  const x = ((box.left + box.right) / 2) * screen.size.width
+  const y = ((box.top + box.bottom) / 2) * screen.size.height
+  const holds = (element: ScreenElement) =>
+    element.frame !== undefined &&
+    x >= element.frame.x &&
+    x <= element.frame.x + element.frame.w &&
+    y >= element.frame.y &&
+    y <= element.frame.y + element.frame.h
+  // Something as big as a quarter of the screen is a container, not the control the box was drawn around.
+  const tooBig = (element: ScreenElement) => element.frame!.w * element.frame!.h > (screen.size!.width * screen.size!.height) / 4
+  const candidates = [...screen.elements, ...(screen.unlabeled ?? [])].filter(
+    (element) => (element.kind === 'button' || element.kind === 'switch' || element.kind === 'key') && holds(element) && !tooBig(element),
+  )
+  const smallest = candidates.sort((a, b) => a.frame!.w * a.frame!.h - b.frame!.w * b.frame!.h)[0]
+  if (!smallest) return undefined
+  return actions.find((action) => action.type === 'tap' && action.element.key === smallest.key) ?? { key: `tap:${smallest.key}`, type: 'tap', element: smallest }
+}
+
+/** An error's first line: WebdriverIO's errors run on with stack-like detail. */
+function firstLine(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error)).split('\n')[0]
 }
 
 /** XCTest's own verdict on whether an element is on screen and uncovered. Keyboard keys always are. */

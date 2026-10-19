@@ -4,11 +4,17 @@
 // Each flow runs as its own command, so the wall clock is what one test costs end to end.
 //
 //   npm run compare -- [--repeat 3] [--device "iPhone 17"] [--platform-version 26.5] [--out dir]
+//                      [--flows criteria/a.md,criteria/b.yml] [--explore-args=--vision]
 //
+// --flows picks other plans than the six below (a plan under criteria/mydemo-ios runs on the
+// shop app, any other on the WebdriverIO demo app), and --explore-args adds options to every
+// explore, such as --vision or --screenshots off, to compare them against the defaults. Give it
+// with an equals sign (--explore-args="--screenshots off"): Node reads a value that starts with
+// -- after a space as another option.
 // Every explore costs requests to Jev. A round that broke runs again next time.
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { basename, join, relative } from 'node:path'
 import { parseArgs } from 'node:util'
 import type { Trace } from '../src/explorer.ts'
 
@@ -41,8 +47,23 @@ const { values } = parseArgs({
     device: { type: 'string', default: 'iPhone 17' },
     'platform-version': { type: 'string' },
     out: { type: 'string', default: `benchmarks/explore-vs-appium-${localDate()}` },
+    flows: { type: 'string' },
+    'explore-args': { type: 'string', default: '' },
   },
 })
+const flows = values.flows
+  ? values.flows
+      .split(',')
+      .map((file) => file.trim())
+      .filter((file) => file !== '')
+      .map((file) => ({ file, app: file.includes('mydemo-ios') ? SHOP : DEMO }))
+  : FLOWS
+const exploreArgs = values['explore-args'].split(/\s+/).filter((arg) => arg !== '')
+// Each flow gets a folder named after its file, so two with the same name would share one.
+const ids = flows.map((flow) => basename(flow.file).replace(/\.(md|yml)$/, ''))
+if (ids.length === 0) fail('--flows names no flows')
+const repeated = ids.find((id, i) => ids.indexOf(id) !== i)
+if (repeated) fail(`Two flows are named ${repeated}; their results would share a folder`)
 try {
   process.loadEnvFile()
 } catch {
@@ -56,7 +77,7 @@ const device = ['--device', values.device, ...(values['platform-version'] ? ['--
 
 const incomplete: string[] = []
 for (let round = 1; round <= repeat; round++) {
-  for (const flow of FLOWS) {
+  for (const flow of flows) {
     const id = flowId(flow.file)
     const dir = join(values.out, `round-${round}`, id)
     if (existsSync(join(dir, 'timing.json'))) continue
@@ -65,7 +86,7 @@ for (let round = 1; round <= repeat; round++) {
     console.log(`\nround ${round}, ${id}`)
 
     // With the model: explore, replay with plain Appium, write the test. One command, one session.
-    const explore = command(['explore', flow.file, '--app', flow.app, '--max-steps', '25', ...device, '--runs', dir, '--out', join(dir, 'generated')])
+    const explore = command(['explore', flow.file, '--app', flow.app, '--max-steps', '25', ...device, '--runs', dir, '--out', join(dir, 'generated'), ...exploreArgs])
     writeFileSync(join(dir, 'explore.log'), explore.output)
     const timing: Timing = { flow: id, round, explore: { wallMs: explore.wallMs, status: explore.status } }
     console.log(`  explore: ${(explore.wallMs / 1000).toFixed(1)} s, exit ${explore.status}`)
@@ -90,9 +111,10 @@ for (let round = 1; round <= repeat; round++) {
   }
 }
 
-// Results: the median over the rounds, per flow.
+// Results: the median over the rounds, per flow. Links to the plans go from where results.md is written.
+const toRoot = relative(values.out, '.') || '.'
 type Row = { id: string; file: string; traces: Trace[]; timings: Timing[] }
-const rows: Row[] = FLOWS.map((flow) => {
+const rows: Row[] = flows.map((flow) => {
   const id = flowId(flow.file)
   const dirs = Array.from({ length: repeat }, (_, i) => join(values.out, `round-${i + 1}`, id)).filter((dir) => existsSync(join(dir, 'timing.json')))
   return {
@@ -106,20 +128,28 @@ const rows: Row[] = FLOWS.map((flow) => {
 const seconds = (ms: number) => (Number.isFinite(ms) ? `${(Math.round(ms / 100) / 10).toFixed(1)} s` : 'n/a')
 const count = (n: number) => (Number.isFinite(n) ? String(Math.round(n)) : 'n/a')
 const cost = (tokens: number) => (Number.isFinite(tokens) ? `$${((tokens * JEV_PRICE_PER_M_INPUT) / 1e6).toFixed(4)}` : 'n/a')
+const outcomes = (traces: Trace[]) => {
+  const counts = new Map<string, number>()
+  for (const trace of traces) counts.set(trace.outcome, (counts.get(trace.outcome) ?? 0) + 1)
+  return [...counts].map(([outcome, n]) => `${outcome} ${n}`).join(', ')
+}
 const withModel = [
-  '| Flow | Passed | Exploring | Whole command | Decisions | Requests | Input tokens | Cost |',
-  '| --- | --- | --- | --- | --- | --- | --- | --- |',
+  '| Flow | Passed | Outcomes | Exploring | Exploring, all runs | Whole command | Decisions | Requests | Looks | Input tokens | Cost |',
+  '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   ...rows.map((row) => {
     const passed = row.traces.filter((trace) => trace.outcome === 'passed')
     const replays = row.traces.flatMap((trace) => (trace.replay ? [trace.replay] : []))
     const replayFailed = replays.length > 0 && replays.every((replay) => replay.outcome !== 'passed')
     return [
-      `[${row.id}](../../${row.file})`,
+      `[${row.id}](${toRoot}/${row.file})`,
       `${passed.length} of ${row.traces.length}`,
+      outcomes(row.traces),
       seconds(median(passed.map((trace) => trace.durationMs))),
+      seconds(median(row.traces.map((trace) => trace.durationMs))),
       `${seconds(median(row.timings.map((timing) => timing.explore.wallMs)))}${replayFailed ? ` (with a ${seconds(median(replays.map((r) => r.durationMs)))} failed replay)` : ''}`,
       count(median(passed.map((trace) => trace.steps.length))),
       count(median(passed.map((trace) => trace.usage.requests))),
+      count(median(row.traces.map((trace) => trace.usage.looks ?? 0))),
       count(median(passed.map((trace) => trace.usage.inputTokens))),
       cost(median(passed.map((trace) => trace.usage.inputTokens))),
     ].join(' | ')
@@ -134,7 +164,7 @@ const withoutModel = [
     const replayed = replays.filter((replay) => replay.outcome === 'passed')
     const testPassed = tests.filter(passedTest)
     return [
-      `[${row.id}](../../${row.file})`,
+      `[${row.id}](${toRoot}/${row.file})`,
       replays.length === 0 ? 'n/a' : `${seconds(median(replayed.map((replay) => replay.durationMs)))} (${replayed.length} of ${replays.length} passed)`,
       seconds(median(testPassed.map((test) => test.inSessionMs ?? NaN))),
       `${seconds(median(tests.map((test) => test.wallMs)))}${tests.length > 0 && testPassed.length === 0 ? ' (failing)' : ''}`,
@@ -144,7 +174,7 @@ const withoutModel = [
 ].map((line) => (line.startsWith('|') ? line : `| ${line} |`))
 
 const all = rows.flatMap((row) => row.traces)
-const models = [...new Set(all.flatMap((trace) => trace.steps.map((step) => step.decision.model)))]
+const models = [...new Set(all.flatMap((trace) => trace.steps.flatMap((step) => [step.decision.model, ...(step.look ? [`${step.look.decision.model} (looking)`] : [])])))]
 const exploring = (row: Row) => median(row.traces.filter((t) => t.outcome === 'passed').map((t) => t.durationMs))
 const tokens = (row: Row) => median(row.traces.filter((t) => t.outcome === 'passed').map((t) => t.usage.inputTokens))
 const sum = (numbers: number[]) => numbers.filter(Number.isFinite).reduce((a, b) => a + b, 0)
@@ -153,12 +183,15 @@ const comparable = rows.filter((row) => row.timings.some((timing) => timing.test
 const testTotal = sum(comparable.map((row) => median(row.timings.flatMap((timing) => (timing.test && passedTest(timing.test) ? [timing.test.inSessionMs ?? NaN] : [])))))
 const testRuns = comparable.flatMap((row) => row.timings.flatMap((timing) => (timing.test ? [timing.test] : [])))
 const note = [
+  ...(exploreArgs.length > 0 ? [`Every explore ran with \`${exploreArgs.join(' ')}\`.`] : []),
   `Rounds: ${repeat}, one command per flow per round, on one simulator (${values.device}${values['platform-version'] ? `, iOS ${values['platform-version']}` : ''}), ` +
     `with ${models.join(', ')}. Every number is the median over the rounds. Exploring, decisions, requests, tokens and cost are over the runs whose outcome was passed; ` +
     'the whole-command times are over all the rounds.',
   '"Exploring" is the time from the first screen read to the verdict, with the model deciding each step; "whole command" adds starting Appium, ' +
     'the session, the app restart and the replay with plain Appium, and writing the test. ' +
+    '"Outcomes" counts every round\'s verdict, and "Exploring, all runs" is the median exploring time over all of them, whatever their outcome. ' +
     '"Decisions" counts every answer the run kept, the "step done" and "goal reached" verdicts included; "Requests" adds the answers thrown away because the screen was still changing or the chosen element was covered, which cost tokens all the same. ' +
+    '"Looks" is the median number of requests that carried a screenshot, over all rounds (they are in "Requests" too). ' +
     '"Replay" is that replay: the same selectors and commands as the generated test, in the same session, right after exploring. ' +
     '"`jevvium test`" runs the generated spec with WebdriverIO: "the test" is the time WebdriverIO reports for it, "whole command" adds starting Appium and the session.',
   `Cost is input tokens at TypeSafe's list price of $${JEV_PRICE_PER_M_INPUT} per million; output tokens are free at that price. The generated tests call no model, so a run costs $0 in model calls.`,

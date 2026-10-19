@@ -1,0 +1,14 @@
+{
+  "flow": "add-to-cart",
+  "round": 2,
+  "explore": {
+    "wallMs": 18341,
+    "status": 0
+  },
+  "test": {
+    "wallMs": 8297,
+    "status": 0,
+    "inSessionMs": 3200,
+    "passed": 1
+  }
+}

@@ -19,6 +19,9 @@ export type ElementKind = 'button' | 'input' | 'switch' | 'key' | 'list'
 /** Where more content is: scrolling `down` reveals what is below the fold. */
 export type ScrollDirection = 'up' | 'down' | 'left' | 'right'
 
+/** A rectangle on screen from its top left, in the page source's units: points on iOS, pixels on Android. */
+export type Rect = { x: number; y: number; w: number; h: number }
+
 /** One element on screen that the user can act on. */
 export type ScreenElement = {
   /** Short, stable key for this snapshot, e.g. `e4`. */
@@ -40,6 +43,13 @@ export type ScreenElement = {
   scrolls?: ScrollDirection[]
   /** Its centre on screen, in points from the top left, for tapping it directly. */
   centre?: { x: number; y: number }
+  /** Where it is on screen, for masking a screenshot and for finding what a model pointed at in one. */
+  frame?: Rect
+  /**
+   * A control with no label, text or id: the page source can't say what it is, so it is
+   * never offered from text alone. Looking at a screenshot can still point at it.
+   */
+  unlabeled?: true
   locator: Locator
 }
 
@@ -48,6 +58,10 @@ export type Screen = {
   elements: ScreenElement[]
   /** Visible text that is not an actionable element, for context. */
   texts: string[]
+  /** The screen's size, in the same units as the elements' frames. */
+  size?: { width: number; height: number }
+  /** Controls without a label (see `ScreenElement.unlabeled`), kept apart from `elements`. */
+  unlabeled?: ScreenElement[]
 }
 
 /** Something jevvium can do next. `key` is what the decision model picks. */

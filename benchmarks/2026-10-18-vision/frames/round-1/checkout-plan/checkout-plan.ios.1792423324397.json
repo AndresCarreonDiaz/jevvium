@@ -1,0 +1,1111 @@
+{
+  "criterion": {
+    "id": "checkout-plan",
+    "title": "Buy a backpack",
+    "goal": "Buy a backpack. A shopper buys the Sauce Labs Backpack - Black and sees the order confirmed.",
+    "steps": [
+      "From the Catalog, open the Sauce Labs Backpack and add it to the cart",
+      "Open the cart and proceed to checkout",
+      "Log in by picking bob@example.com from the list of usernames",
+      "Enter {full_name} as the full name, {address_line_1} as the address line 1, {city} as the city, {zip_code} as the zip code and {country} as the country, then go to payment",
+      "Enter {full_name} as the name on card, {card_number} as the card number, {expiration_date} as the expiration date and {security_code} as the security code, then review the order",
+      "Place the order"
+    ],
+    "expect": [
+      {
+        "id": "ContinueShopping"
+      },
+      {
+        "text": "Checkout Complete"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "jev",
+  "input": "appium",
+  "startedAt": "2026-10-19T15:22:07.579Z",
+  "durationMs": 21976,
+  "outcome": "passed",
+  "reason": "Goal reached and all 2 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 3597,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 30,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.78,
+        "probabilities": {
+          "tap:e3": 0.79,
+          "tap:e28": 0.11,
+          "tap:e27": 0.09,
+          "scroll:e2:down": 0.01,
+          "tap:e1": 0
+        },
+        "goalMet": 0.07,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 177,
+        "usage": {
+          "inputTokens": 1799,
+          "outputTokens": 339
+        }
+      },
+      "planStep": 1,
+      "frame": "01.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Sauce Labs Backpack - Black",
+          "description": "Tap the button \"Sauce Labs Backpack - Black\" (middle of the screen)",
+          "selector": "//XCUIElementTypeCell[.//XCUIElementTypeStaticText[@label=\"Sauce Labs Backpack - Black\"]]",
+          "frame": {
+            "x": 16,
+            "y": 195,
+            "w": 172,
+            "h": 272
+          }
+        }
+      ],
+      "notes": [
+        "a tap sent straight to the simulator changed nothing, so it was sent again through Appium, and taps go through Appium from now on"
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 4355,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e13",
+        "confidence": 1,
+        "probabilities": {
+          "tap:e13": 1,
+          "scroll:e1:down": 0,
+          "tap:e2": 0,
+          "tap:e3": 0,
+          "tap:e4": 0
+        },
+        "goalMet": 0.17,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 184,
+        "usage": {
+          "inputTokens": 1376,
+          "outputTokens": 200
+        }
+      },
+      "planStep": 1,
+      "frame": "02.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Add To Cart",
+          "description": "Tap the button \"Add To Cart\" (id AddToCart, bottom of the screen)",
+          "selector": "~AddToCart",
+          "frame": {
+            "x": 184,
+            "y": 675,
+            "w": 193,
+            "h": 40
+          }
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 4517,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e15",
+        "confidence": 0.99,
+        "probabilities": {
+          "tap:e15": 0.99,
+          "tap:e14": 0.01,
+          "scroll:e1:down": 0,
+          "tap:e2": 0,
+          "tap:e3": 0
+        },
+        "goalMet": 0.9,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 105,
+        "usage": {
+          "inputTokens": 1398,
+          "outputTokens": 200
+        }
+      },
+      "planStep": 1,
+      "frame": "03.jpg",
+      "completed": 1
+    },
+    {
+      "index": 4,
+      "atMs": 5559,
+      "screenText": [
+        "Products",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e15",
+        "confidence": 1,
+        "probabilities": {
+          "tap:e15": 1,
+          "scroll:e1:down": 0,
+          "tap:e2": 0,
+          "tap:e3": 0,
+          "tap:e4": 0
+        },
+        "goalMet": 0.15,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 106,
+        "usage": {
+          "inputTokens": 1398,
+          "outputTokens": 200
+        }
+      },
+      "planStep": 2,
+      "frame": "04.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Cart-tab-item",
+          "description": "Tap the button \"Cart-tab-item\" (bottom of the screen)",
+          "selector": "~Cart-tab-item",
+          "frame": {
+            "x": 131,
+            "y": 758,
+            "w": 131,
+            "h": 60
+          }
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "atMs": 6606,
+      "screenText": [
+        "My Cart",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "Color:",
+        "Green",
+        "1",
+        "Remove Item",
+        "© 2023 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Total:",
+        "1 Items",
+        "$29.99",
+        "Proceed To Checkout",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 21,
+      "decision": {
+        "action": "tap:e18",
+        "confidence": 0.95,
+        "probabilities": {
+          "tap:e18": 0.95,
+          "tap:e17": 0.03,
+          "tap:e10": 0.01,
+          "STUCK": 0.01,
+          "scroll:e1:right": 0
+        },
+        "goalMet": 0.26,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 133,
+        "usage": {
+          "inputTokens": 1625,
+          "outputTokens": 249
+        }
+      },
+      "planStep": 2,
+      "frame": "05.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Proceed To Checkout",
+          "description": "Tap the button \"Proceed To Checkout\" (id ProceedToCheckout, bottom of the screen)",
+          "selector": "~ProceedToCheckout",
+          "frame": {
+            "x": 16,
+            "y": 692,
+            "w": 361,
+            "h": 48
+          }
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "atMs": 6870,
+      "screenText": [
+        "My Cart",
+        "Login",
+        "Select a username from the list below",
+        "User Name",
+        "Password",
+        "Usernames",
+        "bob@example.com",
+        "10203040",
+        "alice@example.com",
+        "john@example.com",
+        "visual@example.com",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 9,
+      "decision": {
+        "action": "tap:e2",
+        "confidence": 0.98,
+        "probabilities": {
+          "tap:e2": 0.98,
+          "tap:e6": 0.02,
+          "scroll:e1:down": 0,
+          "tap:e3": 0,
+          "tap:e4": 0
+        },
+        "goalMet": 0.89,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 263,
+        "usage": {
+          "inputTokens": 1234,
+          "outputTokens": 129
+        }
+      },
+      "planStep": 2,
+      "frame": "06.jpg",
+      "completed": 2
+    },
+    {
+      "index": 7,
+      "atMs": 7579,
+      "screenText": [
+        "My Cart",
+        "Login",
+        "Select a username from the list below",
+        "User Name",
+        "Password",
+        "Usernames",
+        "bob@example.com",
+        "10203040",
+        "alice@example.com",
+        "john@example.com",
+        "visual@example.com",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 9,
+      "decision": {
+        "action": "tap:e2",
+        "confidence": 0.99,
+        "probabilities": {
+          "tap:e2": 0.99,
+          "tap:e6": 0.01,
+          "scroll:e1:down": 0,
+          "tap:e3": 0,
+          "tap:e4": 0
+        },
+        "goalMet": 0.11,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 121,
+        "usage": {
+          "inputTokens": 1234,
+          "outputTokens": 129
+        }
+      },
+      "planStep": 3,
+      "frame": "07.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "bob@example.com",
+          "description": "Tap the button \"bob@example.com\" (middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"bob@example.com\"",
+          "frame": {
+            "x": 50,
+            "y": 521,
+            "w": 124,
+            "h": 29
+          }
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "atMs": 7719,
+      "screenText": [
+        "My Cart",
+        "Login",
+        "Select a username from the list below",
+        "User Name",
+        "Password",
+        "Usernames",
+        "bob@example.com",
+        "10203040",
+        "alice@example.com",
+        "john@example.com",
+        "visual@example.com",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 9,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.82,
+        "probabilities": {
+          "tap:e6": 0.84,
+          "tap:e2": 0.09,
+          "scroll:e1:down": 0.04,
+          "STUCK": 0.02,
+          "tap:e3": 0.01
+        },
+        "goalMet": 0.65,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 132,
+        "usage": {
+          "inputTokens": 1251,
+          "outputTokens": 129
+        }
+      },
+      "planStep": 3,
+      "frame": "08.jpg",
+      "completed": 3
+    },
+    {
+      "index": 9,
+      "atMs": 8731,
+      "screenText": [
+        "My Cart",
+        "Login",
+        "Select a username from the list below",
+        "User Name",
+        "Password",
+        "Usernames",
+        "bob@example.com",
+        "10203040",
+        "alice@example.com",
+        "john@example.com",
+        "visual@example.com",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 9,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.51,
+        "probabilities": {
+          "tap:e6": 0.56,
+          "scroll:e1:down": 0.37,
+          "tap:e2": 0.04,
+          "STUCK": 0.03,
+          "tap:e3": 0
+        },
+        "goalMet": 0.15,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 127,
+        "usage": {
+          "inputTokens": 1251,
+          "outputTokens": 129
+        }
+      },
+      "planStep": 4,
+      "frame": "09.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Login",
+          "description": "Tap the button \"Login\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Login\"",
+          "frame": {
+            "x": 16,
+            "y": 692,
+            "w": 361,
+            "h": 48
+          }
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "atMs": 14047,
+      "screenText": [
+        "Login",
+        "Checkout",
+        "Enter a shipping address",
+        "Full Name*",
+        "Address Line 1*",
+        "Address Line 2",
+        "City*",
+        "Zip Code*",
+        "State/Region",
+        "Country*",
+        "To Payment",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 68,
+      "decision": {
+        "action": "type:e2:full_name",
+        "confidence": 0.98,
+        "probabilities": {
+          "type:e2:full_name": 0.98,
+          "type:e3:full_name": 0.02,
+          "scroll:e1:down": 0,
+          "type:e2:address_line_1": 0,
+          "type:e2:city": 0
+        },
+        "goalMet": 0.07,
+        "fills": {
+          "e2": {
+            "input": "full_name",
+            "confidence": 1
+          },
+          "e3": {
+            "input": "address_line_1",
+            "confidence": 1
+          },
+          "e4": {
+            "input": "leave_empty",
+            "confidence": 1
+          },
+          "e5": {
+            "input": "city",
+            "confidence": 1
+          },
+          "e6": {
+            "input": "zip_code",
+            "confidence": 1
+          },
+          "e7": {
+            "input": "leave_empty",
+            "confidence": 0.99
+          },
+          "e8": {
+            "input": "country",
+            "confidence": 1
+          }
+        },
+        "model": "jev-1.13.0",
+        "latencyMs": 138,
+        "usage": {
+          "inputTokens": 5749,
+          "outputTokens": 1582
+        }
+      },
+      "planStep": 4,
+      "frame": "10.jpg",
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Full Name*",
+          "description": "Type the test data \"full_name\" into the field \"Full Name*\" (placeholder \"Rebecca Winter\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"Rebecca Winter\"",
+          "input": "full_name",
+          "frame": {
+            "x": 16,
+            "y": 275,
+            "w": 361,
+            "h": 45
+          }
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Address Line 1*",
+          "description": "Type the test data \"address_line_1\" into the field \"Address Line 1*\" (placeholder \"Mandorley 112\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"Mandorley 112\"",
+          "input": "address_line_1",
+          "frame": {
+            "x": 16,
+            "y": 360,
+            "w": 361,
+            "h": 45
+          }
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "City*",
+          "description": "Type the test data \"city\" into the field \"City*\" (placeholder \"Truro\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"Truro\"",
+          "input": "city",
+          "frame": {
+            "x": 16,
+            "y": 530,
+            "w": 173,
+            "h": 48
+          }
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Zip Code*",
+          "description": "Type the test data \"zip_code\" into the field \"Zip Code*\" (placeholder \"89750\", bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"89750\"",
+          "input": "zip_code",
+          "frame": {
+            "x": 16,
+            "y": 618,
+            "w": 173,
+            "h": 48
+          }
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Country*",
+          "description": "Type the test data \"country\" into the field \"Country*\" (placeholder \"United Kingdom\", bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"United Kingdom\"",
+          "input": "country",
+          "frame": {
+            "x": 204,
+            "y": 618,
+            "w": 173,
+            "h": 48
+          }
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "atMs": 14261,
+      "screenText": [
+        "Login",
+        "Checkout",
+        "Enter a shipping address",
+        "Full Name*",
+        "Address Line 1*",
+        "Address Line 2",
+        "City*",
+        "Zip Code*",
+        "State/Region",
+        "Country*",
+        "To Payment",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 68,
+      "decision": {
+        "action": "tap:e9",
+        "confidence": 0.99,
+        "probabilities": {
+          "tap:e9": 0.99,
+          "scroll:e1:down": 0.01,
+          "type:e2:full_name": 0,
+          "type:e2:address_line_1": 0,
+          "type:e2:city": 0
+        },
+        "goalMet": 0.64,
+        "fills": {
+          "e4": {
+            "input": "leave_empty",
+            "confidence": 1
+          },
+          "e7": {
+            "input": "leave_empty",
+            "confidence": 1
+          }
+        },
+        "model": "jev-1.13.0",
+        "latencyMs": 212,
+        "usage": {
+          "inputTokens": 4654,
+          "outputTokens": 1089
+        }
+      },
+      "planStep": 4,
+      "frame": "11.jpg",
+      "completed": 4
+    },
+    {
+      "index": 12,
+      "atMs": 15447,
+      "screenText": [
+        "Login",
+        "Checkout",
+        "Enter a shipping address",
+        "Full Name*",
+        "Address Line 1*",
+        "Address Line 2",
+        "City*",
+        "Zip Code*",
+        "State/Region",
+        "Country*",
+        "To Payment",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 68,
+      "decision": {
+        "action": "tap:e9",
+        "confidence": 0.95,
+        "probabilities": {
+          "tap:e9": 0.95,
+          "scroll:e1:down": 0.03,
+          "type:e2:name_on_card": 0.02,
+          "type:e2:full_name": 0,
+          "type:e2:address_line_1": 0
+        },
+        "goalMet": 0.08,
+        "fills": {
+          "e4": {
+            "input": "leave_empty",
+            "confidence": 1
+          },
+          "e7": {
+            "input": "leave_empty",
+            "confidence": 0.99
+          }
+        },
+        "model": "jev-1.13.0",
+        "latencyMs": 120,
+        "usage": {
+          "inputTokens": 4654,
+          "outputTokens": 1089
+        }
+      },
+      "planStep": 5,
+      "frame": "12.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "To Payment",
+          "description": "Tap the button \"To Payment\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"To Payment\"",
+          "frame": {
+            "x": 16,
+            "y": 692,
+            "w": 361,
+            "h": 48
+          }
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "atMs": 19235,
+      "screenText": [
+        "Shipping Address",
+        "Checkout",
+        "Enter a payment method",
+        "You will not be charged untill you review your purchase on the next page.",
+        "Card",
+        "Full Name*",
+        "Card Number*",
+        "Expiration Date*",
+        "Security Code*",
+        "My billing address is the same as my shipping address.",
+        "Review Order",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 40,
+      "decision": {
+        "action": "type:e2:full_name",
+        "confidence": 0.42,
+        "probabilities": {
+          "type:e2:full_name": 0.43,
+          "type:e2:name_on_card": 0.43,
+          "type:e3:full_name": 0.05,
+          "type:e3:card_number": 0.05,
+          "scroll:e1:down": 0.01
+        },
+        "goalMet": 0.07,
+        "fills": {
+          "e2": {
+            "input": "name_on_card",
+            "confidence": 0.8
+          },
+          "e3": {
+            "input": "card_number",
+            "confidence": 1
+          },
+          "e4": {
+            "input": "expiration_date",
+            "confidence": 1
+          },
+          "e5": {
+            "input": "security_code",
+            "confidence": 1
+          }
+        },
+        "model": "jev-1.13.0",
+        "latencyMs": 139,
+        "usage": {
+          "inputTokens": 4074,
+          "outputTokens": 935
+        }
+      },
+      "planStep": 5,
+      "frame": "13.jpg",
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Full Name*",
+          "description": "Type the test data \"full_name\" into the field \"Full Name*\" (placeholder \"Maxim Winter\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"Maxim Winter\"",
+          "input": "full_name",
+          "frame": {
+            "x": 16,
+            "y": 362,
+            "w": 361,
+            "h": 45
+          }
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Card Number*",
+          "description": "Type the test data \"card_number\" into the field \"Card Number*\" (placeholder \"3258 1265 7568 7896\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"3258 1265 7568 7896\"",
+          "input": "card_number",
+          "frame": {
+            "x": 16,
+            "y": 455,
+            "w": 361,
+            "h": 45
+          }
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Expiration Date*",
+          "description": "Type the test data \"expiration_date\" into the field \"Expiration Date*\" (placeholder \"03/25\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"03/25\"",
+          "input": "expiration_date",
+          "frame": {
+            "x": 16,
+            "y": 540,
+            "w": 173,
+            "h": 45
+          }
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Security Code*",
+          "description": "Type the test data \"security_code\" into the field \"Security Code*\" (placeholder \"123\", middle of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"123\"",
+          "input": "security_code",
+          "frame": {
+            "x": 204,
+            "y": 540,
+            "w": 173,
+            "h": 45
+          }
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "atMs": 20368,
+      "screenText": [
+        "Shipping Address",
+        "Checkout",
+        "Enter a payment method",
+        "You will not be charged untill you review your purchase on the next page.",
+        "Card",
+        "Full Name*",
+        "Card Number*",
+        "Expiration Date*",
+        "Security Code*",
+        "My billing address is the same as my shipping address.",
+        "Review Order",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 40,
+      "decision": {
+        "action": "tap:e7",
+        "confidence": 0.95,
+        "probabilities": {
+          "tap:e7": 0.95,
+          "type:e2:name_on_card": 0.03,
+          "tap:e6": 0.02,
+          "scroll:e1:down": 0,
+          "type:e2:full_name": 0
+        },
+        "goalMet": 0.5,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 114,
+        "usage": {
+          "inputTokens": 3198,
+          "outputTokens": 540
+        }
+      },
+      "planStep": 5,
+      "frame": "14.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Review Order",
+          "description": "Tap the button \"Review Order\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Review Order\"",
+          "frame": {
+            "x": 16,
+            "y": 692,
+            "w": 361,
+            "h": 48
+          }
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "atMs": 20538,
+      "screenText": [
+        "Payment Method",
+        "Checkout",
+        "Review your order",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "Color:",
+        "Green",
+        "Delivery Address",
+        "{full_name}",
+        "{card_number}",
+        "{expiration_date}",
+        "Billing address is the same as shipping address.",
+        "Billing Address",
+        ",",
+        "{address_line_1}",
+        "{city},",
+        "{country},{zip_code}",
+        "Total:",
+        "1item",
+        "$35.98",
+        "Place Order",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 12,
+      "decision": {
+        "action": "tap:e9",
+        "confidence": 0.97,
+        "probabilities": {
+          "tap:e9": 0.97,
+          "scroll:e1:down": 0.03,
+          "scroll:e2:right": 0,
+          "tap:e3": 0,
+          "tap:e4": 0
+        },
+        "goalMet": 0.87,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 119,
+        "usage": {
+          "inputTokens": 1766,
+          "outputTokens": 160
+        }
+      },
+      "planStep": 5,
+      "frame": "15.jpg",
+      "completed": 5
+    },
+    {
+      "index": 16,
+      "atMs": 21621,
+      "screenText": [
+        "Payment Method",
+        "Checkout",
+        "Review your order",
+        "Sauce Labs Backpack - Black",
+        "$ 29.99",
+        "Color:",
+        "Green",
+        "Delivery Address",
+        "{full_name}",
+        "{card_number}",
+        "{expiration_date}",
+        "Billing address is the same as shipping address.",
+        "Billing Address",
+        ",",
+        "{address_line_1}",
+        "{city},",
+        "{country},{zip_code}",
+        "Total:",
+        "1item",
+        "$35.98",
+        "Place Order",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 12,
+      "decision": {
+        "action": "tap:e9",
+        "confidence": 0.98,
+        "probabilities": {
+          "tap:e9": 0.98,
+          "scroll:e1:down": 0.02,
+          "scroll:e2:right": 0,
+          "tap:e3": 0,
+          "tap:e4": 0
+        },
+        "goalMet": 0.08,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 166,
+        "usage": {
+          "inputTokens": 1766,
+          "outputTokens": 160
+        }
+      },
+      "planStep": 6,
+      "frame": "16.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Place Order",
+          "description": "Tap the button \"Place Order\" (bottom of the screen)",
+          "selector": "-ios predicate string:type == \"XCUIElementTypeButton\" AND name == \"Place Order\"",
+          "frame": {
+            "x": 16,
+            "y": 692,
+            "w": 361,
+            "h": 48
+          }
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "atMs": 21835,
+      "screenText": [
+        "Your new swag is on its way",
+        "Continue Shopping",
+        "Thank you for your order. Your order has been dispatched and will arrive as soon as possible!",
+        "Checkout Complete",
+        "Catalog",
+        "1",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 5,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.75,
+        "probabilities": {
+          "STUCK": 0.79,
+          "tap:e2": 0.08,
+          "tap:e3": 0.08,
+          "tap:e4": 0.03,
+          "scroll:e1:down": 0.01
+        },
+        "goalMet": 0.98,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 213,
+        "usage": {
+          "inputTokens": 1482,
+          "outputTokens": 92
+        }
+      },
+      "planStep": 6,
+      "frame": "17.jpg"
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 0,
+  "usage": {
+    "requests": 17,
+    "inputTokens": 39909,
+    "outputTokens": 7351
+  },
+  "screen": {
+    "width": 393,
+    "height": 852
+  },
+  "replay": {
+    "outcome": "failed",
+    "reason": "element (\"-ios predicate string:type == \"XCUIElementTypeTextField\" AND placeholderValue == \"Maxim Winter\"\") still not existing after 15000ms",
+    "durationMs": 26673
+  }
+}

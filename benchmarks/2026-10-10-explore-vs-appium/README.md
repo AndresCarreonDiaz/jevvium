@@ -5,7 +5,7 @@ The same six flows, each run as one command, three rounds, on one iOS 26.5 simul
 - **With the model in the loop:** `jevvium explore <flow> --app <app>`. Jev decides every step; then the app is restarted and the path is replayed with plain Appium; then the test is written.
 - **Without:** `jevvium test <generated spec> --app <app>`, the generated test as CI would run it. No model is called.
 
-`npm run compare -- --repeat 3 --platform-version 26.5 --out benchmarks/2026-10-10-explore-vs-appium` ran it ([`scripts/compare.ts`](../../scripts/compare.ts)) and wrote [`results.md`](results.md). Each `round-N/<flow>/` folder holds the explore's trace, the generated test, both commands' terminal output (`explore.log`, `test.log`) and their wall-clock times (`timing.json`). The Appium logs were deleted; they are large and say nothing the traces don't. No round broke.
+`npm run compare -- --repeat 3 --platform-version 26.5 --out benchmarks/2026-10-10-explore-vs-appium` ran it ([`scripts/compare.ts`](../../scripts/compare.ts)) and wrote [`results.md`](results.md). Each `round-N/<flow>/` folder holds the explore's trace, the generated test and both commands' wall-clock times (`timing.json`). The commands' terminal output was kept out of the repository with the other logs. The Appium logs were deleted; they are large and say nothing the traces don't. No round broke.
 
 The flows are the three test plans in Markdown and the three single-goal criteria that produce a test. The criteria that end `stuck` on these apps (sort by price, signup) yield no test to compare against, and the zip-code criterion's test fails on the same keyboard bug as the checkout plan's.
 

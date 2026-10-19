@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 import { controlStates, redactScreen } from '../src/actions.ts'
 import { toSelector } from '../src/locator.ts'
-import { isBusy, needsFullRead, parseScreen } from '../src/screen.ts'
+import { redactor } from '../src/redact.ts'
+import { isBusy, maskRegions, needsFullRead, parseScreen } from '../src/screen.ts'
 import type { Screen } from '../src/types.ts'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}.xml`, import.meta.url), 'utf8')
@@ -177,5 +178,137 @@ describe('redactScreen', () => {
     })
     assert.ok(screen.texts.includes('Signed in as {email}'))
     assert.ok(!JSON.stringify(screen).includes('qa.demo@example.com'))
+  })
+})
+
+describe('geometry for screenshots', () => {
+  it('gives the screen size and each element its frame, in points', () => {
+    const screen = parseScreen(fixture('ios-login-filled'), 'ios')
+    assert.deepEqual(screen.size, { width: 402, height: 874 })
+    const email = screen.elements.find((e) => e.id === 'input-email')!
+    assert.deepEqual(email.frame, { x: 69, y: 211, w: 303, h: 40 })
+    assert.deepEqual(email.centre, { x: 220.5, y: 231 })
+  })
+
+  it('keeps controls without a label apart, never offered from text, with a selector by position', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><AppiumAUT>
+      <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="app" label="app" visible="true" x="0" y="0" width="402" height="874">
+        <XCUIElementTypeWindow type="XCUIElementTypeWindow" visible="true" x="0" y="0" width="402" height="874">
+          <XCUIElementTypeButton type="XCUIElementTypeButton" visible="true" enabled="true" x="340" y="60" width="44" height="44"/>
+          <XCUIElementTypeButton type="XCUIElementTypeButton" label="Checkout" name="checkout" visible="true" enabled="true" x="20" y="800" width="362" height="50"/>
+          <XCUIElementTypeButton type="XCUIElementTypeButton" label="" visible="true" enabled="true" x="20" y="60" width="44" height="44"/>
+        </XCUIElementTypeWindow>
+      </XCUIElementTypeApplication></AppiumAUT>`
+    const screen = parseScreen(xml, 'ios')
+    assert.deepEqual(screen.elements.map((e) => e.label), ['Checkout'])
+    assert.deepEqual(
+      screen.unlabeled?.map((e) => [e.key, e.region, toSelector(e.locator)]),
+      [
+        ['u1', 'top', '(//XCUIElementTypeButton)[1]'],
+        // An icon font's private-use character says nothing either. Its position counts every
+        // button, named or not, since that is what the path matches.
+        ['u2', 'top', '(//XCUIElementTypeButton)[3]'],
+      ],
+    )
+  })
+})
+
+describe('maskRegions', () => {
+  it('covers typed fields with what they hold, test data anywhere, and the keyboard', () => {
+    const regions = maskRegions(fixture('ios-login-filled'), 'ios', redactor({ email: 'qa.demo@example.com' }))
+    const labels = regions.map((r) => r.label)
+    assert.ok(labels.includes('{email}'), labels.join(', '))
+    assert.ok(labels.includes('secure text'), labels.join(', '))
+    const keyboard = regions.find((r) => r.label === 'keyboard')!
+    assert.equal(keyboard.frame.x, 0)
+    assert.equal(keyboard.frame.w, 402)
+    assert.equal(keyboard.frame.y + keyboard.frame.h, 874)
+  })
+
+  it('masks a text that shows test data even when it is not a field, and nothing on a screen without any', () => {
+    const xml = `<AppiumAUT><XCUIElementTypeApplication type="XCUIElementTypeApplication" visible="true" x="0" y="0" width="402" height="874">
+      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" label="Signed in as QA.DEMO@EXAMPLE.COM" visible="true" x="10" y="100" width="380" height="20"/>
+      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" label="Welcome" visible="true" x="10" y="140" width="380" height="20"/>
+    </XCUIElementTypeApplication></AppiumAUT>`
+    assert.deepEqual(maskRegions(xml, 'ios', redactor({ email: 'qa.demo@example.com' })), [
+      { frame: { x: 10, y: 100, w: 380, h: 20 }, label: 'Signed in as {email}' },
+    ])
+    assert.deepEqual(maskRegions(fixture('ios-home'), 'ios', redactor({ email: 'qa.demo@example.com' })), [])
+  })
+
+  it('works on Android, where a field shows what was typed as its text', () => {
+    const regions = maskRegions(fixture('android-login'), 'android', redactor({ email: 'qa.demo@example.com' }))
+    assert.deepEqual(regions, [
+      { frame: { x: 60, y: 500, w: 960, h: 120 }, label: '{email}' },
+      { frame: { x: 60, y: 660, w: 960, h: 120 }, label: 'empty' },
+      { frame: regions[2].frame, label: 'Signed in as {email}' },
+    ])
+  })
+})
+
+describe('selectors the path really finds', () => {
+  it('counts an unnamed Android element among every one of its class, named or not', () => {
+    const xml = `<hierarchy width="1080" height="2400"><android.widget.FrameLayout bounds="[0,0][1080,2400]" displayed="true">
+      <android.widget.ImageButton content-desc="Back" clickable="true" enabled="true" displayed="true" bounds="[0,100][100,200]"/>
+      <android.widget.ImageButton clickable="true" enabled="true" displayed="true" bounds="[980,100][1080,200]"/>
+    </android.widget.FrameLayout></hierarchy>`
+    const screen = parseScreen(xml, 'android')
+    assert.equal(toSelector(screen.unlabeled![0].locator), '(//android.widget.ImageButton)[2]')
+  })
+
+  it("doesn't anchor a cell on a text that a cell around it shows too", () => {
+    const xml = `<AppiumAUT><XCUIElementTypeApplication type="XCUIElementTypeApplication" visible="true" x="0" y="0" width="402" height="874">
+      <XCUIElementTypeCell type="XCUIElementTypeCell" visible="true" enabled="true" x="0" y="0" width="402" height="400">
+        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" label="Bags" visible="true" x="10" y="10" width="200" height="20"/>
+        <XCUIElementTypeCell type="XCUIElementTypeCell" visible="true" enabled="true" x="0" y="100" width="402" height="100">
+          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" label="Backpack" visible="true" x="10" y="110" width="200" height="20"/>
+        </XCUIElementTypeCell>
+      </XCUIElementTypeCell>
+    </XCUIElementTypeApplication></AppiumAUT>`
+    const inner = parseScreen(xml, 'ios').elements.find((e) => e.label === 'Backpack')!
+    // //XCUIElementTypeCell[.//XCUIElementTypeStaticText[@label="Backpack"]] would find the outer cell first.
+    assert.equal(toSelector(inner.locator), '(//XCUIElementTypeCell)[2]')
+  })
+})
+
+describe('maskRegions: fields', () => {
+  it('masks an empty field whose placeholder shows test data, and a field holding exactly its placeholder when that is test data', () => {
+    const xml = (value: string) => `<AppiumAUT><XCUIElementTypeApplication type="XCUIElementTypeApplication" visible="true" x="0" y="0" width="402" height="874">
+      <XCUIElementTypeTextField type="XCUIElementTypeTextField" value="${value}" placeholderValue="qa.demo@example.com" visible="true" x="10" y="100" width="380" height="40"/>
+    </XCUIElementTypeApplication></AppiumAUT>`
+    const redact = redactor({ email: 'qa.demo@example.com' })
+    assert.deepEqual(maskRegions(xml(''), 'ios', redact).map((r) => r.label), ['{email}'])
+    assert.deepEqual(maskRegions(xml('qa.demo@example.com'), 'ios', redact).map((r) => r.label), ['{email}'])
+  })
+
+  it('marks an empty field as empty, since in a screenshot its placeholder looks like a value', () => {
+    const regions = maskRegions(fixture('ios-login'), 'ios', redactor({ email: 'qa.demo@example.com' }))
+    assert.deepEqual(regions.map((r) => r.label), ['empty', 'empty'])
+  })
+})
+
+describe('maskRegions: empty fields', () => {
+  const form = (visible: boolean) => `<AppiumAUT><XCUIElementTypeApplication type="XCUIElementTypeApplication" x="0" y="0" width="402" height="874"${visible ? ' visible="true"' : ''}>
+    <XCUIElementTypeWindow type="XCUIElementTypeWindow" x="0" y="0" width="402" height="874"${visible ? ' visible="true"' : ''}>
+      <XCUIElementTypeTextField type="XCUIElementTypeTextField" value="Rebecca Winter" placeholderValue="Rebecca Winter" x="16" y="360" width="361" height="45"${visible ? ' visible="false"' : ''}/>
+      <XCUIElementTypeAlert type="XCUIElementTypeAlert" label="Validation Error!" x="61" y="300" width="271" height="200"${visible ? ' visible="true"' : ''}>
+        <XCUIElementTypeButton type="XCUIElementTypeButton" label="OK" x="61" y="457" width="271" height="45"${visible ? ' visible="true"' : ''}/>
+      </XCUIElementTypeAlert>
+    </XCUIElementTypeWindow>
+  </XCUIElementTypeApplication></AppiumAUT>`
+
+  it("doesn't mark an empty field behind an alert, so nothing covers the alert's buttons, on a full read or a fast one", () => {
+    assert.deepEqual(maskRegions(form(true), 'ios', redactor({})), [])
+    assert.deepEqual(maskRegions(form(false), 'ios', redactor({})), [])
+  })
+
+  it("doesn't mark an empty field that holds a control of its own, such as a scan icon", () => {
+    const xml = `<AppiumAUT><XCUIElementTypeApplication type="XCUIElementTypeApplication" visible="true" x="0" y="0" width="402" height="874">
+      <XCUIElementTypeSearchField type="XCUIElementTypeSearchField" placeholderValue="Search" visible="true" x="16" y="100" width="361" height="40">
+        <XCUIElementTypeButton type="XCUIElementTypeButton" visible="true" x="340" y="105" width="30" height="30"/>
+      </XCUIElementTypeSearchField>
+      <XCUIElementTypeTextField type="XCUIElementTypeTextField" placeholderValue="Name" visible="true" x="16" y="200" width="361" height="40"/>
+    </XCUIElementTypeApplication></AppiumAUT>`
+    assert.deepEqual(maskRegions(xml, 'ios', redactor({})), [{ frame: { x: 16, y: 200, w: 361, h: 40 }, label: 'empty' }])
   })
 })

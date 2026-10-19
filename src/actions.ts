@@ -39,6 +39,7 @@ export function describeAction(action: Action): string {
 }
 
 export function describeElement(element: ScreenElement): string {
+  if (element.unlabeled) return `an unlabeled ${element.kind}${element.region ? ` (${element.region} of the screen)` : ''}`
   const noun = element.kind === 'input' ? 'field' : element.kind
   const details = [
     element.placeholder ? `placeholder "${element.placeholder}"` : undefined,

@@ -1,0 +1,14 @@
+{
+  "flow": "checkout-plan",
+  "round": 2,
+  "explore": {
+    "wallMs": 57533,
+    "status": 1
+  },
+  "test": {
+    "wallMs": 31403,
+    "status": 1,
+    "inSessionMs": 26200,
+    "failing": 1
+  }
+}

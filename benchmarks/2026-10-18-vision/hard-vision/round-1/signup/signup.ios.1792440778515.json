@@ -1,0 +1,887 @@
+{
+  "criterion": {
+    "id": "signup",
+    "goal": "On the Login screen, a new user switches to the Sign up form, signs up with an email and a password, repeats the same password, and is told the sign up worked.",
+    "expect": [
+      {
+        "text": "You successfully signed up!"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "jev",
+  "input": "appium",
+  "startedAt": "2026-10-19T20:13:01.898Z",
+  "durationMs": 42239,
+  "outcome": "stuck",
+  "reason": "\"Tap the button \"SIGN UP\" (id button-SIGN UP, middle of the screen)\" was chosen 3 times on the same screen. 1 of 1 expectations do not hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 3154,
+      "screenText": [
+        "WEBDRIVER",
+        "Demo app for the appium-boilerplate",
+        "Support"
+      ],
+      "actionCount": 7,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.66,
+        "probabilities": {
+          "tap:e3": 0.7,
+          "tap:e4": 0.1,
+          "STUCK": 0.1,
+          "tap:e7": 0.05,
+          "tap:e1": 0.03
+        },
+        "goalMet": 0.06,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 196,
+        "usage": {
+          "inputTokens": 760,
+          "outputTokens": 109
+        }
+      },
+      "frame": "01.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Login",
+          "description": "Tap the button \"Login\" (bottom of the screen)",
+          "selector": "~Login",
+          "frame": {
+            "x": 115,
+            "y": 796,
+            "w": 58,
+            "h": 42
+          }
+        }
+      ],
+      "notes": [
+        "a tap sent straight to the simulator changed nothing, so it was sent again through Appium, and taps go through Appium from now on"
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 3959,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "When the device has Touch/FaceID (iOS) or FingerPrint enabled a biometrics button will be shown to use and test the login.",
+        "LOGIN"
+      ],
+      "actionCount": 14,
+      "decision": {
+        "action": "tap:e2",
+        "confidence": 1,
+        "probabilities": {
+          "tap:e2": 1,
+          "tap:e1": 0,
+          "type:e3:email": 0,
+          "type:e3:password": 0,
+          "type:e4:email": 0
+        },
+        "goalMet": 0.04,
+        "fills": {
+          "e3": {
+            "input": "email",
+            "confidence": 1
+          },
+          "e4": {
+            "input": "password",
+            "confidence": 1
+          }
+        },
+        "model": "jev-1.13.0",
+        "latencyMs": 196,
+        "usage": {
+          "inputTokens": 1273,
+          "outputTokens": 262
+        }
+      },
+      "frame": "02.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Sign up",
+          "description": "Tap the button \"Sign up\" (id button-sign-up-container, top of the screen)",
+          "selector": "~button-sign-up-container",
+          "frame": {
+            "x": 190,
+            "y": 150,
+            "w": 109,
+            "h": 40
+          }
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 9115,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "type:e3:email",
+        "confidence": 0.99,
+        "probabilities": {
+          "type:e3:email": 0.99,
+          "STUCK": 0.01,
+          "tap:e1": 0,
+          "tap:e2": 0,
+          "type:e3:password": 0
+        },
+        "goalMet": 0.07,
+        "fills": {
+          "e3": {
+            "input": "email",
+            "confidence": 1
+          },
+          "e4": {
+            "input": "password",
+            "confidence": 1
+          },
+          "e5": {
+            "input": "password",
+            "confidence": 1
+          }
+        },
+        "model": "jev-1.13.0",
+        "latencyMs": 122,
+        "usage": {
+          "inputTokens": 1454,
+          "outputTokens": 328
+        }
+      },
+      "frame": "03.jpg",
+      "taken": [
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Email",
+          "description": "Type the test data \"email\" into the field \"Email\" (id input-email, top of the screen)",
+          "selector": "~input-email",
+          "input": "email",
+          "frame": {
+            "x": 69,
+            "y": 251,
+            "w": 303,
+            "h": 40
+          }
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Password",
+          "description": "Type the test data \"password\" into the field \"Password\" (id input-password, middle of the screen)",
+          "selector": "~input-password",
+          "input": "password",
+          "frame": {
+            "x": 69,
+            "y": 340,
+            "w": 303,
+            "h": 41
+          }
+        },
+        {
+          "type": "type",
+          "kind": "input",
+          "target": "Confirm password",
+          "description": "Type the test data \"password\" into the field \"Confirm password\" (id input-repeat-password, middle of the screen)",
+          "selector": "~input-repeat-password",
+          "input": "password",
+          "frame": {
+            "x": 69,
+            "y": 429,
+            "w": 303,
+            "h": 41
+          }
+        }
+      ],
+      "notes": [
+        "text typed straight into the simulator came out wrong, so typing goes through Appium from now on"
+      ]
+    },
+    {
+      "index": 4,
+      "atMs": 10068,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "SIGN UP"
+      ],
+      "actionCount": 10,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.91,
+        "probabilities": {
+          "tap:e6": 0.92,
+          "tap:e7": 0.08,
+          "tap:e1": 0,
+          "tap:e2": 0,
+          "type:e3:email": 0
+        },
+        "goalMet": 0.09,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 190,
+        "usage": {
+          "inputTokens": 1055,
+          "outputTokens": 154
+        }
+      },
+      "frame": "04.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "SIGN UP",
+          "description": "Tap the button \"SIGN UP\" (id button-SIGN UP, middle of the screen)",
+          "selector": "~button-SIGN UP",
+          "frame": {
+            "x": 101,
+            "y": 479,
+            "w": 200,
+            "h": 50
+          }
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "atMs": 12863,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter at least 8 characters",
+        "Please enter the same password",
+        "SIGN UP"
+      ],
+      "actionCount": 10,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.35,
+        "probabilities": {
+          "tap:e7": 0.41000000000000003,
+          "STUCK": 0.4,
+          "tap:e6": 0.18,
+          "tap:e1": 0.01,
+          "tap:e2": 0
+        },
+        "goalMet": 0.17,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 112,
+        "usage": {
+          "inputTokens": 1095,
+          "outputTokens": 153
+        }
+      },
+      "frame": "05.jpg",
+      "look": {
+        "why": "stuck",
+        "decision": {
+          "action": "tap:e6",
+          "confidence": 0.81,
+          "probabilities": {
+            "tap:e6": 0.83,
+            "tap:e7": 0.09,
+            "STUCK": 0.04,
+            "type:e3:email": 0.02,
+            "tap:e1": 0.01
+          },
+          "goalMet": 0.02,
+          "fills": {},
+          "model": "jev-1.14.0",
+          "latencyMs": 173,
+          "usage": {
+            "inputTokens": 2380,
+            "outputTokens": 188
+          }
+        },
+        "targetShown": 0.6,
+        "box": {
+          "top": 0.55,
+          "bottom": 0.59,
+          "left": 0.21,
+          "right": 0.77,
+          "confidence": 0.21
+        },
+        "used": "action"
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "SIGN UP",
+          "description": "Tap the button \"SIGN UP\" (id button-SIGN UP, middle of the screen)",
+          "selector": "~button-SIGN UP",
+          "frame": {
+            "x": 101,
+            "y": 479,
+            "w": 200,
+            "h": 50
+          }
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "atMs": 14476,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter at least 8 characters",
+        "Please enter the same password",
+        "SIGN UP"
+      ],
+      "actionCount": 10,
+      "decision": {
+        "action": "tap:e7",
+        "confidence": 0.38,
+        "probabilities": {
+          "tap:e7": 0.44,
+          "STUCK": 0.42,
+          "tap:e6": 0.12,
+          "tap:e1": 0.02,
+          "tap:e2": 0
+        },
+        "goalMet": 0.18,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 130,
+        "usage": {
+          "inputTokens": 1117,
+          "outputTokens": 154
+        }
+      },
+      "frame": "06.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "key",
+          "target": "done",
+          "description": "Press the \"done\" key on the on-screen keyboard",
+          "selector": "~Done",
+          "frame": {
+            "x": 300,
+            "y": 752,
+            "w": 100,
+            "h": 54
+          }
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "atMs": 16486,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter at least 8 characters",
+        "Please enter the same password",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.35,
+        "probabilities": {
+          "STUCK": 0.39,
+          "tap:e6": 0.22,
+          "tap:e7": 0.17,
+          "tap:e9": 0.13,
+          "tap:e1": 0.05
+        },
+        "goalMet": 0.16,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 129,
+        "usage": {
+          "inputTokens": 1287,
+          "outputTokens": 211
+        }
+      },
+      "frame": "07.jpg",
+      "look": {
+        "why": "stuck",
+        "decision": {
+          "action": "tap:e6",
+          "confidence": 0.71,
+          "probabilities": {
+            "tap:e6": 0.73,
+            "STUCK": 0.1,
+            "type:e3:email": 0.08,
+            "tap:e7": 0.04,
+            "tap:e1": 0.02
+          },
+          "goalMet": 0.02,
+          "fills": {},
+          "model": "jev-1.14.0",
+          "latencyMs": 149,
+          "usage": {
+            "inputTokens": 2578,
+            "outputTokens": 246
+          }
+        },
+        "targetShown": 0.56,
+        "box": {
+          "top": 0.29,
+          "bottom": 0.35,
+          "left": 0.19,
+          "right": 0.79,
+          "confidence": 0.21
+        },
+        "used": "action"
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "SIGN UP",
+          "description": "Tap the button \"SIGN UP\" (id button-SIGN UP, middle of the screen)",
+          "selector": "~button-SIGN UP",
+          "frame": {
+            "x": 101,
+            "y": 531,
+            "w": 200,
+            "h": 50
+          }
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "atMs": 17753,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter at least 8 characters",
+        "Please enter the same password",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.34,
+        "probabilities": {
+          "tap:e6": 0.38,
+          "STUCK": 0.33,
+          "tap:e7": 0.13,
+          "tap:e9": 0.09,
+          "tap:e1": 0.04
+        },
+        "goalMet": 0.17,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 158,
+        "usage": {
+          "inputTokens": 1309,
+          "outputTokens": 212
+        }
+      },
+      "frame": "08.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "SIGN UP",
+          "description": "Tap the button \"SIGN UP\" (id button-SIGN UP, middle of the screen)",
+          "selector": "~button-SIGN UP",
+          "frame": {
+            "x": 101,
+            "y": 531,
+            "w": 200,
+            "h": 50
+          }
+        }
+      ],
+      "undone": true
+    },
+    {
+      "index": 9,
+      "atMs": 18358,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter at least 8 characters",
+        "Please enter the same password",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.3,
+        "probabilities": {
+          "tap:e6": 0.34,
+          "STUCK": 0.32,
+          "tap:e7": 0.17,
+          "tap:e9": 0.1,
+          "tap:e1": 0.03
+        },
+        "goalMet": 0.18,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 128,
+        "usage": {
+          "inputTokens": 1331,
+          "outputTokens": 212
+        }
+      },
+      "frame": "09.jpg",
+      "look": {
+        "why": "repeating",
+        "decision": {
+          "action": "tap:e6",
+          "confidence": 0.67,
+          "probabilities": {
+            "tap:e6": 0.69,
+            "type:e3:email": 0.12,
+            "STUCK": 0.09,
+            "tap:e7": 0.04,
+            "tap:e1": 0.02
+          },
+          "goalMet": 0.03,
+          "fills": {},
+          "model": "jev-1.14.0",
+          "latencyMs": 123,
+          "usage": {
+            "inputTokens": 2622,
+            "outputTokens": 246
+          }
+        },
+        "targetShown": 0.71,
+        "box": {
+          "top": 0.25,
+          "bottom": 0.64,
+          "left": 0.2,
+          "right": 0.78,
+          "confidence": 0.16
+        },
+        "used": "action"
+      },
+      "backtrack": {
+        "to": 8,
+        "instead": "Tap the button \"Home\" (bottom of the screen)"
+      },
+      "undone": true
+    },
+    {
+      "index": 10,
+      "atMs": 36120,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter at least 8 characters",
+        "Please enter the same password",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.34,
+        "probabilities": {
+          "tap:e6": 0.38,
+          "STUCK": 0.33,
+          "tap:e7": 0.13,
+          "tap:e9": 0.09,
+          "tap:e1": 0.04
+        },
+        "goalMet": 0.17,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 158,
+        "usage": {
+          "inputTokens": 1309,
+          "outputTokens": 212
+        }
+      },
+      "retry": {
+        "of": 8
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Home",
+          "description": "Tap the button \"Home\" (bottom of the screen)",
+          "selector": "~Home",
+          "frame": {
+            "x": 0,
+            "y": 796,
+            "w": 58,
+            "h": 42
+          }
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "atMs": 36876,
+      "screenText": [
+        "WEBDRIVER",
+        "Demo app for the appium-boilerplate",
+        "Support"
+      ],
+      "actionCount": 7,
+      "decision": {
+        "action": "tap:e3",
+        "confidence": 0.36,
+        "probabilities": {
+          "tap:e3": 0.44,
+          "STUCK": 0.41,
+          "tap:e1": 0.11,
+          "tap:e7": 0.02,
+          "tap:e2": 0.01
+        },
+        "goalMet": 0.23,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 175,
+        "usage": {
+          "inputTokens": 971,
+          "outputTokens": 109
+        }
+      },
+      "frame": "11.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Login",
+          "description": "Tap the button \"Login\" (bottom of the screen)",
+          "selector": "~Login",
+          "frame": {
+            "x": 115,
+            "y": 796,
+            "w": 58,
+            "h": 42
+          }
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "atMs": 38877,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter at least 8 characters",
+        "Please enter the same password",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.26,
+        "probabilities": {
+          "tap:e2": 0.3,
+          "STUCK": 0.3,
+          "tap:e6": 0.15000000000000002,
+          "tap:e1": 0.13,
+          "tap:e9": 0.05
+        },
+        "goalMet": 0.21,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 127,
+        "usage": {
+          "inputTokens": 1339,
+          "outputTokens": 211
+        }
+      },
+      "frame": "12.jpg",
+      "look": {
+        "why": "stuck",
+        "decision": {
+          "action": "tap:e6",
+          "confidence": 0.55,
+          "probabilities": {
+            "tap:e6": 0.58,
+            "type:e3:email": 0.19,
+            "STUCK": 0.08,
+            "tap:e1": 0.06999999999999999,
+            "tap:e9": 0.03
+          },
+          "goalMet": 0.03,
+          "fills": {},
+          "model": "jev-1.14.0",
+          "latencyMs": 161,
+          "usage": {
+            "inputTokens": 2631,
+            "outputTokens": 246
+          }
+        },
+        "targetShown": 0.68,
+        "box": {
+          "top": 0.26,
+          "bottom": 0.65,
+          "left": 0.21,
+          "right": 0.77,
+          "confidence": 0.12
+        },
+        "used": "action"
+      },
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "SIGN UP",
+          "description": "Tap the button \"SIGN UP\" (id button-SIGN UP, middle of the screen)",
+          "selector": "~button-SIGN UP",
+          "frame": {
+            "x": 101,
+            "y": 531,
+            "w": 200,
+            "h": 50
+          }
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "atMs": 40127,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter at least 8 characters",
+        "Please enter the same password",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.29,
+        "probabilities": {
+          "tap:e6": 0.33,
+          "STUCK": 0.23,
+          "tap:e2": 0.15,
+          "type:e3:email": 0.09,
+          "tap:e1": 0.07
+        },
+        "goalMet": 0.18,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 135,
+        "usage": {
+          "inputTokens": 1361,
+          "outputTokens": 212
+        }
+      },
+      "frame": "13.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "SIGN UP",
+          "description": "Tap the button \"SIGN UP\" (id button-SIGN UP, middle of the screen)",
+          "selector": "~button-SIGN UP",
+          "frame": {
+            "x": 101,
+            "y": 531,
+            "w": 200,
+            "h": 50
+          }
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "atMs": 40792,
+      "screenText": [
+        "Login / Sign up Form",
+        "Login",
+        "Sign up",
+        "Please enter at least 8 characters",
+        "Please enter the same password",
+        "SIGN UP"
+      ],
+      "actionCount": 16,
+      "decision": {
+        "action": "tap:e6",
+        "confidence": 0.24,
+        "probabilities": {
+          "tap:e6": 0.28,
+          "STUCK": 0.22,
+          "tap:e2": 0.19,
+          "tap:e7": 0.09,
+          "tap:e1": 0.07
+        },
+        "goalMet": 0.18,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 180,
+        "usage": {
+          "inputTokens": 1383,
+          "outputTokens": 212
+        }
+      },
+      "frame": "14.jpg",
+      "look": {
+        "why": "repeating",
+        "decision": {
+          "action": "tap:e6",
+          "confidence": 0.61,
+          "probabilities": {
+            "tap:e6": 0.63,
+            "type:e3:email": 0.23,
+            "STUCK": 0.07,
+            "tap:e1": 0.02,
+            "type:e3:password": 0.01
+          },
+          "goalMet": 0.04,
+          "fills": {},
+          "model": "jev-1.14.0",
+          "latencyMs": 290,
+          "usage": {
+            "inputTokens": 2672,
+            "outputTokens": 246
+          }
+        },
+        "targetShown": 0.66,
+        "box": {
+          "top": 0.26,
+          "bottom": 0.35,
+          "left": 0.2,
+          "right": 0.77,
+          "confidence": 0.23
+        },
+        "used": "action"
+      }
+    }
+  ],
+  "failedExpectations": [
+    {
+      "text": "You successfully signed up!"
+    }
+  ],
+  "discardedDecisions": 6,
+  "usage": {
+    "requests": 24,
+    "inputTokens": 36214,
+    "outputTokens": 4865,
+    "looks": 5
+  },
+  "screen": {
+    "width": 402,
+    "height": 874
+  }
+}

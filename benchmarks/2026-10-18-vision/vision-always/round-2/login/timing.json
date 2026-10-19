@@ -1,0 +1,14 @@
+{
+  "flow": "login",
+  "round": 2,
+  "explore": {
+    "wallMs": 24769,
+    "status": 0
+  },
+  "test": {
+    "wallMs": 13970,
+    "status": 0,
+    "inSessionMs": 6500,
+    "passed": 1
+  }
+}

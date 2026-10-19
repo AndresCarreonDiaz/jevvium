@@ -1,0 +1,346 @@
+{
+  "criterion": {
+    "id": "bike-light",
+    "title": "Add the bike light to the cart",
+    "goal": "Add the bike light to the cart",
+    "steps": [
+      "In the catalog, scroll down until the Sauce Labs Bike Light shows, and open it",
+      "Add it to the cart, then open the Cart tab"
+    ],
+    "expect": [
+      {
+        "text": "My Cart"
+      },
+      {
+        "text": "Sauce Labs Bike Light"
+      }
+    ]
+  },
+  "platform": "ios",
+  "provider": "jev",
+  "input": "appium",
+  "startedAt": "2026-10-19T15:21:31.202Z",
+  "durationMs": 9777,
+  "outcome": "passed",
+  "reason": "Goal reached and all 2 expectations hold.",
+  "steps": [
+    {
+      "index": 1,
+      "atMs": 4004,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Black",
+        "Product Price",
+        "Sauce Labs Backpack - Green",
+        "Sauce Labs Backpack - Orange",
+        "Sauce Labs Backpack - Red",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 30,
+      "decision": {
+        "action": "scroll:e2:down",
+        "confidence": 0.87,
+        "probabilities": {
+          "scroll:e2:down": 0.87,
+          "tap:e28": 0.08,
+          "tap:e27": 0.05,
+          "tap:e1": 0,
+          "tap:e3": 0
+        },
+        "goalMet": 0.07,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 180,
+        "usage": {
+          "inputTokens": 1621,
+          "outputTokens": 341
+        }
+      },
+      "planStep": 1,
+      "frame": "01.jpg",
+      "taken": [
+        {
+          "type": "scroll",
+          "kind": "list",
+          "target": "screen",
+          "description": "Scroll down in the screen to see more of it",
+          "selector": "(//XCUIElementTypeCollectionView)[1]",
+          "direction": "down",
+          "frame": {
+            "x": 0,
+            "y": 195,
+            "w": 393,
+            "h": 561
+          }
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "atMs": 7500,
+      "screenText": [
+        "title",
+        "Sauce Labs Backpack - Violet",
+        "Product Price",
+        "Sauce Labs Backpack - Yellow",
+        "Sauce Labs Bike Light",
+        "Sauce Labs Bolt T-Shirt - Black",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 31,
+      "decision": {
+        "action": "tap:e15",
+        "confidence": 1,
+        "probabilities": {
+          "tap:e15": 1,
+          "tap:e1": 0,
+          "scroll:e2:down": 0,
+          "scroll:e2:up": 0,
+          "tap:e3": 0
+        },
+        "goalMet": 0.41,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 136,
+        "usage": {
+          "inputTokens": 1660,
+          "outputTokens": 351
+        }
+      },
+      "planStep": 1,
+      "frame": "02.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Sauce Labs Bike Light",
+          "description": "Tap the button \"Sauce Labs Bike Light\" (bottom of the screen)",
+          "selector": "//XCUIElementTypeCell[.//XCUIElementTypeStaticText[@label=\"Sauce Labs Bike Light\"]]",
+          "frame": {
+            "x": 16,
+            "y": 466,
+            "w": 172,
+            "h": 272
+          }
+        }
+      ],
+      "notes": [
+        "a tap sent straight to the simulator changed nothing, so it was sent again through Appium, and taps go through Appium from now on"
+      ]
+    },
+    {
+      "index": 3,
+      "atMs": 7682,
+      "screenText": [
+        "Products",
+        "Sauce Labs Bike Light",
+        "$ 9.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 13,
+      "decision": {
+        "action": "tap:e10",
+        "confidence": 0.92,
+        "probabilities": {
+          "tap:e10": 0.93,
+          "scroll:e1:down": 0.04,
+          "tap:e12": 0.02,
+          "tap:e11": 0.01,
+          "tap:e2": 0
+        },
+        "goalMet": 0.77,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 105,
+        "usage": {
+          "inputTokens": 1108,
+          "outputTokens": 170
+        }
+      },
+      "planStep": 1,
+      "frame": "03.jpg",
+      "completed": 1
+    },
+    {
+      "index": 4,
+      "atMs": 8413,
+      "screenText": [
+        "Products",
+        "Sauce Labs Bike Light",
+        "$ 9.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 13,
+      "decision": {
+        "action": "tap:e10",
+        "confidence": 0.99,
+        "probabilities": {
+          "tap:e10": 0.99,
+          "tap:e12": 0.01,
+          "scroll:e1:down": 0,
+          "tap:e2": 0,
+          "tap:e3": 0
+        },
+        "goalMet": 0.1,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 126,
+        "usage": {
+          "inputTokens": 1108,
+          "outputTokens": 170
+        }
+      },
+      "planStep": 2,
+      "frame": "04.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Add To Cart",
+          "description": "Tap the button \"Add To Cart\" (id AddToCart, bottom of the screen)",
+          "selector": "~AddToCart",
+          "frame": {
+            "x": 184,
+            "y": 675,
+            "w": 193,
+            "h": 40
+          }
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "atMs": 9469,
+      "screenText": [
+        "Products",
+        "Sauce Labs Bike Light",
+        "$ 9.99",
+        "1",
+        "Add To Cart",
+        "Product Highlights",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 13,
+      "decision": {
+        "action": "tap:e12",
+        "confidence": 0.98,
+        "probabilities": {
+          "tap:e12": 0.98,
+          "tap:e10": 0.01,
+          "tap:e11": 0.01,
+          "scroll:e1:down": 0,
+          "tap:e2": 0
+        },
+        "goalMet": 0.33,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 130,
+        "usage": {
+          "inputTokens": 1130,
+          "outputTokens": 170
+        }
+      },
+      "planStep": 2,
+      "frame": "05.jpg",
+      "taken": [
+        {
+          "type": "tap",
+          "kind": "button",
+          "target": "Cart-tab-item",
+          "description": "Tap the button \"Cart-tab-item\" (bottom of the screen)",
+          "selector": "~Cart-tab-item",
+          "frame": {
+            "x": 131,
+            "y": 758,
+            "w": 131,
+            "h": 60
+          }
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "atMs": 9625,
+      "screenText": [
+        "My Cart",
+        "Sauce Labs Bike Light",
+        "$ 9.99",
+        "Color:",
+        "Black",
+        "1",
+        "Remove Item",
+        "© 2023 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy",
+        "No Items",
+        "Oh no! Your cart is empty. Fill it up with swag to complete your purchase.",
+        "Go Shopping",
+        "Total:",
+        "1 Items",
+        "$9.99",
+        "Proceed To Checkout",
+        "Catalog",
+        "Cart",
+        "More"
+      ],
+      "actionCount": 21,
+      "decision": {
+        "action": "STUCK",
+        "confidence": 0.57,
+        "probabilities": {
+          "STUCK": 0.59,
+          "tap:e18": 0.35,
+          "tap:e2": 0.01,
+          "tap:e4": 0.01,
+          "tap:e10": 0.01
+        },
+        "goalMet": 0.92,
+        "fills": {},
+        "model": "jev-1.13.0",
+        "latencyMs": 145,
+        "usage": {
+          "inputTokens": 1455,
+          "outputTokens": 247
+        }
+      },
+      "planStep": 2,
+      "frame": "06.jpg"
+    }
+  ],
+  "failedExpectations": [],
+  "discardedDecisions": 0,
+  "usage": {
+    "requests": 6,
+    "inputTokens": 8082,
+    "outputTokens": 1449
+  },
+  "screen": {
+    "width": 393,
+    "height": 852
+  },
+  "replay": {
+    "outcome": "passed",
+    "reason": "The generated steps pass with plain Appium.",
+    "durationMs": 5967
+  }
+}

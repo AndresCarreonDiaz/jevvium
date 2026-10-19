@@ -1,0 +1,14 @@
+{
+  "flow": "bike-light",
+  "round": 1,
+  "explore": {
+    "wallMs": 24845,
+    "status": 0
+  },
+  "test": {
+    "wallMs": 11869,
+    "status": 0,
+    "inSessionMs": 6700,
+    "passed": 1
+  }
+}
