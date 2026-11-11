@@ -18,6 +18,11 @@ export type TestSettings = {
   capabilities: WebdriverIO.Capabilities
   /** Where a failed test's screenshot goes. */
   screenshots: string
+  /**
+   * The app to restart before each test. On a real iPhone a session joins the app where it
+   * was left, so each test starts from a fresh launch, as it did while exploring.
+   */
+  restartApp?: string
 }
 
 const raw = process.env.JEVVIUM_WDIO
@@ -45,6 +50,12 @@ export const config: WebdriverIO.Config = {
   framework: 'mocha',
   mochaOpts: { ui: 'bdd', timeout: 120_000 },
   reporters: ['spec'],
+
+  beforeTest: async () => {
+    if (!settings.restartApp) return
+    await browser.terminateApp(settings.restartApp)
+    await browser.activateApp(settings.restartApp)
+  },
 
   afterTest: async (test, _context, { passed }) => {
     if (passed) return

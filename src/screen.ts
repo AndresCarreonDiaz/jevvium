@@ -243,7 +243,7 @@ function iosElements(root: Node, all: Node[], height: number): Omit<ScreenElemen
       if (scrolls.length > 0) found.push({ node, element: listElement(node, node.attrs.name || node.attrs.label, iosFrame(node), scrolls, height, iosLocator(node, all)) })
       return
     }
-    let kind: ElementKind | undefined = IOS_KINDS[node.tag] ?? (isIosTouchable(node) ? 'button' : undefined)
+    let kind: ElementKind | undefined = IOS_KINDS[node.tag] ?? (isIosTouchable(node) || isIosControl(node) ? 'button' : undefined)
     if (keyboard.has(node)) kind = kind === 'button' && RETURN_KEY.test(node.attrs.label ?? '') ? 'key' : undefined
     if (!kind) return
     const label = kind === 'input'
@@ -335,6 +335,15 @@ function listElement(node: Node, name: string | undefined, frame: Frame, scrolls
 function isIosTouchable(node: Node): boolean {
   if (node.tag !== IOS_OTHER || !node.attrs.name || node.attrs.label) return false
   return !descendants(node).some((child) => child.attrs.name && (child.tag === IOS_OTHER || child.tag in IOS_KINDS))
+}
+
+/** The role a control announces in its value, the way React Native's accessibilityRole shows on iOS. */
+const CONTROL_VALUE = /^(radio button|checkbox|toggle button|tab)\b/i
+
+/** A labelled view that says it is a control: by its value ("radio button, checked") or its Button trait. */
+function isIosControl(node: Node): boolean {
+  if (node.tag !== IOS_OTHER || node.attrs.accessible !== 'true' || !node.attrs.label) return false
+  return CONTROL_VALUE.test(node.attrs.value ?? '') || /\bButton\b/.test(node.attrs.traits ?? '')
 }
 
 function iosLocator(node: Node, all: Node[]): Locator {

@@ -246,7 +246,7 @@ async function main(): Promise<number> {
   if (command === 'test') {
     if (deviceLine) console.log(deviceLine)
     const given = values.server === undefined || !userServer ? undefined : { url: values.server, address: userServer }
-    return runTests(files, values.out, platform, baseCapabilities, values.runs, given)
+    return runTests(files, values.out, platform, baseCapabilities, values.runs, given, iphone ? values['bundle-id'] : undefined)
   }
   const provider: DecisionProvider =
     values.provider === 'openai' ? new OpenAIDecisionsProvider() : values.provider === 'claude' ? new ClaudeProvider() : new JevProvider()
@@ -281,7 +281,11 @@ async function main(): Promise<number> {
       // The helper that skips XCTest only reaches simulators.
       device = values.input === 'appium' || !browser.isIOS || iphone ? webdriverDevice(browser) : await directInput(browser, out)
       out(`(input: ${device.input === 'simulator' ? 'direct to the simulator' : 'through Appium'})`)
-      return { browser, device, appId: await currentApp(browser) }
+      const session = { browser, device, appId: await currentApp(browser) }
+      // A session on a phone joins the app where it was left. Replays, and the criteria after
+      // the first, start from a fresh launch, so the first does too.
+      if (iphone) await restartApp(session)
+      return session
     } catch (error) {
       device?.close?.()
       await browser.deleteSession().catch(() => {})
@@ -561,6 +565,7 @@ async function runTests(
   caps: WebdriverIO.Capabilities,
   runsDir: string,
   given: { url: string; address: ServerAddress } | undefined,
+  restartApp?: string,
 ): Promise<number> {
   const specs =
     specArgs.length > 0
@@ -598,7 +603,7 @@ async function runTests(
     address = { protocol: 'http', hostname: '127.0.0.1', port: own.port, path: '/' }
   }
   try {
-    const settings: TestSettings = { specs, ...address, capabilities: caps, screenshots: resolve('screenshots') }
+    const settings: TestSettings = { specs, ...address, capabilities: caps, screenshots: resolve('screenshots'), ...(restartApp && { restartApp }) }
     process.env.JEVVIUM_WDIO = JSON.stringify(settings)
     const { Launcher } = await import('@wdio/cli')
     // The config sits next to this file: wdio.conf.ts when run from source, wdio.conf.js once built.

@@ -225,6 +225,21 @@ describe('maskRegions', () => {
     assert.equal(keyboard.frame.y + keyboard.frame.h, 874)
   })
 
+  it('offers labelled views that say they are controls, but not plain labelled text', () => {
+    // React Native radio options in a sheet: XCUIElementTypeOther, with the role in the value.
+    const xml = `<AppiumAUT><XCUIElementTypeApplication type="XCUIElementTypeApplication" visible="true" x="0" y="0" width="402" height="874">
+      <XCUIElementTypeOther type="XCUIElementTypeOther" value="radio button, checked" name="Small, For everyday tasks" label="Small, For everyday tasks" accessible="true" visible="true" x="15" y="527" width="372" height="75"/>
+      <XCUIElementTypeOther type="XCUIElementTypeOther" value="radio button, unchecked" name="Large, For complex work" label="Large, For complex work" accessible="true" visible="true" x="15" y="602" width="372" height="77"/>
+      <XCUIElementTypeOther type="XCUIElementTypeOther" name="Close" label="Close" traits="Button" accessible="true" visible="true" x="15" y="700" width="60" height="40"/>
+      <XCUIElementTypeOther type="XCUIElementTypeOther" name="A paragraph of an answer" label="A paragraph of an answer" accessible="true" visible="true" x="15" y="100" width="372" height="40"/>
+    </XCUIElementTypeApplication></AppiumAUT>`
+    assert.deepEqual(summary(parseScreen(xml, 'ios')), [
+      'button Small, For everyday tasks @middle -> ~Small, For everyday tasks',
+      'button Large, For complex work @bottom -> ~Large, For complex work',
+      'button Close @bottom -> ~Close',
+    ])
+  })
+
   it('masks a text that shows test data even when it is not a field, and nothing on a screen without any', () => {
     const xml = `<AppiumAUT><XCUIElementTypeApplication type="XCUIElementTypeApplication" visible="true" x="0" y="0" width="402" height="874">
       <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" label="Signed in as QA.DEMO@EXAMPLE.COM" visible="true" x="10" y="100" width="380" height="20"/>
