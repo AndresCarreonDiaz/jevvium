@@ -89,9 +89,15 @@ describe('parsePlan', () => {
     assert.equal(criterion.goal, 'Send. The wallet is funded and unlocked. The network is a testnet')
   })
 
+  it('reads test data written as plain lines, without bullets', () => {
+    const criterion = parsePlan('# Ask\n\n1. Type the question\n\nTest data:\nquestion: What is 2 + 2? Answer in one word.\n', 'x')
+    assert.deepEqual(criterion.inputs, { question: 'What is 2 + 2? Answer in one word.' })
+  })
+
   it('rejects a plan with nothing in it, test data not written as name: value, and conflicting values', () => {
     assert.throws(() => parsePlan('\n\n', 'x'), /needs a title/)
     assert.throws(() => parsePlan('# T\n\nTest data:\n- just words\n', 'x'), /name: value/)
+    assert.throws(() => parsePlan('# T\n\nTest data:\njust words\n', 'x'), /name: value/)
     assert.throws(() => parsePlan('# T\n\n1. Enter 10 as the amount\n2. Enter 20 as the amount\n', 'x'), /"amount" is given twice/)
   })
 

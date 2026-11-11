@@ -327,6 +327,23 @@ Running the app on a simulator from Xcode leaves the same `.app` in `~/Library/D
 
 jevvium uses the plain iPhone with the highest number on the newest simulator runtime your Xcode has, and says which. `--device "iPhone 17" --platform-version 26.5` picks another (`xcrun simctl list devices available` lists them; the runs in this README used iOS 26.5). Several plans can be passed at once: they share one Appium session and the app is restarted between them (`--fresh-session` starts a new session for each instead), or `--parallel 4` explores four at a time on four simulators.
 
+### A real iPhone
+
+An app from TestFlight or the App Store only runs on a real device. Connect the iPhone to the Mac once with a cable, tap Trust, turn on Developer Mode (Settings > Privacy & Security), install the app, sign in to it if it needs that, and keep the phone unlocked while jevvium runs:
+
+```bash
+npx jevvium explore criteria/ask.md --device "Your iPhone" --bundle-id com.example.YourApp
+```
+
+`--device` takes the name in Settings > General > About, or `--udid` the udid that `xcrun devicectl list devices` shows. Appium has to sign WebDriverAgent to install it on the phone. jevvium signs it with the team of the Apple Development certificate in your keychain (Xcode makes one when you add your Apple ID under Settings > Accounts; a free Apple ID works, but its signature lasts 7 days), as `jevvium.<team>.WebDriverAgentRunner`; `--team-id` and `--wda-bundle-id` pick others. The first session on a phone builds and installs it, which takes a few minutes; after that a session starts in a second or two.
+
+On a phone, taps and typing go through Appium (the native helper only reaches simulators), the app keeps its data and login between runs, and restarting it goes through Appium too. Because the app keeps its state, a restart may not land on the screen the run started from, so `--max-backtracks 0` is safer for apps that reopen where you left them.
+
+Two options help with apps like these:
+
+- `--caps caps.json` adds Appium capabilities to the session and the generated tests. A React Native screen nested deeper than WebDriverAgent's default snapshot depth of 50 shows up without its inner controls; `{"appium:settings[snapshotMaxDepth]": 120}` brings them back.
+- `--expect-wait 60` gives the `Expected:` checks up to a minute to show, while exploring and in the generated test, for answers from a server or an AI model that the page source can't show coming. Without it, a run that stops checks for a second, since the screen has settled by then.
+
 ### Getting a key
 
 Jev needs a TypeSafe account and an API key from [console.typesafe.ai](https://console.typesafe.ai). Exploring the nine criteria once costs about half a cent: at TypeSafe's published price of $0.042 per million input tokens (output tokens are free), the four demo-app criteria used about 19,000 input tokens (under $0.001) and the five shop-app criteria about 104,000 (about $0.004). A plan costs a little more, since every request carries the plan: the six-step checkout plan used 63,000 tokens over 24 requests (about $0.003). `TYPESAFE_API_URL` points jevvium at another endpoint that serves TypeSafe's API. `JEVVIUM_MODEL` picks the model that decides, `jev-1.13.0` by default: a version rather than the `jev-latest` alias, so a model release can't change the paths a plan explores without you choosing it, and the one every run in this README used. `JEVVIUM_VISION_MODEL` picks the one that looks at screenshots with `--vision`, `jev-1.14.0` by default, since box questions need Jev 1.14.

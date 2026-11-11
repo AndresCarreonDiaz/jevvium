@@ -88,7 +88,10 @@ export function parsePlan(markdown: string, fallbackId: string): Criterion {
       steps[steps.length - 1] += ` ${line.trim()}`
       continue
     }
-    if (section === 'data') throw new Error(`Test data must be written as "name: value", not ${JSON.stringify(line.trim())}`)
+    if (section === 'data') {
+      consume(section, line.trim(), line)
+      continue
+    }
     if (section === 'expected') {
       consume(section, line.trim(), line)
       continue

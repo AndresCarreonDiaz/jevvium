@@ -33,6 +33,12 @@ export type ExploreOptions = {
   fillConfidence?: number
   /** How long each expectation may take to appear. */
   expectTimeoutMs?: number
+  /**
+   * How long the checks wait at a stop (no way forward, unsure, out of steps). The screen
+   * has settled by then, so a second is enough, unless results arrive late: answers from a
+   * server or a model, which the page source can't show coming.
+   */
+  stopCheckMs?: number
   /** How long to wait for the screen to stop changing, and spinners to go, after an action. */
   settleTimeoutMs?: number
   /**
@@ -248,6 +254,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
   const stepThreshold = options.stepThreshold ?? Math.min(0.6, goalThreshold)
   const fillConfidence = options.fillConfidence ?? 0.5
   const expectTimeoutMs = options.expectTimeoutMs ?? 5_000
+  const stopCheckMs = options.stopCheckMs ?? STOP_CHECK_MS
   const settleTimeoutMs = options.settleTimeoutMs ?? 15_000
   const lookAlways = options.look === 'always'
   const { platform } = device
@@ -824,7 +831,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
         const stop = async (outcome: Outcome, reason: string): Promise<Trace | undefined> => {
           const acted = performed.length > 0
           if (acted && criterion.expect.length > 0) {
-            const failed = checked ?? (await failing(device, criterion.expect, STOP_CHECK_MS))
+            const failed = checked ?? (await failing(device, criterion.expect, stopCheckMs))
             if (failed.length === 0) {
               options.onStep?.(step)
               return finish('passed', `All ${criterion.expect.length} expectations hold, although the model was unsure the goal was reached.`)

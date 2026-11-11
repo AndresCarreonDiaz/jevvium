@@ -10,7 +10,7 @@ import type { Criterion } from './types.ts'
  * fixed data, deterministic assertions. No model is involved when it runs.
  * Input values come from the criterion, because the trace never stores them.
  */
-export function generateSpec(trace: Trace, criterion: Criterion): string {
+export function generateSpec(trace: Trace, criterion: Criterion, options: { expectWaitMs?: number } = {}): string {
   if (trace.outcome !== 'passed') {
     throw new Error(`Only passing runs can become tests; this run ${trace.outcome}: ${trace.reason}`)
   }
@@ -54,7 +54,8 @@ export function generateSpec(trace: Trace, criterion: Criterion): string {
   }
   for (const expectation of criterion.expect) {
     const selector = toSelector(expectationLocator(expectation, trace.platform))
-    lines.push(`await expect($(${literal(selector)})).toBeDisplayed()`)
+    const wait = options.expectWaitMs === undefined ? '' : `{ wait: ${options.expectWaitMs} }`
+    lines.push(`await expect($(${literal(selector)})).toBeDisplayed(${wait})`)
   }
 
   const decided = trace.steps.at(-1)?.decision.model ?? trace.provider

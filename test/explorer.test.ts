@@ -232,6 +232,33 @@ describe('explore', () => {
     assert.equal(trace.steps.filter((s) => s.taken).length, 3)
   })
 
+  it('gives a late answer the time it asks for at a dead end', async () => {
+    // An answer that only shows to a check willing to wait 30 seconds, as from a server or a model.
+    class SlowApp extends FakeApp {
+      override async isDisplayed(locator: Locator, timeoutMs = 0) {
+        return timeoutMs >= 30_000 && toSelector(locator).includes('You are logged in!')
+      }
+    }
+    const provider = () => new ScriptedProvider((request) => (request.history.length === 4 ? { action: STUCK } : happyPath(request)))
+    const run = (stopCheckMs?: number) => {
+      const app = new SlowApp()
+      app.loginWorks = false
+      return explore(app, criterion, { ...options, provider: provider(), maxBacktracks: 0, ...(stopCheckMs && { stopCheckMs }) })
+    }
+
+    assert.equal((await run()).outcome, 'stuck')
+    assert.equal((await run(30_000)).outcome, 'passed')
+  })
+
+  it('writes the expectation wait into the spec when one is given', async () => {
+    const trace = await explore(new FakeApp(), criterion, { ...options, provider: new ScriptedProvider(happyPath) })
+
+    assert.match(
+      generateSpec(trace, criterion, { expectWaitMs: 60_000 }),
+      /await expect\(\$\('-ios predicate string:label == "You are logged in!"'\)\)\.toBeDisplayed\(\{ wait: 60000 \}\)/,
+    )
+  })
+
   it('produces a trace that generates a deterministic spec', async () => {
     const trace = await explore(new FakeApp(), criterion, { ...options, provider: new ScriptedProvider(happyPath) })
 

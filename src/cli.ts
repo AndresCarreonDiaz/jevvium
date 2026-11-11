@@ -17,12 +17,13 @@ import { JevProvider } from './providers/jev.ts'
 import type { DecisionProvider } from './providers/types.ts'
 import { OpenAIDecisionsProvider } from './providers/openai.ts'
 import { redactor } from './redact.ts'
-import { replay } from './replay.ts'
+import { replay, SPEC_WAIT_MS } from './replay.ts'
 import { stopReport } from './report.ts'
 import { lookSummary, runReport } from './run-report.ts'
 import type { TestSettings } from './wdio.conf.ts'
 import { hasDriver, isAppiumUp, startAppium, type AppiumServer } from './appium.ts'
-import { builtWebDriverAgent, defaultSimulator, findSimulator, hasWebDriverAgent, simulators, simulatorSet } from './simulators.ts'
+import { builtWebDriverAgent, defaultSimulator, hasWebDriverAgent, pickSimulator, simulators, simulatorSet, type Simulator } from './simulators.ts'
+import { chooseTeam, developmentTeams, pickRealDevice, realDevices, wdaBundleId, type RealDevice } from './real-devices.ts'
 import { checkSimulatorBuild, platformOf } from './app.ts'
 import type { Criterion, Platform } from './types.ts'
 
@@ -43,10 +44,19 @@ criteria file (goal, steps, inputs, expect) is accepted too.
 Explore options:
   --app <path>               the app to test: an iOS Simulator build (.app, or an .ipa or .zip
                              holding one) or an Android .apk (required)
-  --bundle-id <id>           instead of --app: an iOS app already installed on the simulator
+  --bundle-id <id>           instead of --app: an iOS app already installed on the simulator or
+                             iPhone (the only way on an iPhone: TestFlight and App Store apps too)
   --platform <name>          android or ios (default: from the app)
-  --device <name>            simulator or emulator name (default on iOS: the plain iPhone with
-                             the highest number, on the newest runtime; on Android: the emulator)
+  --device <name>            simulator or emulator name, or the name of an iPhone connected to
+                             this Mac (default on iOS: the plain iPhone simulator with the highest
+                             number, on the newest runtime; on Android: the emulator)
+  --udid <udid>              the simulator or iPhone with this udid (xcrun devicectl list devices)
+  --team-id <id>             the Apple Developer team that signs WebDriverAgent on an iPhone
+                             (default: the only team with an Apple Development certificate here)
+  --wda-bundle-id <id>       WebDriverAgent's bundle id on an iPhone (default:
+                             jevvium.<team>.WebDriverAgentRunner, registered by Xcode)
+  --caps <file.json>         extra Appium capabilities for the session and the generated tests,
+                             e.g. {"appium:settings[snapshotMaxDepth]": 120}
   --platform-version <ver>   OS version of the simulator or emulator (default: the newest)
   --server <url>             an Appium server to use (default: jevvium starts its own)
   --runs <dir>               where traces go (default: runs)
@@ -55,7 +65,12 @@ Explore options:
   --min-confidence <p>       below this, stop and escalate (default: 0.2)
   --goal-threshold <p>       "goal reached" probability that triggers the checks (default: 0.8)
   --max-backtracks <n>       times a run may restart the app and try the model's runner-up at
-                             the decision that led to a dead end (default: 2; 0 turns it off)
+                             the decision that led to a dead end (default: 2; 0 turns it off,
+                             as an app that keeps its state may not restart on the same screen)
+  --expect-wait <seconds>    how long the Expected checks may take to show, while exploring and in
+                             the generated test, for results that arrive late: a server's or an AI
+                             model's answer (default: 5 when the goal is reached, 1 at a dead end,
+                             15 in the test)
   --input <auto|appium>      auto taps and types straight into an iOS Simulator, skipping XCTest,
                              and falls back to Appium elsewhere (default: auto)
   --provider <name>          the decision model: jev (TypeSafe's Jev), openai (OpenAI's
@@ -110,6 +125,10 @@ async function main(): Promise<number> {
       app: { type: 'string' },
       'bundle-id': { type: 'string' },
       device: { type: 'string' },
+      udid: { type: 'string' },
+      'team-id': { type: 'string' },
+      'wda-bundle-id': { type: 'string' },
+      caps: { type: 'string' },
       'platform-version': { type: 'string' },
       server: { type: 'string' },
       runs: { type: 'string', default: 'runs' },
@@ -118,6 +137,7 @@ async function main(): Promise<number> {
       'min-confidence': { type: 'string', default: '0.2' },
       'goal-threshold': { type: 'string', default: '0.8' },
       'max-backtracks': { type: 'string', default: '2' },
+      'expect-wait': { type: 'string' },
       criteria: { type: 'string' },
       input: { type: 'string', default: 'auto' },
       provider: { type: 'string', default: 'jev' },
@@ -138,11 +158,12 @@ async function main(): Promise<number> {
     return values.help ? 0 : 1
   }
 
+  const expectWaitMs = values['expect-wait'] === undefined ? undefined : seconds('--expect-wait', values['expect-wait'])
   if (command === 'codegen') {
     if (files.length !== 1) throw new Error('codegen takes exactly one trace file')
     if (!values.criteria) throw new Error('codegen needs --criteria <file> for the input values')
     const trace = JSON.parse(readFileSync(files[0], 'utf8')) as Trace
-    console.log(writeSpec(trace, loadCriterion(values.criteria), values.out))
+    console.log(writeSpec(trace, loadCriterion(values.criteria), values.out, expectWaitMs))
     return 0
   }
   if (command === 'validate') {
@@ -169,7 +190,7 @@ async function main(): Promise<number> {
   // Everything is checked before an Appium session is started, since that can take minutes.
   if (values.app && values['bundle-id']) throw new Error('Use --app or --bundle-id, not both')
   if (!values.app && !values['bundle-id']) {
-    throw new Error('--app <path> is required: the app to test (or --bundle-id <id> for an iOS app already installed on the simulator)')
+    throw new Error('--app <path> is required: the app to test (or --bundle-id <id> for an iOS app already installed on the simulator or iPhone)')
   }
   const app = values.app === undefined ? undefined : resolve(values.app)
   if (app && !existsSync(app)) throw new Error(`--app: nothing at ${app}`)
@@ -180,6 +201,15 @@ async function main(): Promise<number> {
   if (values['bundle-id'] && platform !== 'ios') throw new Error('--bundle-id is for iOS apps; for Android, pass the .apk with --app')
   if (platform === 'android' && values.server === undefined && !hasDriver('appium-uiautomator2-driver')) {
     throw new Error("Android needs Appium's UiAutomator2 driver next to jevvium: npm i -D appium-uiautomator2-driver")
+  }
+  if (values.udid && values.device) throw new Error('Use --device or --udid, not both')
+  if ((values.udid || values['team-id'] || values['wda-bundle-id']) && platform !== 'ios') {
+    throw new Error('--udid, --team-id and --wda-bundle-id are for iOS; on Android, name the emulator with --device')
+  }
+  const extraCapabilities = values.caps === undefined ? {} : readCapabilities(values.caps)
+  const { simulator, iphone } = platform === 'ios' ? await iosTarget(values.udid ?? values.device, values['platform-version'], Boolean(values.udid)) : {}
+  if (iphone && app) {
+    throw new Error(`On an iPhone, install the app first (TestFlight, the App Store or Xcode) and pass --bundle-id instead of --app`)
   }
   if (app && platform === 'ios') await checkSimulatorBuild(app)
   if (values.input !== 'auto' && values.input !== 'appium') throw new Error('--input must be auto or appium')
@@ -196,24 +226,25 @@ async function main(): Promise<number> {
   const goalThreshold = probability('--goal-threshold', values['goal-threshold'])
   const maxBacktracks = values['max-backtracks'] === '0' ? 0 : count('--max-backtracks', values['max-backtracks'])
   const parallel = values.parallel === undefined ? 1 : count('--parallel', values.parallel)
-  if (parallel > 1 && platform !== 'ios') throw new Error('--parallel only runs on iOS Simulators for now')
+  if (parallel > 1 && (platform !== 'ios' || iphone)) throw new Error('--parallel only runs on iOS Simulators for now')
+  if (!iphone && (values['team-id'] || values['wda-bundle-id'])) throw new Error('--team-id and --wda-bundle-id are for a real iPhone (--device or --udid)')
+  const signing = iphone ? signingFor(values['team-id'], values['wda-bundle-id'], await developmentTeams()) : undefined
   const userServer = values.server === undefined ? undefined : serverAddress(values.server)
   const criteria: [string, Criterion][] = command === 'explore' ? files.map((file) => [file, loadCriterion(file)]) : []
-  const simulator =
-    platform !== 'ios'
-      ? undefined
-      : values.device
-        ? await findSimulator(values.device, values['platform-version'])
-        : defaultSimulator(await simulators(), values['platform-version'])
-  const baseCapabilities = capabilities(
-    platform,
-    { app, bundleId: values['bundle-id'] },
-    simulator?.name ?? values.device,
-    simulator?.version ?? values['platform-version'],
-    simulator?.udid,
-  )
+  const baseCapabilities = {
+    ...capabilities(
+      platform,
+      { app, bundleId: values['bundle-id'] },
+      simulator?.name ?? iphone?.name ?? values.device,
+      simulator?.version ?? iphone?.version ?? values['platform-version'],
+      simulator?.udid ?? iphone?.udid,
+      signing,
+    ),
+    ...extraCapabilities,
+  }
+  const deviceLine = simulator ? `Simulator: ${simulator.name}, iOS ${simulator.version}` : iphone ? `iPhone: ${iphone.name} (${iphone.model}), iOS ${iphone.version}` : undefined
   if (command === 'test') {
-    if (simulator) console.log(`Simulator: ${simulator.name}, iOS ${simulator.version}`)
+    if (deviceLine) console.log(deviceLine)
     const given = values.server === undefined || !userServer ? undefined : { url: values.server, address: userServer }
     return runTests(files, values.out, platform, baseCapabilities, values.runs, given)
   }
@@ -234,8 +265,12 @@ async function main(): Promise<number> {
     const udid = settings['appium:udid']
     // Appium builds WebDriverAgent with Xcode when it has none for this driver, which can't be
     // told from here: the first session on a simulator, and the first after a driver update.
-    const first = typeof udid === 'string' && !settings['appium:prebuiltWDAPath'] && !(await hasWebDriverAgent(udid))
-    out(`Starting the Appium session (${first ? 'the first on this simulator' : 'a first session on a simulator'} builds WebDriverAgent with Xcode: a minute or a few)`)
+    if (iphone) {
+      out('Starting the Appium session (keep the iPhone unlocked; the first session on it builds, signs and installs WebDriverAgent, a few minutes)')
+    } else {
+      const first = typeof udid === 'string' && !settings['appium:prebuiltWDAPath'] && !(await hasWebDriverAgent(udid))
+      out(`Starting the Appium session (${first ? 'the first on this simulator' : 'a first session on a simulator'} builds WebDriverAgent with Xcode: a minute or a few)`)
+    }
     const started = Date.now()
     // WebdriverIO's own warnings are about requests it retried; jevvium reports what fails.
     const browser = await remote({ ...address, logLevel: 'error', connectionRetryTimeout: 600_000, capabilities: caps })
@@ -243,7 +278,8 @@ async function main(): Promise<number> {
     out(`(session ready in ${((Date.now() - started) / 1000).toFixed(1)} s)`)
     let device: Device | undefined
     try {
-      device = values.input === 'appium' || !browser.isIOS ? webdriverDevice(browser) : await directInput(browser, out)
+      // The helper that skips XCTest only reaches simulators.
+      device = values.input === 'appium' || !browser.isIOS || iphone ? webdriverDevice(browser) : await directInput(browser, out)
       out(`(input: ${device.input === 'simulator' ? 'direct to the simulator' : 'through Appium'})`)
       return { browser, device, appId: await currentApp(browser) }
     } catch (error) {
@@ -344,7 +380,9 @@ async function main(): Promise<number> {
       ? `${lane.name}${simulator ? `, iOS ${simulator.version}` : ''}`
       : simulator
         ? `${simulator.name}, iOS ${simulator.version}`
-        : (values.device ?? platform)
+        : iphone
+          ? `${iphone.model}, iOS ${iphone.version}`
+          : (values.device ?? platform)
     let session: Session
     try {
       session = await lane.ready(values['fresh-session'], out)
@@ -366,6 +404,7 @@ async function main(): Promise<number> {
         onStep: (step) => printStep(step, out, goalThreshold, minConfidence),
         ...(values.screenshots === 'steps' && { onFrame: keep }),
         look: vision,
+        ...(expectWaitMs !== undefined && { expectTimeoutMs: expectWaitMs, stopCheckMs: expectWaitMs }),
       })
       if (stopping) return { outcome: 'interrupted' }
       if (trace.outcome === 'passed' && values.verify) {
@@ -373,7 +412,7 @@ async function main(): Promise<number> {
         const started = Date.now()
         try {
           await restartApp(session)
-          trace.replay = await replay(session.browser, trace, criterion)
+          trace.replay = await replay(session.browser, trace, criterion, Math.max(SPEC_WAIT_MS, expectWaitMs ?? 0))
         } catch (error) {
           // Only the restart throws here. The run it follows is still written down.
           const reason = redactor(criterion.inputs)(`Could not restart the app for the replay: ${firstLine(error)}`)
@@ -400,7 +439,8 @@ async function main(): Promise<number> {
   const results: Result[] = []
   try {
     const size = Math.min(parallel, criteria.length)
-    if (simulator) console.log(`Simulator: ${simulator.name}, iOS ${simulator.version}`)
+    if (deviceLine) console.log(deviceLine)
+    if (signing) console.log(`WebDriverAgent: signed by team ${signing.team} as ${signing.bundleId}`)
     server = await appiumServer()
     lanes.push(...(size > 1 ? await parallelLanes(size) : [new Lane('', openSession(server, baseCapabilities))]))
     const queue = [...criteria]
@@ -462,7 +502,7 @@ async function main(): Promise<number> {
     let specFile: string | undefined
     if (trace.outcome === 'passed') {
       try {
-        specFile = writeSpec(trace, criterion, values.out)
+        specFile = writeSpec(trace, criterion, values.out, expectWaitMs)
         out(`  test:  ${specFile}`)
       } catch (error) {
         out(`  test:  not written: ${firstLine(error)}`)
@@ -705,10 +745,12 @@ async function directInput(browser: WebdriverIO.Browser, out: Out): Promise<Devi
   }
 }
 
-function writeSpec(trace: Trace, criterion: Criterion, outDir: string): string {
+function writeSpec(trace: Trace, criterion: Criterion, outDir: string, expectWaitMs?: number): string {
   mkdirSync(outDir, { recursive: true })
   const path = join(outDir, specFileName(trace))
-  writeFileSync(path, generateSpec(trace, criterion))
+  // Only a wait longer than the test's own default is worth writing down.
+  const wait = expectWaitMs !== undefined && expectWaitMs > SPEC_WAIT_MS ? expectWaitMs : undefined
+  writeFileSync(path, generateSpec(trace, criterion, { expectWaitMs: wait }))
   return path
 }
 
@@ -718,6 +760,7 @@ function capabilities(
   device?: string,
   version?: string,
   udid?: string,
+  signing?: Signing,
 ): WebdriverIO.Capabilities {
   const shared = {
     ...(target.app && { 'appium:app': target.app }),
@@ -740,8 +783,66 @@ function capabilities(
         'appium:wdaLaunchTimeout': 240_000,
         // jevvium never reads the simulator's system log, and capturing it slows the session down.
         'appium:skipLogCapture': true,
+        ...(signing && {
+          'appium:xcodeOrgId': signing.team,
+          'appium:xcodeSigningId': 'Apple Development',
+          'appium:updatedWDABundleId': signing.bundleId,
+          // Building, signing and installing WebDriverAgent on a phone takes longer than on a simulator.
+          'appium:wdaLaunchTimeout': 600_000,
+          // An installed app keeps its data, and its login, between runs.
+          'appium:noReset': true,
+        }),
         ...shared,
       }
+}
+
+type Signing = { team: string; bundleId: string }
+
+function signingFor(team: string | undefined, bundleId: string | undefined, found: string[]): Signing {
+  const chosen = chooseTeam(team, found)
+  return { team: chosen, bundleId: bundleId ?? wdaBundleId(chosen) }
+}
+
+/**
+ * The simulator or iPhone to run on: the one named or with that udid, or the default
+ * simulator. A name or udid that no simulator has is looked up among connected devices.
+ */
+async function iosTarget(
+  wanted: string | undefined,
+  version: string | undefined,
+  byUdid: boolean,
+): Promise<{ simulator?: Simulator; iphone?: RealDevice }> {
+  const available = await simulators()
+  if (!wanted) return { simulator: defaultSimulator(available, version) }
+  const simulator = byUdid ? available.find((sim) => sim.udid === wanted) : undefined
+  if (simulator) return { simulator }
+  if (!byUdid) {
+    try {
+      return { simulator: pickSimulator(available, wanted, version) }
+    } catch (error) {
+      const iphone = pickRealDevice(await realDevices(), wanted)
+      if (iphone) return { iphone }
+      throw error
+    }
+  }
+  const iphone = pickRealDevice(await realDevices(), wanted)
+  if (iphone) return { iphone }
+  throw new Error(`No simulator or connected device has the udid ${wanted} (see xcrun devicectl list devices)`)
+}
+
+/** Capabilities from a JSON file, added over jevvium's own. */
+function readCapabilities(file: string): Record<string, unknown> {
+  if (!existsSync(file)) throw new Error(`--caps: nothing at ${resolve(file)}`)
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    throw new Error(`--caps: ${file} isn't valid JSON: ${firstLine(error)}`, { cause: error })
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`--caps: ${file} must hold one JSON object of capabilities`)
+  }
+  return parsed as Record<string, unknown>
 }
 
 /**
@@ -777,6 +878,14 @@ function count(flag: string, value: string): number {
   const number = Number(value)
   if (!Number.isInteger(number) || number < 1) throw new Error(`${flag} must be a whole number of 1 or more, not "${value}"`)
   return number
+}
+
+function seconds(flag: string, value: string): number {
+  const number = Number(value)
+  if (!Number.isFinite(number) || number <= 0 || number > 600) {
+    throw new Error(`${flag} must be a number of seconds above 0 and up to 600, not "${value}"`)
+  }
+  return Math.round(number * 1000)
 }
 
 function probability(flag: string, value: string): number {
