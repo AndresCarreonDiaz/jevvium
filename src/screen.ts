@@ -377,8 +377,19 @@ function iosLocator(node: Node, all: Node[]): Locator {
 
 function iosTexts(all: Node[]): string[] {
   return all
-    .filter((n) => n.tag === IOS_TEXT && n.attrs.visible === 'true')
+    .filter((n) => n.attrs.visible === 'true' && (n.tag === IOS_TEXT || isIosTextView(n)))
     .map((n) => n.attrs.label || n.attrs.value || '')
+}
+
+/**
+ * Text that React Native exposes as an accessible view with a label, the way a paragraph of
+ * a chat answer shows up: not a control, and holding no other labelled content (a container's
+ * label repeats its children's).
+ */
+function isIosTextView(node: Node): boolean {
+  if (node.tag !== IOS_OTHER || node.attrs.accessible !== 'true' || !node.attrs.label) return false
+  if (SCROLL_BAR.test(node.attrs.label) || isIosControl(node)) return false
+  return !descendants(node).some((child) => child.attrs.label && (child.tag === IOS_OTHER || child.tag === IOS_TEXT || child.tag in IOS_KINDS))
 }
 
 // Android -------------------------------------------------------------------

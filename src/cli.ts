@@ -21,7 +21,7 @@ import { replay, SPEC_WAIT_MS } from './replay.ts'
 import { stopReport } from './report.ts'
 import { lookSummary, runReport } from './run-report.ts'
 import type { TestSettings } from './wdio.conf.ts'
-import { hasDriver, isAppiumUp, startAppium, type AppiumServer } from './appium.ts'
+import { hasDriver, isAppiumUp, sessionHint, startAppium, type AppiumServer } from './appium.ts'
 import { builtWebDriverAgent, defaultSimulator, hasWebDriverAgent, pickSimulator, simulators, simulatorSet, type Simulator } from './simulators.ts'
 import { chooseTeam, developmentTeams, pickRealDevice, realDevices, wdaBundleId, type RealDevice } from './real-devices.ts'
 import { checkSimulatorBuild, platformOf } from './app.ts'
@@ -68,9 +68,10 @@ Explore options:
                              the decision that led to a dead end (default: 2; 0 turns it off,
                              as an app that keeps its state may not restart on the same screen)
   --expect-wait <seconds>    how long the Expected checks may take to show, while exploring and in
-                             the generated test, for results that arrive late: a server's or an AI
-                             model's answer (default: 5 when the goal is reached, 1 at a dead end,
-                             15 in the test)
+                             the generated test, and how long in all a run may wait when the model
+                             says the app is still at work, for results that arrive late: a
+                             server's or an AI model's answer (default: checks 5 when the goal is
+                             reached, 1 at a dead end, 15 in the test; waiting 30)
   --input <auto|appium>      auto taps and types straight into an iOS Simulator, skipping XCTest,
                              and falls back to Appium elsewhere (default: auto)
   --provider <name>          the decision model: jev (TypeSafe's Jev), openai (OpenAI's
@@ -408,7 +409,7 @@ async function main(): Promise<number> {
         onStep: (step) => printStep(step, out, goalThreshold, minConfidence),
         ...(values.screenshots === 'steps' && { onFrame: keep }),
         look: vision,
-        ...(expectWaitMs !== undefined && { expectTimeoutMs: expectWaitMs, stopCheckMs: expectWaitMs }),
+        ...(expectWaitMs !== undefined && { expectTimeoutMs: expectWaitMs, stopCheckMs: expectWaitMs, maxWaitMs: expectWaitMs }),
       })
       if (stopping) return { outcome: 'interrupted' }
       if (trace.outcome === 'passed' && values.verify) {
@@ -464,6 +465,15 @@ async function main(): Promise<number> {
               break
             }
             out(`  ERROR: ${result.startFailed} (${file})`)
+            // Some causes don't go away by trying again: say what to do, and leave the rest unrun.
+            const hint = sessionHint(result.startFailed)
+            if (hint) {
+              out(`  ${hint}`)
+              results.push(result)
+              for (let left = queue.shift(); left; left = queue.shift()) results.push({ outcome: 'error', startFailed: result.startFailed })
+              if (lines.length > 0 && !stopping) console.log(lines.join('\n'))
+              break
+            }
           }
           results.push(result)
           if (lines.length > 0 && !stopping) console.log(lines.join('\n'))
@@ -909,15 +919,19 @@ function printStep(step: Step, out: Out, goalThreshold: number, minConfidence: n
   // A step that acted on nothing says why; a confident one stopped for a reason the outcome line gives.
   const verdict = step.covered
     ? 'its choice was covered'
-    : step.completed
-      ? `step ${step.completed} done`
-      : reached
-        ? 'goal reached'
-        : decision.action === 'STUCK'
-          ? 'no way forward'
-          : decision.confidence < minConfidence
-            ? 'unsure'
-            : 'stopped'
+    : step.waited
+      ? `waited ${(step.waited / 1000).toFixed(1)} s for the app`
+      : step.completed
+        ? `step ${step.completed} done`
+        : reached
+          ? 'goal reached'
+          : decision.action === 'WAIT'
+            ? 'done waiting'
+            : decision.action === 'STUCK'
+              ? 'no way forward'
+              : decision.confidence < minConfidence
+                ? 'unsure'
+                : 'stopped'
   const lines = step.taken?.length ? step.taken.map(describeTaken) : [verdict]
   lines.forEach((line, i) => {
     const prefix = i === 0 ? String(step.index).padStart(4) : '    '

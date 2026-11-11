@@ -125,3 +125,21 @@ function freePort(): Promise<number> {
     })
   })
 }
+
+/** What to do about a session that couldn't start for a reason trying again won't fix, if it is one. */
+export function sessionHint(message: string): string | undefined {
+  if (/Not authorized for performing UI testing actions|device was still locked|device is locked/i.test(message)) {
+    return (
+      'iOS refused UI automation on the device: unlock it, keep the screen on, and allow automation when it asks ' +
+      '(by holding the volume buttons), with Settings > Developer > Enable UI Automation on. If the prompt was declined ' +
+      'and the error stays, delete WebDriverAgentRunner from the device so the next run installs it again. The other criteria were not run.'
+    )
+  }
+  if (/Program License Agreement|PLA Update available/i.test(message)) {
+    return "Apple's developer agreement changed: accept it at developer.apple.com/account, then run again. The other criteria were not run."
+  }
+  if (/xcodebuild failed with code 65|No profiles for|requires a development team/i.test(message)) {
+    return "Xcode couldn't build or sign WebDriverAgent: check the team (--team-id) and that Xcode is signed in to it (Settings > Accounts). Appium's log in the runs folder has the details. The other criteria were not run."
+  }
+  return undefined
+}

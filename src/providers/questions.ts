@@ -1,4 +1,4 @@
-import { LEAVE_EMPTY, STUCK, type DecisionRequest } from './types.ts'
+import { LEAVE_EMPTY, STUCK, WAIT, type DecisionRequest } from './types.ts'
 
 /**
  * The questions jevvium asks at every step, worded once so that every provider
@@ -63,6 +63,10 @@ export function stateOf(request: DecisionRequest) {
 export function actionOptions(request: DecisionRequest): Record<string, string> {
   const options: Record<string, string> = {}
   for (const action of request.actions) options[action.key] = action.description
+  if (request.canWait) {
+    options[WAIT] =
+      'The app is still at work (loading, sending, or writing an answer), or the result the step is waiting for has not shown yet: wait a few seconds and look again.'
+  }
   options[STUCK] = 'No action here can lead toward the goal, not even by navigating to another screen first.'
   return options
 }

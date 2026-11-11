@@ -223,6 +223,7 @@ function overlay(step: Step, trace: Trace): string {
 function headline(step: Step, trace: Trace, threshold: number): string {
   if (step.taken?.length) return step.taken.map(describeTaken).join(', then ')
   if (step.covered) return 'Its choice was covered, so the model decided again'
+  if (step.waited) return `Waited ${(step.waited / 1000).toFixed(1)} s for the app`
   if (step.completed !== undefined) return `Step ${step.completed} of the plan done`
   const decision = step.look && step.look.used !== 'none' ? step.look.decision : step.decision
   if (step === trace.steps.at(-1)) {

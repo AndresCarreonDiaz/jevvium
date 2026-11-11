@@ -225,7 +225,7 @@ describe('maskRegions', () => {
     assert.equal(keyboard.frame.y + keyboard.frame.h, 874)
   })
 
-  it('offers labelled views that say they are controls, but not plain labelled text', () => {
+  it('offers labelled views that say they are controls, and reads plain labelled views as text', () => {
     // React Native radio options in a sheet: XCUIElementTypeOther, with the role in the value.
     const xml = `<AppiumAUT><XCUIElementTypeApplication type="XCUIElementTypeApplication" visible="true" x="0" y="0" width="402" height="874">
       <XCUIElementTypeOther type="XCUIElementTypeOther" value="radio button, checked" name="Small, For everyday tasks" label="Small, For everyday tasks" accessible="true" visible="true" x="15" y="527" width="372" height="75"/>
@@ -238,6 +238,7 @@ describe('maskRegions', () => {
       'button Large, For complex work @bottom -> ~Large, For complex work',
       'button Close @bottom -> ~Close',
     ])
+    assert.deepEqual(parseScreen(xml, 'ios').texts, ['A paragraph of an answer'])
   })
 
   it('masks a text that shows test data even when it is not a field, and nothing on a screen without any', () => {

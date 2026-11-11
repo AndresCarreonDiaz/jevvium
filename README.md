@@ -337,12 +337,26 @@ npx jevvium explore criteria/ask.md --device "Your iPhone" --bundle-id com.examp
 
 `--device` takes the name in Settings > General > About, or `--udid` the udid that `xcrun devicectl list devices` shows. Appium has to sign WebDriverAgent to install it on the phone. jevvium signs it with the team of the Apple Development certificate in your keychain (Xcode makes one when you add your Apple ID under Settings > Accounts; a free Apple ID works, but its signature lasts 7 days), as `jevvium.<team>.WebDriverAgentRunner`; `--team-id` and `--wda-bundle-id` pick others. The first session on a phone builds and installs it, which takes a few minutes; after that a session starts in a second or two.
 
+The first time a session drives the phone, iOS asks whether to allow UI automation, by holding the volume buttons. Declined, every session fails with "Not authorized for performing UI testing actions" until WebDriverAgentRunner is deleted from the phone and installed again by the next run.
+
 On a phone, taps and typing go through Appium (the native helper only reaches simulators), the app keeps its data and login between runs, and restarting it goes through Appium too. Because the app keeps its state, a restart may not land on the screen the run started from, so `--max-backtracks 0` is safer for apps that reopen where you left them.
 
 Two options help with apps like these:
 
 - `--caps caps.json` adds Appium capabilities to the session and the generated tests. A React Native screen nested deeper than WebDriverAgent's default snapshot depth of 50 shows up without its inner controls; `{"appium:settings[snapshotMaxDepth]": 120}` brings them back.
 - `--expect-wait 60` gives the `Expected:` checks up to a minute to show, while exploring and in the generated test, for answers from a server or an AI model that the page source can't show coming. Without it, a run that stops checks for a second, since the screen has settled by then.
+
+### Waiting for the app
+
+Some screens finish on their own time: an answer being written, a page loading behind a "Thinking…" line with no spinner the page source would show. The model can answer that the app is still at work, and the run waits 4 seconds and reads the screen again. Waiting acts on nothing, so it doesn't count against `--max-steps`; it counts against the time a run may wait in all, 30 seconds by default or `--expect-wait`. Once that time is used up, waiting is no longer offered.
+
+The generated test has no model to ask, so where the run waited, the next element gets a longer wait of its own, with a comment saying why:
+
+```ts
+// The app takes a while here: the run waited for it.
+await $('~Regenerate answer').waitForDisplayed({ timeout: 60000 })
+await $('~Regenerate answer').click()
+```
 
 ### Getting a key
 
@@ -489,6 +503,8 @@ Early, and built in the open. Latest runs, with `jev-1.13.0` on an iOS 26.5 simu
 | forms-switch | passed | 3 | 2.7 s | passed, 2.3 s |
 | signup | stuck | 11 | 17.6 s | |
 
+On a real iPhone 17 Pro (iOS 27.2.1), six plans against a TestFlight build of Sakana AI's chat app (asking a question, a numbered list, regenerating an answer, a model's effort levels, an empty search, the settings) all passed and replayed, and the six generated tests pass with `jevvium test` in about a minute ([plans and tests](https://github.com/AndresCarreonDiaz/sakana-jevvium-demo)). The answers arrive late, so those runs use `--expect-wait 60` and the model's waiting.
+
 - **Why signup is stuck:** on this simulator, typing into a sign-up form with two password fields leaves 1 character in the first one, so the app shows validation errors. It happens with Appium's typing and with the native helper, and a hand-written Appium test for the same form fails the same way. jevvium read the errors on screen, backtracked once, reached the same errors by the other route, and stopped; the trace records the failed expectation. In the model comparison, Claude Sonnet 5.5 got past them once in three rounds by typing the password again.
 - **Cost:** the four demo-app criteria made 18 requests and used about 19,000 input tokens, including requests thrown away while screens were still changing. That is under $0.001.
 - **Confidence:** correct steps have scored as low as 0.24, so the default escalation threshold is a low 0.2. It catches very confused steps. How well that step confidence is calibrated isn't measured yet; the benchmark only scores the "goal reached" probability.
@@ -509,6 +525,7 @@ Early, and built in the open. Latest runs, with `jev-1.13.0` on an iOS 26.5 simu
 - **Android** on a real emulator, including a fast input path through UiAutomator2
 - **Swiping through the native helper**, so a scroll costs 25 ms instead of 3 s
 - A fallback provider for escalated steps
+- **Form fills and the keyboard**: when the keyboard covers a field a fill was going to type into, the field is left for a later decision; on the shop's shipping form that once left the model scrolling instead of filling Country (1 run in 5)
 
 ## Development
 

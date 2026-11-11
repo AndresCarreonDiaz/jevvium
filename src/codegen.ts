@@ -2,6 +2,7 @@ import { redactExpectation } from './expectations.ts'
 import type { Trace } from './explorer.ts'
 import { expectationLocator, toSelector } from './locator.ts'
 import { redactor, restoreSelector } from './redact.ts'
+import { AFTER_WAIT_MS } from './replay.ts'
 import { SWIPE, swipeDirection } from './scroll.ts'
 import type { Criterion } from './types.ts'
 
@@ -20,7 +21,10 @@ export function generateSpec(trace: Trace, criterion: Criterion, options: { expe
   const lines: string[] = []
   let planStep: number | undefined
   let scrolls = false
+  let afterWait = false
+  const longWait = Math.max(options.expectWaitMs ?? 0, AFTER_WAIT_MS)
   for (const step of trace.steps) {
+    if (step.waited && !step.undone) afterWait = true
     if (!step.taken?.length || step.undone) continue
     // The plan's own words head the actions that carried out each of its steps.
     if (step.planStep !== undefined && step.planStep !== planStep && criterion.steps?.[step.planStep - 1]) {
@@ -29,6 +33,11 @@ export function generateSpec(trace: Trace, criterion: Criterion, options: { expe
     }
     for (const taken of step.taken) {
       const selector = restoreSelector(taken.selector, criterion.inputs)
+      if (afterWait) {
+        lines.push('// The app takes a while here: the run waited for it.')
+        lines.push(`await $(${literal(selector)}).waitForDisplayed({ timeout: ${longWait} })`)
+        afterWait = false
+      }
       if (taken.unlabeled) {
         lines.push('// No label, text or id in the page source: found by looking at the screen, and located by position.')
         lines.push('// An accessibility id on this control would make the step sturdier.')

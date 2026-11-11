@@ -7,7 +7,8 @@ import { fingerprintOf, type Device } from '../src/device.ts'
 import { explore, pointedAt, useLook } from '../src/explorer.ts'
 import type { PreparedFrame } from '../src/frames.ts'
 import { toSelector } from '../src/locator.ts'
-import { STUCK, type Box, type Decision, type DecisionProvider, type DecisionRequest, type Look } from '../src/providers/types.ts'
+import { actionOptions } from '../src/providers/questions.ts'
+import { STUCK, WAIT, type Box, type Decision, type DecisionProvider, type DecisionRequest, type Look } from '../src/providers/types.ts'
 import { sentLine } from '../src/run-report.ts'
 import { parseScreen } from '../src/screen.ts'
 import type { Criterion, Locator, ScreenElement } from '../src/types.ts'
@@ -78,6 +79,17 @@ const happyPath = (request: DecisionRequest) => {
 }
 
 const options = { settleTimeoutMs: 0 }
+
+const bareRequest = (): DecisionRequest => ({
+  platform: 'ios',
+  goal: 'Log in',
+  screenText: [],
+  controlStates: [],
+  actions: [{ key: 'a1', description: 'Tap the button "Login"' }],
+  history: [],
+  inputNames: [],
+  fields: [],
+})
 
 describe('explore', () => {
   it('records when each step ended', async () => {
@@ -248,6 +260,90 @@ describe('explore', () => {
 
     assert.equal((await run()).outcome, 'stuck')
     assert.equal((await run(30_000)).outcome, 'passed')
+  })
+
+  describe('waiting for the app', () => {
+    /** Logging in takes 30 ms here, like an answer that takes a while to come back. */
+    class SlowLogin extends FakeApp {
+      private loggedInAt?: number
+      override async tap(element: ScreenElement) {
+        if (toSelector(element.locator) === '~button-LOGIN') {
+          if (this.loginWorks) this.loggedInAt = Date.now() + 30
+          return
+        }
+        await super.tap(element)
+      }
+      override async pageSource() {
+        if (this.loggedInAt !== undefined && Date.now() >= this.loggedInAt) this.screen = 'ios-login-success'
+        return super.pageSource()
+      }
+    }
+    const waitOptions = { ...options, waitStepMs: 40, maxBacktracks: 0 }
+
+    it('waits when the model says the app is still at work, then carries on', async () => {
+      const provider = new ScriptedProvider((request) =>
+        request.history.length === 4 && !request.screenText.includes('You are logged in!') ? { action: WAIT } : happyPath(request),
+      )
+      const trace = await explore(new SlowLogin(), criterion, { ...waitOptions, provider })
+
+      assert.equal(trace.outcome, 'passed')
+      assert.equal(trace.steps.filter((step) => step.waited).length, 1)
+      assert.ok(provider.requests.every((request) => request.canWait))
+    })
+
+    it('stops offering to wait once the time is used up, and stops if asked to wait anyway', async () => {
+      const app = new SlowLogin()
+      app.loginWorks = false
+      const provider = new ScriptedProvider((request) => (request.history.length === 4 ? { action: WAIT } : happyPath(request)))
+      const trace = await explore(app, criterion, { ...waitOptions, provider, maxWaitMs: 100 })
+
+      assert.equal(trace.outcome, 'stuck')
+      assert.match(trace.reason, /still seemed busy after waiting/)
+      assert.equal(provider.requests.at(-1)?.canWait, undefined)
+    })
+
+    it('passes on a wait when the checks already hold', async () => {
+      // The model keeps waiting on the success screen, unsure it is done.
+      const provider = new ScriptedProvider((request) => (request.history.length === 4 ? { action: WAIT, goalMet: 0.6 } : happyPath(request)))
+      const trace = await explore(new FakeApp(), criterion, { ...waitOptions, provider })
+
+      assert.equal(trace.outcome, 'passed')
+      assert.match(trace.reason, /was waiting for the app/)
+      assert.equal(trace.steps.filter((step) => step.waited).length, 0)
+    })
+
+    it('stops waiting when the screen does not change', async () => {
+      const app = new SlowLogin()
+      app.loginWorks = false
+      const provider = new ScriptedProvider((request) => (request.history.length === 4 ? { action: WAIT } : happyPath(request)))
+      const trace = await explore(app, criterion, { ...waitOptions, provider, waitStepMs: 1, maxWaitMs: 60_000 })
+
+      assert.equal(trace.outcome, 'stuck')
+      assert.match(trace.reason, /didn't change in 5 waits/)
+      assert.equal(trace.steps.filter((step) => step.waited).length, 5)
+    })
+
+    it('makes the generated test wait longer for the next element after a wait', async () => {
+      let waited = false
+      const provider = new ScriptedProvider((request) => {
+        if (!waited) {
+          waited = true
+          return { action: WAIT }
+        }
+        return happyPath(request)
+      })
+      const trace = await explore(new FakeApp(), criterion, { ...waitOptions, provider })
+      const spec = generateSpec(trace, criterion)
+
+      assert.match(spec, /\/\/ The app takes a while here: the run waited for it\.\n\s+await \$\('~Login'\)\.waitForDisplayed\(\{ timeout: 60000 \}\)\n\s+await \$\('~Login'\)\.click\(\)/)
+      assert.equal((spec.match(/waitForDisplayed/g) ?? []).length, 1)
+    })
+
+    it('offers to wait only when the request allows it', () => {
+      const request = { ...bareRequest(), canWait: true }
+      assert.ok(WAIT in actionOptions(request))
+      assert.ok(!(WAIT in actionOptions({ ...request, canWait: undefined })))
+    })
   })
 
   it('writes the expectation wait into the spec when one is given', async () => {

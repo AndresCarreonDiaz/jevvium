@@ -8,6 +8,8 @@ import type { Criterion } from './types.ts'
 
 /** How long the generated specs wait for an element (config/wdio.shared.conf.ts), so the replay waits as long. */
 export const SPEC_WAIT_MS = 15_000
+/** How long an action that came after the run waited for the app may wait for its element. */
+export const AFTER_WAIT_MS = 60_000
 
 /**
  * Runs a passing trace's steps with plain Appium commands, exactly as the
@@ -27,13 +29,20 @@ export async function replay(browser: Browser, trace: Trace, criterion: Criterio
   })
 
   try {
-    for (const taken of trace.steps.flatMap((step) => (step.undone ? [] : step.taken ?? []))) {
-      const element = browser.$(restoreSelector(taken.selector, criterion.inputs))
-      // A spec's commands wait for their element the same way, through its waitforTimeout.
-      await element.waitForExist({ timeout: waitMs })
-      if (taken.type === 'type') await element.setValue(criterion.inputs[taken.input!])
-      else if (taken.type === 'scroll') await browser.swipe({ ...SWIPE, direction: swipeDirection(taken.direction!), scrollableElement: element })
-      else await element.click()
+    let afterWait = false
+    for (const step of trace.steps) {
+      if (step.undone) continue
+      if (step.waited) afterWait = true
+      for (const taken of step.taken ?? []) {
+        const element = browser.$(restoreSelector(taken.selector, criterion.inputs))
+        // A spec's commands wait for their element the same way: through its waitforTimeout, or
+        // the longer wait the spec writes out where the run waited for the app.
+        await element.waitForExist({ timeout: afterWait ? Math.max(waitMs, AFTER_WAIT_MS) : waitMs })
+        afterWait = false
+        if (taken.type === 'type') await element.setValue(criterion.inputs[taken.input!])
+        else if (taken.type === 'scroll') await browser.swipe({ ...SWIPE, direction: swipeDirection(taken.direction!), scrollableElement: element })
+        else await element.click()
+      }
     }
     for (const expectation of criterion.expect) {
       const selector = toSelector(expectationLocator(expectation, trace.platform))

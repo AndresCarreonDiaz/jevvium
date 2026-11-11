@@ -4,6 +4,9 @@ import type { Platform } from '../types.ts'
 /** The option a provider picks when nothing on screen moves toward the goal. */
 export const STUCK = 'STUCK'
 
+/** The option a provider picks when the app is still at work and the screen should be read again in a moment. */
+export const WAIT = 'WAIT'
+
 /** The answer for a field that none of the test data belongs in. */
 export const LEAVE_EMPTY = 'leave_empty'
 
@@ -34,10 +37,12 @@ export type DecisionRequest = {
    * it, so a whole form can be filled from one decision.
    */
   fields: { key: string; description: string }[]
+  /** Whether `WAIT` is an option: the run has waiting time left. */
+  canWait?: boolean
 }
 
 export type Decision = {
-  /** An action key from the request, or `STUCK`. */
+  /** An action key from the request, `STUCK`, or `WAIT` when the request allows it. */
   action: string
   /**
    * How sure the provider is of `action`, from 0 to 1. For Jev this is its

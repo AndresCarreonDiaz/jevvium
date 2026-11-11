@@ -3,7 +3,7 @@ import { fingerprintOf, type Device } from './device.ts'
 import { redactExpectation } from './expectations.ts'
 import { prepareFrame, type PreparedFrame } from './frames.ts'
 import { expectationLocator, toSelector } from './locator.ts'
-import { LEAVE_EMPTY, STUCK, type Box, type Decision, type DecisionProvider, type DecisionRequest, type Look } from './providers/types.ts'
+import { LEAVE_EMPTY, STUCK, WAIT, type Box, type Decision, type DecisionProvider, type DecisionRequest, type Look } from './providers/types.ts'
 import { placeholderSelector, redactor } from './redact.ts'
 import { isBusy, maskRegions, needsFullRead, parseScreen, withoutTicking } from './screen.ts'
 import type { Action, Criterion, ElementKind, Expectation, Platform, Rect, Screen, ScreenElement, ScrollDirection } from './types.ts'
@@ -39,6 +39,14 @@ export type ExploreOptions = {
    * server or a model, which the page source can't show coming.
    */
   stopCheckMs?: number
+  /**
+   * How long a run may wait, in all, when the model says the app is still at work (an answer
+   * being written, a page loading). Waiting acts on nothing, so it doesn't count as a step.
+   * Default 30 seconds; 0 never offers waiting.
+   */
+  maxWaitMs?: number
+  /** How long each wait lasts (default 4 seconds). */
+  waitStepMs?: number
   /** How long to wait for the screen to stop changing, and spinners to go, after an action. */
   settleTimeoutMs?: number
   /**
@@ -149,6 +157,8 @@ export type Step = {
   undone?: true
   /** The masked screenshot of the screen this decision saw, when frames were kept (see `ExploreOptions.onFrame`). */
   frame?: string
+  /** The model said the app was still at work, so the run waited this long (ms) and read the screen again. */
+  waited?: number
   /** The model looked at the screen at this step (see `ExploreOptions.look`). */
   look?: StepLook
   /** A look was asked for, so its screenshot went out, but no answer came back: the text answer stood. */
@@ -200,6 +210,8 @@ const RUNNER_UP_MIN = 0.1
 /** When a run stops, the screen has already settled, so its checks don't need a long wait. */
 const STOP_CHECK_MS = 1_000
 const REPEAT_LIMIT = 3
+/** Waits in a row on a screen that stays the same before the run stops waiting. */
+const SAME_SCREEN_WAITS = 5
 /** Covered elements the model may choose in a row, whichever they are, before the run stops. */
 const COVERED_LIMIT = 6
 const POLL_MS = 50
@@ -255,6 +267,11 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
   const fillConfidence = options.fillConfidence ?? 0.5
   const expectTimeoutMs = options.expectTimeoutMs ?? 5_000
   const stopCheckMs = options.stopCheckMs ?? STOP_CHECK_MS
+  const maxWaitMs = options.maxWaitMs ?? 30_000
+  const waitStepMs = options.waitStepMs ?? 4_000
+  let waitedMs = 0
+  /** The screen the last wait was on, and how many waits in a row it has stayed that way. */
+  let waitScreen = { print: '', count: 0 }
   const settleTimeoutMs = options.settleTimeoutMs ?? 15_000
   const lookAlways = options.look === 'always'
   const { platform } = device
@@ -383,6 +400,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
       history: [...history],
       inputNames,
       fields,
+      ...(waitedMs < maxWaitMs && { canWait: true }),
     }
     return { read, screen, actions, request }
   }
@@ -555,6 +573,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
    */
   const wouldStop = (decision: Decision, screen: Screen, actions: Action[], doneAt: number, print: string): 'stuck' | 'unsure' | 'repeating' | undefined => {
     if (decision.goalMet >= doneAt) return undefined
+    if (decision.action === WAIT && waitedMs < maxWaitMs) return undefined
     if (decision.action === STUCK) return 'stuck'
     const action = actions.find((a) => a.key === decision.action)
     if (action && timesChosen(screen, action, print) + 1 >= REPEAT_LIMIT) return 'repeating'
@@ -775,7 +794,7 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
         // run is over, and no screenshot needs to go out.
         let checked: Expectation[] | undefined
         if (why && stopping && performed.length > 0 && criterion.expect.length > 0) {
-          checked = await failing(device, criterion.expect, STOP_CHECK_MS)
+          checked = await failing(device, criterion.expect, stopCheckMs)
           if (checked.length === 0) {
             options.onStep?.(step)
             return finish('passed', `All ${criterion.expect.length} expectations hold, although the model was unsure the goal was reached.`)
@@ -846,6 +865,33 @@ export async function explore(device: Device, criterion: Criterion, options: Exp
           }
           options.onStep?.(step)
           return finish(outcome, reason)
+        }
+
+        // The app is still at work: give it a moment and read the screen again. Waiting acts on
+        // nothing, so it counts against the time a run may wait, not against its steps.
+        if (decision.action === WAIT) {
+          // What the model waits for may be there already, without it being sure: the checks decide.
+          if (performed.length > 0 && criterion.expect.length > 0 && (await failing(device, criterion.expect, STOP_CHECK_MS)).length === 0) {
+            options.onStep?.(step)
+            return finish('passed', `All ${criterion.expect.length} expectations hold, although the model was waiting for the app.`)
+          }
+          waitScreen = waitScreen.print === screenPrint ? { print: screenPrint, count: waitScreen.count + 1 } : { print: screenPrint, count: 1 }
+          if (waitedMs >= maxWaitMs || waitScreen.count > SAME_SCREEN_WAITS) {
+            const why = waitedMs >= maxWaitMs
+              ? `The app still seemed busy after waiting ${Math.round(waitedMs / 1000)} s.`
+              : `The model kept waiting, but the screen didn't change in ${SAME_SCREEN_WAITS} waits.`
+            const trace = await stop('stuck', why)
+            if (trace) return trace
+            continue
+          }
+          const pause = Math.min(waitStepMs, maxWaitMs - waitedMs)
+          await sleep(pause)
+          waitedMs += pause
+          step.waited = pause
+          step.atMs = Date.now() - started
+          options.onStep?.(step)
+          next = await read()
+          continue
         }
 
         if (acted >= maxSteps) return (await stop('gave-up', `The goal was not reached within ${maxSteps} steps.`))!
