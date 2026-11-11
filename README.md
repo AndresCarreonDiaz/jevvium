@@ -503,7 +503,7 @@ Early, and built in the open. Latest runs, with `jev-1.13.0` on an iOS 26.5 simu
 | forms-switch | passed | 3 | 2.7 s | passed, 2.3 s |
 | signup | stuck | 11 | 17.6 s | |
 
-On a real iPhone 17 Pro (iOS 27.2.1), six plans against a TestFlight build of Sakana AI's chat app (asking a question, a numbered list, regenerating an answer, a model's effort levels, an empty search, the settings) all passed and replayed, and the six generated tests pass with `jevvium test` in about a minute ([plans and tests](https://github.com/AndresCarreonDiaz/sakana-jevvium-demo)). The answers arrive late, so those runs use `--expect-wait 60` and the model's waiting.
+On a real iPhone 17 Pro (iOS 27.2.1), six plans against a chat app installed from TestFlight all passed and replayed, and the six generated tests pass with `jevvium test` in about a minute. The answers arrive late, so those runs use `--expect-wait 60` and the model's waiting.
 
 - **Why signup is stuck:** on this simulator, typing into a sign-up form with two password fields leaves 1 character in the first one, so the app shows validation errors. It happens with Appium's typing and with the native helper, and a hand-written Appium test for the same form fails the same way. jevvium read the errors on screen, backtracked once, reached the same errors by the other route, and stopped; the trace records the failed expectation. In the model comparison, Claude Sonnet 5.5 got past them once in three rounds by typing the password again.
 - **Cost:** the four demo-app criteria made 18 requests and used about 19,000 input tokens, including requests thrown away while screens were still changing. That is under $0.001.
